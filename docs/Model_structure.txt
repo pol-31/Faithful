@@ -1,0 +1,576 @@
+#ifndef TOSERENITY_MODEL_H
+#define TOSERENITY_MODEL_H
+
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+#include <glad/gl.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
+#include "ShaderProgram.h"
+
+#include "Common/Logger.h"
+#include "resources/objects/Objects_3d.h"
+
+#include <map>
+#include <set>
+#include <vector>
+#include <forward_list>
+
+namespace simurgh {
+
+// TODO: track loaded Models
+
+class ModelLoader;
+class Mesh;
+struct UnprocessedMesh;
+class Material;
+class SkinnedMesh;
+class SkinlessModelImpl;
+
+struct AiStringComparator;
+struct AiNodeComparator;
+
+namespace details {
+namespace model {
+/// for reusing we should track each loaded models
+class ModelManager : public LoadPathManager<SkinlessModelImpl*> {
+ protected:
+  friend class simurgh::ModelLoader;
+  static GLuint Register(const char *path);
+};
+
+} // namespace image
+} // namespace details
+
+/**
+ * each model has N meshes and for each we need separate vao, vbo, ebo and ubo (for animated)
+ * So we can create all needed buffer at once: if we have 30 meshes we creating 30 id's for each mesh
+ * and store just offset for each type of buffer in Model_class alongside with total amount
+ * In Mesh_class we also storing offset to each type of buffer but related to parent Model_class
+ * (reducing memory usage)
+ * */
+
+
+struct Bone {
+  glm::mat4 offset_matrix;
+  std::size_t id;
+};
+
+// TODO: each animation has all transforation matrices to all bones (for each animation frame)
+//         so then we just using UBO to transfer all of them
+// TODO: add __name__ which may be found by id
+struct Animation {
+  struct AnimationData {
+    utility::Span<glm::mat4> matrices;
+    float time;
+  };
+  utility::Span<AnimationData> data;
+  std::size_t id;
+};
+
+struct VertexBoneInfo {
+  struct BoneWeightInfo {
+    std::size_t id = 0;
+    float weight = 0;
+  };
+  void AddBone(std::size_t bone_id, float weight) {
+    if (weight == 0) return;
+    BoneWeightInfo buf, new_bone;
+    new_bone = {bone_id, weight};
+    for (int i = 0; i < 4; ++i) {
+      if (bone_info[i].id == bone_id) {
+        bone_info[i].weight = std::max(bone_id, bone_info[i].id);
+        return;
+      }
+      if (new_bone.weight > bone_info[i].weight) {
+        buf = bone_info[i];
+        bone_info[i] = new_bone;
+        new_bone = buf;
+      }
+    }
+  }
+  BoneWeightInfo bone_info[4];
+};
+
+
+/// class Animation represent node of animation tree
+/// class aligned by cache line and compacted in 32/64 bytes
+///    (depends on bitness)
+/// neither copy nor move semantic
+class AnimationNode {
+ public:
+  AnimationNode() = default;
+
+  AnimationNode(const AnimationNode&) = delete;
+  AnimationNode(AnimationNode&&) = delete;
+  AnimationNode& operator=(const AnimationNode&) = delete;
+  AnimationNode& operator=(AnimationNode&&) = delete;
+
+  ~AnimationNode();
+
+  unsigned int get_position_offset() const {
+    return offset_rotation_and_position &
+           (~0U >> (sizeof(offset_rotation_and_position) * 8 / 2));
+  }
+  unsigned int get_rotation_offset() const {
+    return offset_rotation_and_position >>
+           (sizeof(offset_rotation_and_position) * 8 / 2);
+  }
+
+  std::size_t get_size() {
+    std::size_t y = 1;
+    for (int i = 0; i < children_.get_size(); ++i)
+      y += children_[i]->get_size();
+    return y;
+  }
+
+
+  int AnimPrevPositionByTime(float time);
+  glm::vec3 AnimPositionByTime(float time);
+
+  int AnimPrevRotationByTime(float time);
+  glm::quat AnimRotationByTime(float time);
+
+  int AnimPrevScalingByTime(float time);
+  glm::vec3 AnimScalingByTime(float time);
+
+  void ProcessAnimationKey(
+    float time,
+    const glm::mat4& parent_transform,
+    utility::Span<glm::mat4>& out_bone_transform,
+    const glm::mat4& global_inverse_transform_);
+
+  /// transform_matrix is the same as aiNodeAnim->mOffsetMatrix (or Identity Matrix)
+  AnimationNode(const aiNodeAnim* node, glm::mat4 bone_transform,
+                glm::mat4 node_transform, int bone_id,
+                std::size_t children_num);
+  void Insert(std::size_t child_num, AnimationNode* child_node);
+
+ protected:
+  friend class ModelLoader;
+  /// Function name is not exciting but it gives needed info and that's good
+  void AssimpNodeAnimToSimurghAnimationNode(const aiNodeAnim* node);
+  /// current animation order: xyztxyzt...wxyztwxyzt...xytxyt...
+  /// possible to have 0 keys (bone with no animations)
+  utility::Span<float> keys;                      // 16 / 8 bytes
+  /// key order: scaling, rotation, position (like SRT-rule)
+  /// Position and Scaling - 4 float each (3 axis + key_time)
+  /// Rotation (quaternion-based) - 5 float (quaternion4f + key_time)
+
+
+  utility::Span<AnimationNode*> children_;        // 16 / 8 bytes
+  glm::mat4* bone_transform_ = nullptr;           // 8  / 4 bytes
+  glm::mat4* node_transform_ = nullptr;           // 8  / 4 bytes
+  int bone_id_;                                   // 4 / 4 bytes
+
+  /// arranged in that way: (for 4 byte - half is 2)
+  ///   upper half bytes - rotation;
+  ///   lower half bytes - position
+  unsigned int offset_rotation_and_position = 0;  // 4 / 4 bytes
+
+  /// for 64-bit system utility::Span occupy 16 bytes,
+  /// meanwhile at 32-bit - 8 bytes (sizeof(pointers) == 8), so
+  /// total we have 52 and 32 accordingly for 64 and 32-bit system
+#if defined(__LP64__) || defined(__x86_64__)
+  char padding_[8]; /// padding bytes for better cache coherency
+#endif
+} __attribute__((aligned(8 * sizeof(void*)), packed)); /// aligned by 64/32 cache line
+
+// TODO: check on 32 bit sys
+// std::cout << sizeof(AnimationNode) << " " << alignof(AnimationNode) << std::endl;
+
+
+// TODO: have sense replace "std::size_t" by just int / unsigned_int
+
+/// 1 mesh - 1 Material (e.g. can't be 2 albedo textures for 1 Mesh)
+/// IF there is no animations, we not tracking even bones (NO BONES/UBO LOGIC without animations)
+/// max bones - 200 TODO: max bones 200?
+
+
+class SkinlessModelImpl : public Object3D {
+ protected:
+  friend class Model;
+
+  virtual void Draw(glm::mat4 view, glm::mat4 projection) const {}
+  virtual void RunAnimation(std::size_t num) {}
+
+
+  // TODO: read about friend (private/protected/public specifier)
+  // TODO: i forgot...
+
+  /**
+   * All objects has IDs:
+   * - global_id_ of class (Cube, Sphere, Cone, some _predef_Model_, user's (_loaded_Model_) etc)
+   * - local_id_ of instance
+   * So, when user creates instance of (e.g.) Cube, it has global_id_ as a Cube
+   *     and lodal_id_ amongst all cubes
+   */
+
+  /**
+   * Each Scene has its own _lists_ (but not _objects_ - they may be used in few scenes):
+   * drawable_list_;
+   * collisionable_list_;
+   * update_list_.
+   * */
+
+  /**
+   * drawable_list_ consist of std::vectors<glm::mat4 SRT_transform> for each global_id_.
+   * (it's precalculated mat4x4 == 4*16 == 64b --> nice cache coherency)
+   * So when we instantiate object like this:
+   * Cube cube_1_;
+   * Cube holds offset to mat4 inside the drawable_list_, if
+   * drawable list already has vector for such global_id_ (otherwise Create&Insert it)
+   * Color/Texture are UNIQUE; vao, vbo, veo, shaders are SHARED
+   * -----------------------------------------------------------------------
+   * if object not drawable, he also holds pointer but on some place in HEAP.
+   * Then if it becomes _drawable_, we std::move() it into drawable_list_.
+   * If it becomes _not_drawable_, then std::move() out of vector. Its + empty "cell"
+   * in vector, so in drawable_list_::_cur_obj_vector_ --> _object_SHIFT_
+   * */
+
+
+  /** Object segregation:
+   * dimension:     2 | 3. Solution:    separate classes (Object2d, Object3d : public Object)
+   * b-animated:    y | n. Solution:    animations can't be added or removed and they related
+   *                                       only to skinned objects (2d/3d), so we just inherited both
+   *                                       from Object_class and from AnimatedObject_class
+   * sound-able:    y | n. Solution:    NOT RELATED TO Object_class
+   *                                       can be added to each object using __Update()__
+   * composed:      y | n. Solution:    WE DON'T CARE (__drawing__ is not managing by user)
+   * -----
+   * b-animated == bone-based (skinning)
+   *
+   * TODO: Update() implementation:
+   *             - user inherits their objects in _his_code__
+   *            OR
+   *             - lambda-based
+   * */
+  // now we have only Object_class::members, local_id_ and transform_matrix;
+
+  class Model {
+   public:
+    Model(const char* path) {}
+   protected:
+    glm::mat4* transformation_;
+    int id_;
+  };
+
+  class AnimatedModel : public Model {
+   public:
+    AnimatedModel(const char* path): Model(path) {}
+
+    /** no_members */
+  };
+
+  // TODO: OR we can hold _general_object_ (by id)
+  //   and that general object will has Animations or not
+  //   like this:
+
+   Model* animated_dog = new Model("../animated_dog.obj");
+   // TODO: ctor anyway will call ModelCreator, so this ModelCreator
+   //   will take a look at bones and then create _general_object_
+   //   with or without animation properties
+   // BUT then we need how our global_id_ ......
+   animated_dog->RunAnimation[0]; // calls animation
+
+  Model* not_animated_dog = new Model("../not_animated_dog.obj");
+   not_animated_dog->RunAnimation[0]; // calls {}
+
+
+   /// animations related only to skinned objects (2d/3d)
+   /// Object::RunAnimation == {} untill Model has bones (then override it)
+   /// Model_class always overrides it and calls RunAnimation from its `SuperObjectClass
+   ///         `SuperObjectClass - means general object with global_id_ (for Cube its CubeCreator)
+
+  // INSTANCE___-specific
+  int local_id_ = 0;
+  /// int instance_offset_; <-- it's bad idea:
+  ///     if not drawable - offset, otherwise ... pointer to HEAP?,
+  ///     so offset is not relevant to such situations
+  ///
+  /// Consequence: if obj not_drawable - pointer to location on HEAP
+  ///              otherwise nullptr (we exactly know about its occurence in
+  ///              drawable_list_, so we don't care about is there nullptr or not)
+  glm::mat4* transform_ = nullptr;
+
+  // CLASS______-specific
+  int global_id_;
+
+  /// multiple meshes
+  // offsets -> (meshes already sorted) different
+  //     shaders segregation TODO: is 2 enough (?)
+  int offset_light_ = 0;
+  int offset_parallax_light_ = 0;
+  // Mesh_class is just Material & IndicesNum (only ctors differs),
+  //   so we can easily hold only __utility::Span<Mesh*>__
+  mutable utility::Span<Mesh*> processed_meshes_; // TODO: mutable
+
+  /// bones
+  GLuint bones_ubo_; // extra UBO
+  utility::Span<AnimationNode*> animation_nodes_;
+  mutable utility::Span<glm::mat4> cur_pose_;
+  std::map<aiString, Bone, AiStringComparator> *bones_ = nullptr; // TODO: not necessary
+  glm::mat4 global_inverse_transform_; // TODO:
+
+
+  /// possible --> 32b total (nice) -- <READ_data>
+  /// changes: not often (we rather change data on heap by pointers (SRT, collision))
+  /*  Object_class________________________________________________________________
+  int local_id_;                                                        __LOCAL__
+  bool drawable_;                                                       __LOCAL__
+  bool collisionable_;                                                  __LOCAL__
+  Object* collision_ = nullptr;                                         __LOCAL__
+
+  std::size_t global_id_;                                               __GLOBAL__
+  GLuint vao_ = 0;                                                      __GLOBAL__
+  GLuint vbo_ = 0;                                                      __GLOBAL__
+  GLuint ebo_ = 0;                                                      __GLOBAL__
+  GLuint image_id_ = 0;                                                 __GLOBAL__
+  mutable utility::ShaderProgram *shader_program_ = nullptr;            __GLOBAL__
+   * */ /// 12 / 8 bytes
+  /* Object2d_class_______________________________________________________________
+  glm::mat3* affine_transformation_matrix_                               __LOCAL__
+  int draw_priority_ = -1;                                               __LOCAL__
+   * */ /// 8 / 8 bytes
+  /* Object3d_class_______________________________________________________________
+  glm::mat4* homogeneous_transformation_matrix_                          __LOCAL__
+   * */
+
+};
+
+
+class Object {
+  Object* collision_ = nullptr; // TODO: coolsion representation
+  int global_id_;
+  int local_id_; // + {drawable, collisionable} flags
+  // bool drawable_;
+  // bool collisionable_;
+};
+class Object2D : Object {
+  glm::mat3* affine_transformation_matrix_;
+  int draw_priority_ = -1;
+};
+class Object3D : Object {
+  // padding 4
+  glm::mat4* homogeneous_transformation_matrix_;
+};
+
+class SkinnedObject {
+  void RunAnimation(int animation_id); // <-- calls Implamentation::RunAnimation(local_ubo_, anim_id);
+  GLuint bones_ubo_;
+};
+class SkinnedObject2D : Object2D, SkinnedObject {};
+class SkinnedObject3D : Object3D, SkinnedObject {};
+//---------------------------------------------
+
+class SingleObjectImpl {
+
+
+  // TODO: exact objects OR pointer to it (?)
+  std::vector<glm::mat4> instance_transformations_;
+
+  std::pair<glm::mat4*, int> CreateInstance() {
+    //instance_transformations_
+  }
+
+  GLuint vao_ = 0;
+  GLuint vbo_ = 0;
+  GLuint ebo_ = 0;
+  GLuint ubo_ = 0; // view/proj matrices
+  GLuint image_id_ = 0;
+  mutable utility::ShaderProgram *shader_program_ = nullptr;
+};
+class MultimeshObjectImpl : SingleObjectImpl {
+  std::pair<glm::mat4*, int> CreateMultimeshInstance() {
+    //instance_transformations_
+  }
+
+  int offset_light_ = 0;
+  int offset_parallax_light_ = 0;
+  mutable utility::Span<Mesh*> processed_meshes_; // TODO: mutable
+};
+class SkinnedObjectImpl : MultimeshObjectImpl {
+  std::tuple<glm::mat4*, int, GLuint> CreateSkinnedInstance() {
+    //instance_transformations_
+  }
+  void RunAnimation(GLuint local_ubo_, int anim_id) {} // TODO: not Run() but SetPose()
+
+  // TODO: depends on framerate (?)
+  void Update() {
+    for (auto obj : animated_objects_) {
+      if (obj.Done()) {
+        // remove that obj from the list
+        continue;
+      }
+      obj.UpdateFrame();
+    }
+  }
+
+  class RunningAnimation {
+   public:
+    RunningAnimation() = default;
+    RunningAnimation(GLuint ubo, bool repeat) {}
+
+    // TODO: depends on framerate (?)
+    void UpdateFrame() {
+      /// Case (time == -1) is checked in hierarchy higher (SkinnedObjectImpl::Update())
+      // update pose (look at framerate and interpolate)
+      // bind ubo
+      // load into ubo
+    }
+    bool Done() {
+      return time == -1;
+    }
+
+   private:
+    GLuint obj_ubo = 0;
+    int animation_id;
+    // TODO: next_animation_id;
+    bool repeat = false;
+    float time = 0.0f; // time == -1 --> animatino_ended
+  };
+
+  std::forward_list<RunningAnimation> animated_objects_;
+
+
+  GLuint bones_ubo_; // extra UBO TODO: rather __LOCAL__
+  utility::Span<AnimationNode*> animation_nodes_;
+  mutable utility::Span<glm::mat4> cur_pose_;
+  std::map<aiString, Bone, AiStringComparator> *bones_ = nullptr; // TODO: not necessary (?) - ?size() and empty(?)
+  glm::mat4 global_inverse_transform_; // TODO: not necessary (?)
+};
+
+// TODO: optimization with 1 Mesh
+
+
+
+class SkinnedModelImpl :  public SkinlessModelImpl {
+ protected:
+  void Draw(glm::mat4 view, glm::mat4 projection) const override;
+  void RunAnimation(std::size_t num) override {}
+
+  friend class Model;
+  ///_____ in case if there are bones:
+  GLuint ubo_ = 0;
+  /// for bones_ we also keep "dummy" bone for AnimationNode with
+  ///     animation but without bone
+  std::map<aiString, Bone, AiStringComparator> *bones_ = nullptr;
+  glm::mat4 global_inverse_transform_;
+  mutable utility::Span<glm::mat4> cur_pose_;
+};
+
+class Model {
+ public:
+  Model(const char* path, bool static_load = false);
+
+  void Draw(glm::mat4 view, glm::mat4 projection) const {
+    model_->Draw(view, projection);
+  }
+  virtual void RunAnimation(std::size_t num) {
+    model_->RunAnimation(num);
+  }
+
+  utility::Span<Mesh*> get_meshes() const {
+    return model_->processed_meshes_;
+  }
+ private:
+  SkinlessModelImpl* model_;
+};
+
+class ModelLoader {
+ protected:
+  friend class Mesh;
+  friend class Model;
+
+  ModelLoader(const char* path, bool static_load = false);
+
+  std::size_t BoneIdByName(const aiString& name);
+
+  void InitMeshBuffers(std::size_t meshes_num);
+  void InitMeshUbo(std::size_t meshes_num);
+
+  void InitMeshIndices(const aiMesh *mesh, std::vector<unsigned int>& indices);
+
+  Material InitMeshMaterials(const aiScene *scene, const aiMesh *mesh);
+
+  void DefaultPose();
+  void Load();
+
+  void SortMeshes();
+
+  void ProcessNode(const aiNode *node, const aiScene *scene);
+
+  Mesh* ProcessSkinlessMesh(const UnprocessedMesh *mesh);
+  SkinnedMesh* ProcessSkinnedMesh(const UnprocessedMesh *mesh);
+
+  AnimationNode* GetInterpolatedAnimationKey(const aiAnimation* animation,
+                                             const aiNode* node);
+
+  const aiNodeAnim* GetNodeAnimation(const aiAnimation* animation, const aiString& node_name);
+
+
+  bool NodeImportanceCheck(const aiNode* node, const aiScene* scene);
+
+  GLuint LoadTexture(aiMaterial *mat, aiTextureType type);
+
+  // __
+  // TODO: we need it only for loading, so maybe create ModelLoader_class ?
+  bool static_load_;
+  const char* path_;
+  int meshes_cur_id_ = 0;
+  mutable utility::Span<UnprocessedMesh> unprocessed_meshes_; // TODO: not_mutable
+  std::set<const aiNode*, AiNodeComparator> *important_nodes_ = nullptr;
+  // __
+
+  /// we render in order:
+  /// 1) objects with no height map and no normal map (no illumination)
+  /// 2) objects with no height map (- parallax effect | + illumination)
+  /// 3) other (+parallax +illumination)
+  /// for optimization (reduce shader_program switching)
+  /// therefore processed_meshes_ stored in this way (init in SortMeshes)
+  // int offset_no_light_ = 0;
+  int offset_light_ = 0;
+  int offset_parallax_light_ = 0;
+
+  utility::Span<AnimationNode*> animation_nodes_;
+  mutable utility::Span<Mesh*> processed_meshes_; // TODO: not_mutable
+
+  ///_____ in case if there are bones:
+  GLuint ubo_ = 0;
+  /// for bones_ we also keep "dummy" bone for AnimationNode with
+  ///     animation but without bone
+  std::map<aiString, Bone, AiStringComparator> *bones_ = nullptr;
+  glm::mat4 global_inverse_transform_; // TODO:
+  mutable utility::Span<glm::mat4> cur_pose_;
+};
+
+// TODO: aiString don't have comparisons, iterators.....
+struct AiStringComparator {
+  bool operator()(const aiString& arg1, const aiString& arg2) const noexcept {
+    if (arg1 == arg2) return false;
+    if (arg1.length != arg2.length) return (arg1.length < arg2.length);
+    for (int i = 0; i < arg1.length; ++i) {
+      if (arg1.data[i] != arg2.data[i])
+        return (arg1.data[i] < arg2.data[i]);
+    }
+    return true;
+  }
+};
+
+struct AiNodeComparator {
+  bool operator()(const aiNode* node1, const aiNode* node2) const {
+    return node1 < node2;
+  }
+};
+
+glm::mat4 AssimpMatrixToGlm(const aiMatrix4x4& src);
+
+} // namespace simurgh
+
+#endif //TOSERENITY_MODEL_H

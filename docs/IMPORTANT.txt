@@ -1,0 +1,12 @@
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Object.cpp
+std::tuple<glm::mat4*, int, int> SkinnedObject3DImpl::CreateInstance() {
+...
+  GLuint bindingPoint = 16 + last_local_id_;
+...
+}  <<-----------------TOTAL__16_preserved_binding_points (inx 0 - for proj&view matrix)
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Animations:
+Total num of bones - 200 (including dummy-bone)
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
