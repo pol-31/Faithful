@@ -1,0 +1,21 @@
+[submodule "externals/assimp/assimp"]
+	path = externals/assimp/assimp
+	url = https://github.com/assimp/assimp.git
+
+# we need only single file
+[submodule "externals/glad/glad"]
+	path = externals/glad/glad
+	url = https://github.com/ucpu/glad.git
+
+[submodule "externals/glfw/glfw"]
+	path = externals/glfw/glfw
+	url = https://github.com/glfw/glfw.git
+
+[submodule "external/glm/glm"]
+	path = externals/glm/glm
+	url = https://github.com/g-truc/glm.git
+
+# we need only single file stb_image.h
+[submodule "externals/stb/stb"]
+	path = externals/stb/stb
+	url = https://github.com/nothings/stb.git
