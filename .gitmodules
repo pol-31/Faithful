@@ -1,21 +1,40 @@
-[submodule "externals/assimp/assimp"]
-	path = externals/assimp/assimp
+[submodule "external/assimp/assimp"]
+	path = external/assimp/assimp
 	url = https://github.com/assimp/assimp.git
-
-# we need only single file
-[submodule "externals/glad/glad"]
-	path = externals/glad/glad
-	url = https://github.com/ucpu/glad.git
-
-[submodule "externals/glfw/glfw"]
-	path = externals/glfw/glfw
+[submodule "external/astc-encoder/astc-encoder"]
+	path = external/astc-encoder/astc-encoder
+	url = https://github.com/ARM-software/astc-encoder.git
+[submodule "external/cgltf/cgltf"]
+	path = external/cgltf/cgltf
+	url = https://github.com/jkuhlmann/cgltf.git
+[submodule "external/freetype/freetype"]
+	path = external/freetype/freetype
+	url = https://github.com/freetype/freetype.git
+[submodule "external/glad/glad"]
+	path = external/glad/glad
+	url = https://github.com/Dav1dde/glad.git
+	branch = master
+[submodule "external/glfw/glfw"]
+	path = external/glfw/glfw
 	url = https://github.com/glfw/glfw.git
-
 [submodule "external/glm/glm"]
-	path = externals/glm/glm
+	path = external/glm/glm
 	url = https://github.com/g-truc/glm.git
-
-# we need only single file stb_image.h
-[submodule "externals/stb/stb"]
-	path = externals/stb/stb
-	url = https://github.com/nothings/stb.git
+[submodule "external/googletest/googletest"]
+	path = external/googletest/googletest
+	url = https://github.com/google/googletest.git
+[submodule "external/libvpx/libvpx"]
+	path = external/libvpx/libvpx
+	url = https://github.com/webmproject/libvpx.git
+[submodule "external/openal-soft/openal-soft"]
+	path = external/openal-soft/openal-soft
+	url = https://github.com/kcat/openal-soft.git
+[submodule "external/vorbis/vorbis"]
+	path = external/vorbis/vorbis
+	url = https://github.com/xiph/vorbis.git
+[submodule "external/libav/libav"]
+	path = external/libav/libav
+	url = https://github.com/libav/libav.git
+[submodule "external/yasm/yasm"]
+	path = external/yasm/yasm
+	url = https://github.com/yasm/yasm.git

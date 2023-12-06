@@ -1,14 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 
-message(STATUS "glad")
-
-unset(CMAKE_C_STANDARD)
-unset(CMAKE_CXX_STANDARD)
+message(STATUS "glad building")
 
 add_library(glad STATIC glad/src/glad.c)
-target_include_directories(glad PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/glad/include>)
-if(MSVC)
-    target_compile_definitions(glad PRIVATE "GLAPI=__declspec(dllexport)")
-else()
-    target_compile_definitions(glad PRIVATE "GLAPI=__attribute__((visibility(\"default\")))")
-endif()
+target_include_directories(glad PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/glad/include")

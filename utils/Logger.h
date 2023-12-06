@@ -94,6 +94,7 @@ class Logger {
     typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
   void Log(LogType type, T error_info) {
     switch (type) {
+      // TODO: FAITHFUL_MAIN_LOGGER
 #ifndef LOG_INFO_MESSAGES
       case LogType::kInfo:
         if (log_level_ == LogLevel::kAll)
@@ -127,6 +128,8 @@ class Logger {
   /// for Debug purposes: Assimp, OpenGL, GLFW error checks
 
   // TODO 2: depends on macros in CmakeList.txt (Faithful / AssetProcessor)
+
+  // TODO: FAITHFUL_MAIN_LOGGER
 #ifndef ASSET_PROCESSOR
   template <typename T,
     typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>

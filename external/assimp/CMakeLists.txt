@@ -1,25 +1,24 @@
 cmake_minimum_required(VERSION 3.26)
 
-message(STATUS "assimp")
+message(STATUS "assimp building")
 
-set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "BUILD_SHARED_LIBS")
-set(ASSIMP_INSTALL OFF CACHE INTERNAL "Disable this if you want to use assimp as a submodule.")
-set(ASSIMP_BUILD_ZLIB OFF CACHE INTERNAL "Build your own zlib")
-set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "Disable Assimp's export functionality.")
-set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE INTERNAL "If the supplementary tools for Assimp are built in addition to the library.")
-set(ASSIMP_BUILD_TESTS OFF CACHE INTERNAL "If the test suite for Assimp is built in addition to the library.")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build Assimp shared libraries" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "Install Assimp" FORCE)
+set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "Disable Assimp export functionality" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "Build Assimp tools" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "Build Assimp tests" FORCE)
+set(ASSIMP_BUILD_ASSIMP_VIEW OFF CACHE BOOL "Build Assimp view tool" FORCE)
 
-# disable some formats to speed up build
-# one may enable them in the cache or by setting the default before including this cmake
-foreach(name AMF AC ASE ASSBIN ASSXML B3D BVH DXF CSM HMP IRRMESH IRR LWO LWS MD2 MD3 MD5 MDC MDL NFF NDO OFF OGRE OPENGEX MS3D COB IFC XGL Q3D Q3BSP RAW SIB SMD STL TERRAGEN 3D X3D 3MF MMD STEP)
+# Enabled by default: COLLADA, OBJ, PLY, BLEND, FBX, GLTF
+# We are going to decode each to GLTF, but Assimp doesn't support
+# flexible building options for this, so Assimp only import (for export - Cgltf lib)
+foreach(name BVH X3D 3DS IQM M3D X AMF AC ASE ASSBIN ASSXML B3D DXF CSM HMP IRRMESH IRR LWO LWS MD2 MD3 MD5 MDC MDL NFF NDO OFF OGRE OPENGEX MS3D COB IFC XGL Q3D Q3BSP RAW SIB SMD TERRAGEN 3D 3MF MMD STEP)
     option(ASSIMP_BUILD_${name}_IMPORTER "Build ${name} importer" OFF)
 endforeach()
 
-if(MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
-endif()
+set(ASSIMP_BINARY_DIR ${CMAKE_BINARY_DIR}/assimp-build CACHE INTERNAL "assimp binary directory" FORCE)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ASSIMP_BINARY_DIR} CACHE INTERNAL "assimp executable output directory" FORCE)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${ASSIMP_BINARY_DIR} CACHE INTERNAL "assimp library output directory" FORCE)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${ASSIMP_BINARY_DIR} CACHE INTERNAL "assimp archive output directory" FORCE)
 
 add_subdirectory(assimp)
-
-# assimp/contrib/unzip somehow incorrectly detects zlib(-ng) version and tries to use undefined type
-target_compile_definitions(assimp PRIVATE "ZEXPORT=" "z_crc_t=uint32_t")

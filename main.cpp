@@ -1,3 +1,14 @@
+#include <iostream>
+#include "external/assimp/assimp/include/assimp/Importer.hpp"
+
+
+int main() {
+//  Assimp::Importer importer;
+  std::cout << "Hello, World!" << std::endl;
+  return 0;
+}
+
+/*
 #include "src/Engine.h"
 #include "src/entities/Objects_3d.h"
 #include "src/entities/Objects_2d.h"
@@ -31,6 +42,7 @@ void SetDebugKeys(faithful::KeyboardInputHandler* key_handler) {
 }
 
 
+*/
 /* TODO 0: consider how our Game Engine should looks like <<prog_1>>
  *   what we need: floor(tesselation) adjustament, water, object positioning.
  *   Not even scene switching (implemented by code). For floor we just load/create/
@@ -53,7 +65,8 @@ void SetDebugKeys(faithful::KeyboardInputHandler* key_handler) {
  *
  *
  *
- * */
+ * *//*
+
 
 
 
@@ -149,6 +162,7 @@ int main() {
 
 
 
+*/
 /*
   auto game_scene = new Scene3D(SceneMode::Shooter);
   auto menu_scene = new Scene2D(SceneMode::Platformer);
@@ -215,6 +229,8 @@ int main() {
   // game
   SimurghManager::set_scene(game_scene);
 *//*
+*/
+/*
   Model model2("../resources/objects/backpack/backpack.obj");
   model2.TranslateTo(3.0f, 3.0f, 0.0f);
   Model model3("../resources/objects/backpack/backpack.obj");
@@ -227,12 +243,18 @@ int main() {
   model6.TranslateTo(7.0f, 3.0f, 0.0f);
   Model model7("../resources/objects/backpack/backpack.obj");
   model7.TranslateTo(8.0f, 3.0f, 0.0f);*//*
+*/
+/*
 *//*
+*/
+/*
 
   auto model1 = new Model("/home/pavlo/Downloads/Longbow/Erika Archer.dae", true);
   model1->TranslateTo(0.0f, 4.0f, 0.0f);
   model1->ScaleTo(0.001f, 0.001f, 0.001f);
 *//*
+*/
+/*
 
   Cube cube54(1.0f, 0.0f, -3.0f);
   cube54.ScaleTo(1.0f, 2.0f, 1.0f);
@@ -327,7 +349,8 @@ int main() {
   });
   SimurghManager::get_scene()->get_camera()->get_keyboard_handler()->Bind(Key::Right, [&]() {
     character.TranslateOn(0.01f, 0.00f);
-  });*/
+  });*//*
+
 
   std::this_thread::sleep_for(std::chrono::seconds(10000));
   return 0;
@@ -376,3 +399,4 @@ int main() {
 // TODO 11: reuse GeometryObjects (we creating each copy from beginning by now)
 
 // TODO 16: dirs TEST for further google testing
+*/

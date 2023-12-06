@@ -1,0 +1,27 @@
+
+set(faithful_licenses_dir "${CMAKE_CURRENT_LIST_DIR}")
+set(faithful_licenses_path "${CMAKE_SOURCE_DIR}/licenses" CACHE STRING "Licenses location")
+
+function(faithful_copy_license sourcePath targetName)
+    configure_file("${sourcePath}" "${faithful_licenses_path}/${targetName}" COPYONLY)
+endfunction(faithful_copy_license)
+
+function(faithful_copy_licenses)
+    faithful_copy_license("${faithful_licenses_dir}/../external/assimp/assimp/LICENSE" "assimp")
+    faithful_copy_license("${faithful_licenses_dir}/../external/astc-encoder/astc-encoder/LICENSE.txt" "astc-encoder")
+    faithful_copy_license("${faithful_licenses_dir}/../external/cgltf/cgltf/LICENSE" "cgltf")
+    faithful_copy_license("${faithful_licenses_dir}/../external/ffmpeg/ffmpeg/LICENSE.md" "ffmpeg")
+    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/LICENSE.TXT" "freetype")
+    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/docs/FTL.TXT" "freetype_ftl")
+    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/src/bdf/README" "freetype_bdf")
+    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/src/pcf/README" "freetype_pcf")
+    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/src/gzip/zlib.h" "freetype_gzip")
+    faithful_copy_license("${faithful_licenses_dir}/../external/glad/glad/LICENSE" "glad")
+    faithful_copy_license("${faithful_licenses_dir}/../external/glfw/glfw/LICENSE.md" "glfw")
+    faithful_copy_license("${faithful_licenses_dir}/../external/glm/glm/manual.md" "glm")
+    faithful_copy_license("${faithful_licenses_dir}/../external/googletest/googletest/LICENSE" "googletest")
+    faithful_copy_license("${faithful_licenses_dir}/../external/libvpx/libvpx/LICENSE" "libvpx")
+    faithful_copy_license("${faithful_licenses_dir}/../external/openal-soft/openal-soft/LICENSE-pffft" "openal-soft")
+    faithful_copy_license("${faithful_licenses_dir}/../external/vorbis/vorbis/COPYING" "vorbis")
+    # TODO: add "/../LICENSE" "faithful"
+endfunction(faithful_copy_licenses)
