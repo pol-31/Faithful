@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
 
 # set policy CMP0072 to suppress warning about
 # founding both a legacy GL library and GLVND libs

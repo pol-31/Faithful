@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
 
 find_path(CGLTF_INCLUDE_DIR cgltf.h)
 find_library(CGLTF_LIBRARY cgltf)

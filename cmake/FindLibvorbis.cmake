@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
 
 find_path(VORBIS_INCLUDE_DIR NAMES vorbis/codec.h)
 find_library(VORBIS_LIBRARY NAMES vorbis)

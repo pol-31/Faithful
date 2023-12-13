@@ -4,9 +4,9 @@
 [submodule "external/astc-encoder/astc-encoder"]
 	path = external/astc-encoder/astc-encoder
 	url = https://github.com/ARM-software/astc-encoder.git
-[submodule "external/cgltf/cgltf"]
-	path = external/cgltf/cgltf
-	url = https://github.com/jkuhlmann/cgltf.git
+[submodule "external/curl/curl"]
+	path = external/curl/curl
+	url = https://github.com/curl/curl.git
 [submodule "external/freetype/freetype"]
 	path = external/freetype/freetype
 	url = https://github.com/freetype/freetype.git
@@ -23,18 +23,21 @@
 [submodule "external/googletest/googletest"]
 	path = external/googletest/googletest
 	url = https://github.com/google/googletest.git
-[submodule "external/libvpx/libvpx"]
-	path = external/libvpx/libvpx
-	url = https://github.com/webmproject/libvpx.git
 [submodule "external/openal-soft/openal-soft"]
 	path = external/openal-soft/openal-soft
 	url = https://github.com/kcat/openal-soft.git
 [submodule "external/vorbis/vorbis"]
 	path = external/vorbis/vorbis
 	url = https://github.com/xiph/vorbis.git
-[submodule "external/libav/libav"]
-	path = external/libav/libav
-	url = https://github.com/libav/libav.git
-[submodule "external/yasm/yasm"]
-	path = external/yasm/yasm
-	url = https://github.com/yasm/yasm.git
+[submodule "external/alsa/alsa"]
+	path = external/alsa/alsa
+	url = https://github.com/alsa-project/alsa-lib.git
+[submodule "external/libogg/libogg"]
+	path = external/libogg/libogg
+	url = https://github.com/gcp/libogg.git
+[submodule "external/dr_libs/dr_libs"]
+	path = external/dr_libs/dr_libs
+	url = https://github.com/mackron/dr_libs.git
+[submodule "external/tinygltf/tinygltf"]
+	path = external/tinygltf/tinygltf
+	url = https://github.com/syoyo/tinygltf.git

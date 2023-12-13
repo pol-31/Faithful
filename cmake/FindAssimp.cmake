@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
 
 find_path(ASSIMP_INCLUDE_DIR NAMES assimp/Importer.hpp)
 find_library(ASSIMP_LIBRARY NAMES assimp)

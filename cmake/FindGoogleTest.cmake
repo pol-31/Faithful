@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
 
 find_path(GTEST_INCLUDE_DIR NAMES gtest/gtest.h)
 find_library(GTEST_LIBRARY NAMES gtest gtest_main)

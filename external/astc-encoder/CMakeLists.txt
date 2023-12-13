@@ -2,14 +2,36 @@ cmake_minimum_required(VERSION 3.26)
 
 message(STATUS "astc-encoder building")
 
-set(ASTCENC_SHAREDLIB OFF CACHE BOOL "Build astc-encoder shared libraries" FORCE)
-set(ASTCENC_BLOCK_MAX_TEXELS 64 CACHE STRING "Build astc-encoder with constrained block size" FORCE)
-set(ASTCENC_INVARIANCE OFF CACHE BOOL "Build astc-encoder non-invariant libraries" FORCE)
-set(ASTCENC_UNITTEST OFF CACHE BOOL "Build astc-enc tests" FORCE)
-
 set(ASTC_ENCODER_BINARY_DIR ${CMAKE_BINARY_DIR}/astc-encoder-build CACHE INTERNAL "astc-encoder binary directory" FORCE)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ASTC_ENCODER_BINARY_DIR} CACHE INTERNAL "astc-encoder executable output directory" FORCE)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${ASTC_ENCODER_BINARY_DIR} CACHE INTERNAL "astc-encoder library output directory" FORCE)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${ASTC_ENCODER_BINARY_DIR} CACHE INTERNAL "astc-encoder archive output directory" FORCE)
 
-add_subdirectory(astc-encoder)
+ExternalProject_Add(
+        astcencoder_external
+        PREFIX ${CMAKE_BINARY_DIR}
+        SOURCE_DIR ${CMAKE_SOURCE_DIR}/astcencoder/astcencoder
+        CONFIGURE_COMMAND cmake
+        -DASTCENC_ISA_NATIVE=ON
+        -DASTCENC_DECOMPRESSOR=OFF
+        -DASTCENC_SHAREDLIB=OFF
+        -DASTCENC_DIAGNOSTICS=OFF
+        -DASTCENC_ASAN=OFF
+        -DASTCENC_UNITTEST=OFF
+        -DASTCENC_INVARIANCE=OFF
+        -DASTCENC_CLI=OFF
+        -DASTCENC_BLOCK_MAX_TEXELS=64
+        ${CMAKE_SOURCE_DIR}/astcencoder/astcencoder
+        BUILD_COMMAND ${CMAKE_COMMAND} --build .
+        INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
+        BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
+)
+
+add_library(astc-encoder INTERFACE)
+add_dependencies(astc-encoder astcencoder_external)
+
+target_link_libraries(astc-encoder
+        INTERFACE ${CMAKE_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
+)
+target_include_directories(astc-encoder INTERFACE ${VORBIS_SOURCE_DIR}/include)
+

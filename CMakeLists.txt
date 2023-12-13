@@ -1,18 +1,20 @@
-
 cmake_minimum_required(VERSION 3.26)
+
 project(Faithful LANGUAGES CXX C)
 
 cmake_policy(SET CMP0069 NEW)  # LTO support
 
 message(STATUS "._._._._._._<Faithful>_._._._._._.")
-message(STATUS "+> compilation started")
-message(STATUS "CMake Version: ${CMAKE_VERSION}")
-message(STATUS "CMake Generator: ${CMAKE_GENERATOR}")
-message(STATUS "System: ${CMAKE_SYSTEM}")
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "+> Compilation has been started")
+message(STATUS "+> CMake Version: ${CMAKE_VERSION}")
+message(STATUS "+> CMake Generator: ${CMAKE_GENERATOR}")
+message(STATUS "+> System: ${CMAKE_SYSTEM}")
+message(STATUS "+> Build type: ${CMAKE_BUILD_TYPE}")
+message("")
 
-# TODO:
-#   set(FAITHFUL_BINARY_DIR)
+option(FAITHFUL_INSTALL "Install Faithful ()" ON)
+set(FAITHFUL_INSTALL_DIR "${CMAKE_SOURCE_DIR}/Faithful" CACHE STRING
+        "The subdirectory where to install")
 
 set(CMAKE_MODULE_PATH
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
@@ -30,12 +32,6 @@ endif()
 
 add_definitions(-DFAITHFUL_MAIN_LOGGER)
 
-# TODO begin
-#  openGL version (for Glad)
-#  paths
-#  generate configs (?)
-# TODO end
-
 # There also could be such definitions:
 #   supporting specific OpenGL extensions (like KHR_texture_compression_astc_ldr);
 #   OpenGL OS-specific configs (CORE_PROFILE for MacOS, etc...);
@@ -50,33 +46,23 @@ else()
     include(${CMAKE_SOURCE_DIR}/cmake/CompilerUNIX.cmake)
 endif()
 
+option(FAITHFUL_BUILD_EXTERNAL "Build external libs if missing (they won't be installed)" ON)
+
 option(BUILD_ASSET_PROCESSOR "include package AssetProcessor" OFF)
-
-include(cmake/FaithfulFunctions.cmake)
-# In this CMakeLists.txt we DO NOT building dependencies -
-# - we only try to find. If we can't - building will fail.
-# To build dependencies please follow README.md instruction
-
-include(${CMAKE_SOURCE_DIR}/cmake/FindDepsMain.cmake)
-
-if (BUILD_ASSET_PROCESSOR)
-    include(cmake/FindDepsAssetProcessor.cmake)
-    # TODO: add package AssetProcessor
-endif()
-
 option(INIT_ASSETS "download assets from GoogleDrive" ON)
 
-if (INIT_ASSETS)
-    # TODO: download assets (curl)
-endif()
+message(STATUS "+> C Compiler: ${CMAKE_C_COMPILER} ${CMAKE_C_COMPILER_VERSION}")
+message(STATUS "+> C Config: ${CMAKE_C_STANDARD}")
+message(STATUS "+> CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+message(STATUS "+> CXX Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "+> CXX Standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "+> CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message("")
 
-
-message(STATUS "C Compiler: ${CMAKE_C_COMPILER} ${CMAKE_C_COMPILER_VERSION}")
-message(STATUS "C Config: ${CMAKE_C_STANDARD} ${CMAKE_C_FLAGS}")
-message(STATUS "CXX Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_VERSION}")
-message(STATUS "CXX Standard: ${CMAKE_CXX_STANDARD} ${CMAKE_CXX_FLAGS}")
-message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
-
+message(STATUS "+> Source directory: ${CMAKE_SOURCE_DIR}")
+message(STATUS "+> Binary directory: ${CMAKE_BINARY_DIR}")
+message(STATUS "+> Install directory: ${FAITHFUL_INSTALL_DIR}")
+message("")
 
 option(FAITHFUL_LOGGER_BUFFERING "include package AssetProcessor" OFF)
 # by default FAITHFUL_LOGGER_SEVERITY_ALL always ON
@@ -90,9 +76,9 @@ option(BUILD_BENCHMARKS "If enabled, compile the benchmarks." OFF)
 
 function(printopt optName optVal)
     if(${optVal})
-        message(STATUS "  ${optName}  - ON")
+        message(STATUS "+> ${optName}  - ON")
     else()
-        message(STATUS "  ${optName}  - OFF")
+        message(STATUS "+> ${optName}  - OFF")
     endif()
 endfunction()
 
@@ -109,55 +95,156 @@ if (FAITHFUL_LOGGER_SEVERITY_ONLY_FATAL)
 elseif(FAITHFUL_LOGGER_SEVERITY_NO_INFO)
     printopt("logger: no info    " ${FAITHFUL_LOGGER_SEVERITY_NO_INFO})
 else()
-    message(STATUS "  logger: all          - ON")
+    message(STATUS "+> logger: all          - ON")
 endif()
+
+message("")
 
 option(FAITHFUL_LOGGER_BUFFERING "include package AssetProcessor" OFF)
 option(FAITHFUL_LOGGER_SEVERITY_ALL "include package AssetProcessor" ON)
 option(FAITHFUL_LOGGER_SEVERITY_NO_INFO "include package AssetProcessor" OFF)
 option(FAITHFUL_LOGGER_SEVERITY_ONLY_FATAL "include package AssetProcessor" OFF)
+# TODO: more options to print
 
 
-# TODO: add_subdirectory(external EXCLUDE_FROM_ALL)
-add_subdirectory(external/assimp EXCLUDE_FROM_ALL)
-add_subdirectory(external/yasm EXCLUDE_FROM_ALL)
-add_subdirectory(external/libav EXCLUDE_FROM_ALL)
+# IMPORTANT: all external libs are built with very specific
+#   build options, so installation for each library is disabled
 
-# TODO: add_subdirectory(src)
+# todo: there may occur situation where some external lib was built but
+#       without needed configurations (example: Assimp doesn't support needed format)
 
-# TODO: faithful-core
-# TODO: faithful-util
 
-if (BUILD_TESTS)
-    file(GLOB_RECURSE faithful-test-src-sources RELATIVE ${CMAKE_SOURCE_DIR}/test/test_src/*.cpp)
-    add_executable(faithful-test-src ${faithful-test-src-sources})
-    target_link_libraries(faithful-test-src faithful-core)
 
-    if (BUILD_TESTS_ASSETS)
-        file(GLOB_RECURSE faithful-test-assets RELATIVE ${CMAKE_SOURCE_DIR}/test/test_assets/*.cpp)
-        add_executable(faithful-test-assets ${faithful-test-assets-sources})
-        target_link_libraries(faithful-test-assets faithful-core)
+
+include(${CMAKE_SOURCE_DIR}/cmake/FaithfulFunctions.cmake)
+
+if(FAITHFUL_BUILD_EXTERNAL)
+    #faithful_build_external()
+
+    if (BUILD_ASSET_PROCESSOR)
+        #add_subdirectory(${CMAKE_SOURCE_DIR}/utils/AssetProcessor)
     endif()
 
-    if(BUILD_TESTS_UTILS)
-        file(GLOB_RECURSE faithful-test-utils RELATIVE ${CMAKE_SOURCE_DIR}/test/test_utils/*.cpp)
-        add_executable(faithful-test-utils ${faithful-test-utils-sources})
-        target_link_libraries(faithful-test-utils faithful-util)
+    if (INIT_ASSETS) # TODO: rename (?idk)
+        #add_subdirectory(${CMAKE_SOURCE_DIR}/utils/AssetDownloader)
+    endif()
+else()
+    # in that case if we can't find external lib - building fails.
+
+    if (BUILD_ASSET_PROCESSOR)
+        include(${CMAKE_SOURCE_DIR}/cmake/FindDepsAssetProcessor.cmake)
+    endif()
+
+    if (INIT_ASSETS)
+        include(${CMAKE_SOURCE_DIR}/cmake/FindDepsAssetDownloader.cmake)
+    endif()
 endif()
+
+
+if(FAITHFUL_DEPS_FOUND)
+
+    # TODO: find_path(ALSA_INCLUDE_DIR NAMES asoundlib.h HINTS /home/pavlo/Downloads/openal_another_version/alsa/alsa/include)
+    # TODO: find_library(ALSA_LIBRARY NAMES libasound.so HINTS /home/pavlo/Downloads/openal_another_version/alsa/alsa/src/.libs)
+    #message(${PULSEAUDIO_INCLUDE_DIR})
+    #message(${PULSEAUDIO_LIBRARY})
+
+    add_subdirectory(external/glad)
+    add_subdirectory(external/glfw)
+    add_subdirectory(external/glm)
+    add_subdirectory(external/tinygltf)
+    add_subdirectory(external/assimp)
+
+    add_executable(Faithful main.cpp Shader.cpp)
+
+    target_link_libraries(Faithful
+            PUBLIC assimp
+            PUBLIC glad
+            PUBLIC glfw
+            PUBLIC glm
+            PUBLIC tinygltf
+    )
+    target_include_directories(Faithful
+            PUBLIC ${CMAKE_SOURCE_DIR}/assimp/assimp/include
+            PUBLIC ${GLAD_BINARY_DIR}/include
+            PUBLIC ${CMAKE_SOURCE_DIR}/external/glfw/glfw/include
+            PUBLIC ${CMAKE_SOURCE_DIR}/external/glm/glm/glm
+            PUBLIC ${CMAKE_SOURCE_DIR}/external/tinygltf/tinygltf
+    )
+
+    # ASSET_DOWNLOADER
+    #####################
+#
+#    include(ExternalProject)
+#    ExternalProject_Add(
+#            AssetDownloader
+#            PREFIX ${CMAKE_BINARY_DIR}
+#            SOURCE_DIR ${CMAKE_SOURCE_DIR}/utils/AssetDownloader
+#            BINARY_DIR ${CMAKE_BINARY_DIR}/temp/AssetDownloader
+#            CONFIGURE_COMMAND ${CMAKE_COMMAND}
+#            ${CMAKE_SOURCE_DIR}/utils/AssetDownloader
+#            BUILD_COMMAND ${CMAKE_COMMAND} --build .
+#            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
+#            BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/temp/AssetDownloader/AssetDownloader
+#    )
+#    add_custom_target(RunSubproject
+#            COMMAND ${CMAKE_BINARY_DIR}/temp/AssetDownloader/AssetDownloader
+#            "${CMAKE_SOURCE_DIR}/assets"
+#            "https://drive.google.com/uc?export=download&id=1Uuu2nKZG17t-u94f1TpcUo8IWxyHvpFo"
+#            COMMENT "Running Subproject before building Main Project"
+#            DEPENDS AssetDownloader
+#    )
+#    add_dependencies(Faithful RunSubproject)
+    #####################
+
+    # OpenAL
+    #####################
+#    add_subdirectory(${CMAKE_SOURCE_DIR}/external/openal-soft)
+#    target_include_directories(Faithful PUBLIC external/openal-soft/openal-soft/include)
+#    add_dependencies(OpenAL alsa)
+#    target_link_libraries(Faithful PUBLIC OpenAL)
+    #####################
+
+
+    # Now you can link libvpx to your main target
+
+    #   target_include_main_deps(Faithful)
+ #   target_link_main_deps(Faithful)
+
+    # TODO: faithful-core,  faithful-util (all headers in Faithful/utils)
+
+    message(STATUS "+> Building of Faithful is completed")
+    message("")
+
+    if (BUILD_TESTS)
+
+        # TODO: external_find_or_compile(googletest GoogleTest)
+
+        file(GLOB_RECURSE faithful-test-src-sources RELATIVE ${CMAKE_SOURCE_DIR}/test/test_src/*.cpp)
+        add_executable(faithful-test-src ${faithful-test-src-sources})
+        target_link_libraries(faithful-test-src faithful-core)
+        # TODO: message(STATUS success/failure)
+
+        if (BUILD_TESTS_ASSETS)
+            file(GLOB_RECURSE faithful-test-assets RELATIVE ${CMAKE_SOURCE_DIR}/test/test_assets/*.cpp)
+            add_executable(faithful-test-assets ${faithful-test-assets-sources})
+            target_link_libraries(faithful-test-assets faithful-core)
+            # TODO: message(STATUS success/failure)
+        endif()
+
+        if(BUILD_TESTS_UTILS)
+            file(GLOB_RECURSE faithful-test-utils RELATIVE ${CMAKE_SOURCE_DIR}/test/test_utils/*.cpp)
+            add_executable(faithful-test-utils ${faithful-test-utils-sources})
+            target_link_libraries(faithful-test-utils faithful-util)
+            # TODO: message(STATUS success/failure)
+        endif()
+    endif()
+
+    if(FAITHFUL_INSTALL)
+        # TODO: install() --> should looks attractive
+        include(${CMAKE_SOURCE_DIR}/cmake/CopyLicenses.cmake)
+        message(STATUS "+> Faithful has been installed")
+    endif()
+else()
+    message(STATUS "+> Building of Faithful has failed")
+    message("")
 endif()
-
-
-# TODO: install() --> should looks attractive
-include(${CMAKE_SOURCE_DIR}/cmake/CopyLicenses.cmake)
-
-add_executable(Faithful main.cpp)
-target_link_libraries(Faithful PRIVATE assimp)
-add_dependencies(libav yasm)
-#add_yasm_to_target(Faithful)
-target_link_libraries(Faithful INTERFACE yasm)
-target_link_libraries(Faithful PRIVATE libav)
-
-message(STATUS "Configuration complete:")
-message(STATUS "   Include directories: ${MY_PROJECT_INCLUDE_DIRS}")
-message(STATUS "   Source directory: ${MY_PROJECT_SOURCE_DIR}")
-message(STATUS "   Binary directory: ${MY_PROJECT_BINARY_DIR}")

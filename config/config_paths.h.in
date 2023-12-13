@@ -1,10 +1,8 @@
 #ifndef FAITHFUL_CONFIG_PATHS_H_IN
 #define FAITHFUL_CONFIG_PATHS_H_IN
 
-#define FAITHFUL_MODELS_BIN_PATH "@models_bin_path@"
-#define FAITHFUL_TEXTURES_BIN_PATH "@textures_bin_path@"
-#define FAITHFUL_SPRITES_BIN_PATH "@sprites_bin_path@"
-#define FAITHFUL_SOUNDS_BIN_PATH "@sounds_bin_path@"
-#define FAITHFUL_SHADERS_PATH "@shaders_path@"
+#define MODEL_PATH "@ASSETS_MODEL_PATH@"
+#define TEXTURE_PATH "@ASSETS_TEXTURE_PATH@"
+#define AUDIO_PATH "@ASSETS_AUDIO_PATH@"
 
 #endif FAITHFUL_CONFIG_PATHS_H_IN

@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
 
 find_path(GLM_INCLUDE_DIR NAMES glm/glm.hpp)
 

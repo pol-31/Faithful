@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
 
 find_path(GLAD_INCLUDE_DIR glad.h)
 find_library(GLAD_LIBRARY NAMES glad)

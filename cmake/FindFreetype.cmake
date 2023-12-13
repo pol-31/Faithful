@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
 
 find_path(FREETYPE_INCLUDE_DIR NAMES freetype/freetype.h)
 find_library(FREETYPE_LIBRARY NAMES freetype freetype.lib)
