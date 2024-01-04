@@ -15,4 +15,4 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${TINYGLTF_BINARY_DIR} CACHE INTERNAL "tinygl
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${TINYGLTF_BINARY_DIR} CACHE INTERNAL "tinygltf library output directory" FORCE)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${TINYGLTF_BINARY_DIR} CACHE INTERNAL "tinygltf archive output directory" FORCE)
 
-add_subdirectory(tinygltf)
+add_subdirectory(tinygltf EXCLUDE_FROM_ALL)

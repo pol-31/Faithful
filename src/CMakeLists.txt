@@ -1,36 +1,20 @@
 cmake_minimum_required(VERSION 3.26)
 
+project(faithful-core)
 
+add_executable(faithful-core)
 
-# TODO: rewrite with GLOB_RECURSE *.cpp
+set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(Faithful main.cpp
-        external/glad/gl.c
-        external/stb_image/stb_image.cpp
-        src/collision/CollisionManager.cpp
-        src/entities/common/AnimationNode.cpp
-        src/entities/common/RunningAnimation.cpp
-        src/entities/Mesh.cpp
-        src/entities/Model.cpp
-        src/entities/Object.cpp
-        src/entities/Objects_2d.cpp
-        src/entities/Objects_3d.cpp
-        src/environment/CubeMap.cpp
-        src/environment/Environment.cpp
-        src/io/Camera.cpp
-        src/io/Cursor.cpp
-        src/io/InputHandler.cpp
-        src/io/Monitor.cpp
-        src/io/Window.cpp
-        src/loader/Image.cpp
-        src/loader/ShaderProgram.cpp
-        src/loader/Sprite.cpp
-        src/loader/StaticBinLoader.cpp
-        src/loader/Texture.cpp
-        utils/executors/Executor.cpp
-        utils/executors/ThreadPoolCall.cpp
-        utils/executors/ThreadPools.cpp
-        src/Engine.cpp
-        src/Scene.cpp
+file(GLOB_RECURSE SOURCE_FILES ${SOURCE_DIR}/*.cpp)
+
+target_sources(faithful-core PRIVATE ${SOURCE_FILES})
+
+target_link_libraries(faithful-core PUBLIC OpenAL)
+target_include_directories(faithful-core
+        PRIVATE ${SOURCE_DIR}
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/openal-soft/openal-soft/include
 )
+
+
 

@@ -1,124 +1,198 @@
 /** The purpose of this sub-application to convert all assets from
  * given directory into certain:
- * video: not supported
  * audio: .ogg + Vorbis
  * textures:
- *   container: raw .astc if (KHR_texture_compression_astc_hdr,
- *                            KHR_texture_compression_astc_ldr) supported,
- *              otherwise .ktx;
- *              OR simple .bin format for height/displacement map (etc)
- *   codec: astc 4x4
+ *   container: .astc
  * 3D models:
- *   glTF (.glb container format)
+ *   glTF (.gltf)
+ * videos: not supported currently (?)
  *
+ * See other params in Faithful/config/AssetFormats.h
  *
- * Supported formats:
+ * Supported:
  * - textures(images):
- *     LDR: BMP, JPEG, PNG, TGA;
- *     HDR: EXR, HDR;
- *     other: DDS, KTX.
+ *     LDR: bmp, jpeg, jpg, png, tga, psd, ppm, pgm;
+ *     HDR: exr, hdr;
+ *     other: dds, ktx
  * - audio: mp3, flac, wav, ogg
- * - 3D models: collada (dae), obj, ply, blend, fbx, stl, gltf, glb
+ * - 3D models: gltf, glb
  *
+ * Currently there is no shader processing (no reason to do this)
  * */
 
 #include <iostream> // TODO: replace by Logger.h
+#include <cstring>
 #include <filesystem>
 #include <string>
-#include <vector>
 
+#include "../../config/Paths.h"
 #include "../Logger.h"
 
-#include "AudioProcessor.h"
-#include "ModelProcessor.h"
-#include "TextureProcessor.h"
+#include "AssetProcessor.h"
+#include "AssetLoadingThreadPool.h"
 
-enum class AssetCategory {
-  kTexture,
-  kAudio,
-  kModel,
-  kUnknown
+struct AssetController {
+  void All(bool mode = true) {
+    audio = mode;
+    models = mode;
+    textures = mode;
+  }
+  bool audio = false;
+  bool models = false;
+  bool textures = false;
 };
 
-AssetCategory DeduceAssetCategory(std::filesystem::path filename) {
-  static const std::vector<std::string> supported_image_formats = {
-    ".bmp", ".jpeg", ".png", ".tga",
-    ".exr", ".hdr",
-    ".dds", ".ktx"
-  };
-  static const std::vector<std::string> supported_audio_formats = {
-    ".mp3", ".flac", ".wav", ".ogg"
-  };
-  static const std::vector<std::string> supported_model_formats = {
-    ".dae", ".obj", ".ply", ".blend", ".fbx", "stl", ".gltf", ".glb"
-  };
+void PrintConfigs(bool encode, AssetController assetController);
+void PrintHelpInfo();
 
-  for (const std::string& image_format : supported_image_formats) {
-    if (filename == image_format)
-      return AssetCategory::kTexture;
-  }
-  for (const std::string& audio_format : supported_audio_formats) {
-    if (filename == audio_format)
-      return AssetCategory::kAudio;
-  }
-  for (const std::string& model_format : supported_model_formats) {
-    if (filename == model_format)
-      return AssetCategory::kModel;
-  }
-  return AssetCategory::kUnknown;
-}
+void LogProcessingResult(const std::string& path, bool encoded);
 
-void ProcessAsset(const std::filesystem::path& asset_path) {
-  AssetCategory asset_category = DeduceAssetCategory(asset_path.extension());
-  switch (asset_category) {
-    case AssetCategory::kTexture:
-      ProcessTexture(asset_path);
-      break;
-    case AssetCategory::kAudio:
-      ProcessAudio(asset_path);
-      break;
-    case AssetCategory::kModel:
-      ProcessModel(asset_path);
-      break;
-    case AssetCategory::kUnknown:
-      std::cout << "Error: unsupported file format: " << asset_path.extension() << std::endl;
-      break;
-  }
-}
+// TODO: add force flag (to rewrite) --< rather just -y or -n for ALL at once
+// TODO: another arguments for thread_count (user preferences)
 
-void ProcessAssetDirectory(const std::filesystem::path& dir_path) {
-  for (const std::filesystem::path& entry : std::filesystem::recursive_directory_iterator(dir_path)) {
-    if (std::filesystem::is_regular_file(entry)) {
-      ProcessAsset(entry);
-    } else if (std::filesystem::is_directory(entry)) {
-      ProcessAssetDirectory(entry);
-    }
-  }
-}
+// TODO: add README.md with naming convention: __ _nmap.astc __
 
 
 int main(int argc, char **argv) {
-  std::filesystem::path input_path;
-
-  if (argc > 2) {
-    std::cout << "incorrect program arguments"
-              << "\nusage: AssetProcessor <source_path>" << std::endl;
+  if (argc < 2) {
+    std::cout << "Incorrect program's arguments" << std::endl;
     return -1;
-  } else if (argc == 2) {
-    input_path = argv[1];
-    std::cout << "working with current path: " << std::filesystem::current_path();
-  } else {
-    input_path = "../monkey.fbx";
-//    input_path = "../Pantera - Strength Beyond Strength ( 160kbps ).mp3";
+  }
+  std::cout << argv[1] << std::endl;
+  std::filesystem::path user_path = "";
+  AssetController asset_controller;
+  bool asset_processing = true;
+  bool process_all = true;
+  bool encode = true;
+  int thread_count = std::thread::hardware_concurrency();
+  std::string audio_decomp_path = FAITHFUL_ASSET_AUDIO_PATH;
+  std::string models_decomp_path = FAITHFUL_ASSET_MODEL_PATH;
+  std::string textures_decomp_path = FAITHFUL_ASSET_TEXTURE_PATH;
+
+  // TODO: rewrite (incorrect flags parsing, looks disgraceful)
+  for (int i = 1; i < argc; ++i) {
+    if (argv[i][0] == '-') {
+      int flag_len = strlen(argv[i]);
+      for (int j = 0; j < flag_len; ++j) {
+        if (std::strcmp(argv[j], "d") == 0) {
+          encode = false;
+        } else if (std::strcmp(argv[j], "-e") == 0) {
+          encode = true;
+        } else if (std::strcmp(argv[j], "-a") == 0) {
+          process_all = false;
+          asset_controller.audio = true;
+        } else if (std::strcmp(argv[j], "-t") == 0) {
+          process_all = false;
+          asset_controller.textures = true;
+        } else if (std::strcmp(argv[j], "-m") == 0) {
+          process_all = false;
+          asset_controller.models = true;
+        } else if (std::strcmp(argv[j], "-h") == 0) {
+          PrintHelpInfo();
+          asset_processing = false;
+          break;
+        } else {
+          std::cout << "Incorrect arguments, type -h to see instruction"
+                    << std::endl;
+          asset_processing = false;
+          break;
+        }
+      }
+    } else {
+      if (i != (argc - 1)) {
+        asset_processing = false;
+        std::cout << "Incorrect arguments, type -h to see instruction"
+                  << std::endl;
+        break;
+      } else {
+        user_path = argv[i];
+      }
+    }
+  }
+  if (!asset_processing) return 0;
+  asset_controller.All(process_all);
+
+  if (user_path.empty()) {
+    std::cout << "There's no provided path, working with current directory:\n"
+              << std::filesystem::current_path() << std::endl;
+    user_path = std::filesystem::current_path();
   }
 
-  if (std::filesystem::is_directory(input_path)) {
-    ProcessAssetDirectory(input_path);
-  } else if (std::filesystem::is_regular_file(input_path)) {
-    ProcessAsset(input_path);
+  PrintConfigs(encode, asset_controller);
+  AssetProcessor processor(thread_count-1, FAITHFUL_ASSET_PATH);
+  std::cout << "user's path " << user_path << std::endl;
+  processor.ProcessEncoding(user_path);
+
+  /*if (encode) {
+    processor.ProcessEncoding(user_path);
   } else {
-    std::cout << "Error: incorrect path, should be file or directory" << std::endl;
-  }
+    processor.ProcessDecoding(user_path);
+  }*/
+
+  //LogProcessingResult(FAITHFUL_ASSET_INFO_FILE, encode);
 
   return 0;
+}
+
+void PrintConfigs(bool encode, AssetController assetController) {
+  std::cout << "Config: ";
+  if (encode) {
+    std::cout << "encoding of {";
+  } else {
+    std::cout << "decoding of {";
+  }
+  if (!assetController.audio &&
+      !assetController.textures &&
+      !assetController.models) {
+    " no asset types chosen }";
+    return;
+  }
+  if (assetController.audio) {
+    std::cout <<  " audio";
+  }
+  if (assetController.textures) {
+    std::cout <<  " textures";
+  }
+  if (assetController.models) {
+    std::cout <<  " models";
+  }
+  std::cout << " }" << std::endl;
+}
+
+void PrintHelpInfo() {
+  std::cout
+    << "Faithful::AssetProcessor help:\n"
+    << "\t\"-h\" for help\n"
+    << "\t\"-d\" for decoding\n"
+    << "\t\"-e\" for encoding\n"
+    << "\t\"-a\" turn processing audio files on\n"
+    << "\t\"-t\" turn processing texture(image) files on\n"
+    << "\t\"-m\" turn processing 3d-models on\n"
+    << "If you'll not specify any of {a, t, m}"
+    << " - all enabled by default;\n"
+    << "if you'll specify at least one of them"
+    << " - all other disabled by default\n"
+    << "\ndecoding example (decode only audio and textures):\n"
+    << "\tAssetProcessor -dat \"destination-dir\"\n"
+    << "encoding example (encode all):\n" // todo__
+    << "\nSupported formats:\n"
+    << "\ttextures: bmp, jpeg, png, tga, exr, hdr, dds, ktx;\n"
+    << "\taudio: mp3, flac, wav, ogg;\n"
+    << "\t3D models: collada (dae), obj, ply, blend, "
+    << "fbx, stl, gltf, glb.\n"
+    << "To check/adjust configurations open this file"
+    << "\t" << FAITHFUL_CONFIG_PATH << std::endl;
+}
+
+void LogProcessingResult(const std::string& path, bool encoded) {
+  std::ofstream log_file(path);
+  if (!log_file.is_open()) {
+    std::cout << "Error (no logging): Log file opening issues" << std::endl;
+    return;
+  }
+  if (encoded) {
+    // TODO: write to log.txt section "last encode"
+  } else {
+    // TODO: write to log.txt section "last decode"
+  }
 }

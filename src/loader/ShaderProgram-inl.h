@@ -6,17 +6,7 @@
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
-
 namespace faithful {
-
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
-/// DEPRECATED & MOVED TO Faithful/utils/AssetProcessor
-///                      (or .../AssetPreprocessor)
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
-/*
-
 namespace utility {
 
 inline void ShaderProgram::AdjustVar(const GLchar* name, GLboolean v0) {
@@ -222,7 +212,6 @@ inline void ShaderProgram::AdjustMat4x3v(
 
 
 } // namespace utility
-*/
 } // namespace faithful
 
 

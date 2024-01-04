@@ -2,14 +2,13 @@ cmake_minimum_required(VERSION 3.26)
 
 message(STATUS "libogg building")
 
-include(ExternalProject)
-
-set(LIBOGG_SOURCE_DIR ${CMAKE_SOURCE_DIR}/libogg/libogg)
+set(LIBOGG_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/libogg/libogg)
 set(LIBOGG_BINARY_DIR ${CMAKE_BINARY_DIR}/libogg-build CACHE INTERNAL "libogg binary directory" FORCE)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${LIBOGG_BINARY_DIR} CACHE INTERNAL "libogg executable output directory" FORCE)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIBOGG_BINARY_DIR} CACHE INTERNAL "libogg library output directory" FORCE)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIBOGG_BINARY_DIR} CACHE INTERNAL "libogg archive output directory" FORCE)
 
+include(ExternalProject)
 ExternalProject_Add(
         libogg_external
         PREFIX ${CMAKE_BINARY_DIR}

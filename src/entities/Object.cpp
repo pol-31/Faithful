@@ -35,7 +35,7 @@ std::tuple<glm::mat3*, int, int> TrivialObject2DImpl::CreateInstance() {
 
 void TrivialObject2DImpl::Draw(ObjectRenderPhase phase) const {
   // TODO: draw regard to phase
-  shader_program_->UseProgram();
+  shader_program_->Use();
   shader_program_->AdjustVar("texture1", 0);
   glBindVertexArray(vao_);
   glActiveTexture(GL_TEXTURE0);
@@ -89,7 +89,7 @@ std::tuple<glm::mat4*, int, int> TrivialObject3DImpl::CreateInstance() {
 
 void TrivialObject3DImpl::Draw(ObjectRenderPhase phase) const {
   // TODO: draw regard to phase
-  shader_program_->UseProgram();
+  shader_program_->Use();
   glBindVertexArray(vao_);
 
   for (auto inst : drawable_instances_) {
@@ -176,7 +176,7 @@ std::tuple<glm::mat4*, int, int> MultimeshObject3DImpl::CreateInstance() {
 
 void MultimeshObject3DImpl::Draw(ObjectRenderPhase phase) const {
   // TODO: draw regard to phase
-  shader_program_->UseProgram();
+  shader_program_->Use();
   for (auto transform : drawable_instances_transform_) {
     for (unsigned int i = 0; i < meshes_.get_size(); ++i) {
       auto cur_mesh = meshes_[i];
@@ -288,8 +288,8 @@ std::tuple<glm::mat4*, int, int> SkinnedObject3DImpl::CreateInstance() {
 
   GLuint bindingPoint = ++last_ubo_bind_point_;
   glUniformBlockBinding(
-    new_shader_program->get_program(),
-    glGetUniformBlockIndex(new_shader_program->get_program(), "BoneData"),
+    new_shader_program->Id(),
+    glGetUniformBlockIndex(new_shader_program->Id(), "BoneData"),
     bindingPoint);
   glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, new_ubo);
 
@@ -305,7 +305,7 @@ void SkinnedObject3DImpl::Draw(ObjectRenderPhase phase) const {
   // TODO: draw regard to phase
   for (auto inst : drawable_instances_) {
     auto cur_shader_program = inst.second.shader_program;
-    cur_shader_program->UseProgram();
+    cur_shader_program->Use();
     for (unsigned int i = 0; i < meshes_.get_size(); ++i) {
       auto cur_mesh = meshes_[i];
 

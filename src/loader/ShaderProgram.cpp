@@ -16,7 +16,6 @@ namespace faithful {
 ///                      (or .../AssetPreprocessor)
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
-/*
 namespace utility {
 
 
@@ -48,18 +47,18 @@ ShaderProgram::ShaderProgram(
 }
 
 ShaderProgram& ShaderProgram::operator= (ShaderProgram&& sp) noexcept {
-  if (program_ == sp.get_program()) {
+  if (program_ == sp.Id()) {
     // TODO: (class Logger)
     [[unlikely]]
     return *this;
   }
-  program_ = sp.get_program();
+  program_ = sp.Id();
   buffer_ = sp.get_buffer();
   sp.set_buffer(nullptr);
   return *this;
 }
 
-ShaderProgram::ShaderProgram(ShaderProgram&& sp) noexcept : program_(sp.get_program()) {
+ShaderProgram::ShaderProgram(ShaderProgram&& sp) noexcept : program_(sp.Id()) {
 buffer_ = sp.get_buffer();
 sp.set_buffer(nullptr);
 }
@@ -243,23 +242,23 @@ void DefaultShaderProgram::Init() {
   //buffer_size_ = 0;
 
   glUniformBlockBinding(
-    object3d_->get_program(),
-    glGetUniformBlockIndex(object3d_->get_program(), "Matrices"),
+    object3d_->Id(),
+    glGetUniformBlockIndex(object3d_->Id(), "Matrices"),
     0);
 
   glUniformBlockBinding(
-    cubemap_->get_program(),
-    glGetUniformBlockIndex(cubemap_->get_program(), "Matrices"),
+    cubemap_->Id(),
+    glGetUniformBlockIndex(cubemap_->Id(), "Matrices"),
     0);
 
   glUniformBlockBinding(
-    picking_object_shader_program_->get_program(),
-    glGetUniformBlockIndex(picking_object_shader_program_->get_program(), "Matrices"),
+    picking_object_shader_program_->Id(),
+    glGetUniformBlockIndex(picking_object_shader_program_->Id(), "Matrices"),
     0);
 
   glUniformBlockBinding(
-    object3d_skinned_->get_program(),
-    glGetUniformBlockIndex(object3d_skinned_->get_program(), "Matrices"),
+    object3d_skinned_->Id(),
+    glGetUniformBlockIndex(object3d_skinned_->Id(), "Matrices"),
     0);
 
   object3d_light_ = object3d_;
@@ -406,7 +405,7 @@ ShaderProgram* DefaultShaderProgram::object3d_light_parallax_ = nullptr;
 
 bool DefaultShaderProgram::initialized_ = false;
 // precaution: path relative to cmake-build-debug
-char* DefaultShaderProgram::object_vertex_shader_path_ = "../assets/shaders/shader.vs";
+char DefaultShaderProgram::object_vertex_shader_path_[] = "../assets/shaders/shader.vs";
 char* DefaultShaderProgram::object_fragment_shader_path_ = "../assets/shaders/shader.fs";
 char* DefaultShaderProgram::cubemap_vertex_shader_path_ = "../assets/shaders/cubemap.vs";
 char* DefaultShaderProgram::cubemap_fragment_shader_path_ = "../assets/shaders/cubemap.fs";
@@ -426,5 +425,5 @@ GLuint DefaultShaderProgram::program_ = 0;
 GLuint DefaultShaderProgram::ubo_matrices_ = 0;
 
 
-} // namespace utility*/
+} // namespace utility
 } // namespace faithful

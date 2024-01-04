@@ -2,7 +2,20 @@ cmake_minimum_required(VERSION 3.26)
 
 project(Faithful LANGUAGES CXX C)
 
+# TODO: only stable external lib versions to submodule (imp!)
+
 cmake_policy(SET CMP0069 NEW)  # LTO support
+cmake_policy(SET CMP0091 NEW)  # MSVC runtime support
+
+# There is two stages of building & compiling:
+#   1) build and compile all external libs + delete their "raw code"
+#      so now we have only "our native" source code and .a files (or .so)
+#      this building and compilation should happen only once
+#   2) for compiling of user code - building & compiling SOLELY user's code
+#      this building can be run all you want
+
+# TODO: for first step of compiling use forse RELEASE
+
 
 message(STATUS "._._._._._._<Faithful>_._._._._._.")
 message(STATUS "+> Compilation has been started")
@@ -31,6 +44,28 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
 endif()
 
 add_definitions(-DFAITHFUL_MAIN_LOGGER)
+
+set(FAITHFUL_CONFIG_PATH "${CMAKE_SOURCE_DIR}/config")
+
+
+set(FAITHFUL_ASSET_PATH "${CMAKE_SOURCE_DIR}/assets")
+set(FAITHFUL_ASSET_AUDIO_PATH "${CMAKE_SOURCE_DIR}/assets/audio")
+set(FAITHFUL_ASSET_MODEL_PATH "${CMAKE_SOURCE_DIR}/assets/models")
+set(FAITHFUL_ASSET_SHADER_PATH "${CMAKE_SOURCE_DIR}/assets/shaders")
+set(FAITHFUL_ASSET_TEXTURE_PATH "${CMAKE_SOURCE_DIR}/assets/textures")
+set(FAITHFUL_ASSET_TEMP_TEXTURES_PATH "${CMAKE_SOURCE_DIR}/utils/AssetProcessor/temp")
+
+set(FAITHFUL_ASSET_INFO_FILE "${FAITHFUL_ASSET_PATH}/assets_info.txt")
+set(FAITHFUL_ASSET_AUDIO_INFO_FILE "${FAITHFUL_ASSET_AUDIO_PATH}/audio_info.txt")
+set(FAITHFUL_ASSET_MODEL_INFO_FILE "${FAITHFUL_ASSET_MODEL_PATH}/models_info.txt")
+set(FAITHFUL_ASSET_SHADER_INFO_FILE "${FAITHFUL_ASSET_SHADER_PATH}/shaders_info.txt")
+set(FAITHFUL_ASSET_TEXTURE_INFO_FILE "${FAITHFUL_ASSET_TEXTURE_PATH}/textures_info.txt")
+
+
+set(FAITHFUL_ASSETDOWNLOADER_SOURCE_URL
+        "https://drive.google.com/uc?export=download&id=1Uuu2nKZG17t-u94f1TpcUo8IWxyHvpFo")
+
+configure_file(${CMAKE_SOURCE_DIR}/config/paths.h.in ${CMAKE_SOURCE_DIR}/config/Paths.h)
 
 # There also could be such definitions:
 #   supporting specific OpenGL extensions (like KHR_texture_compression_astc_ldr);
@@ -148,28 +183,52 @@ if(FAITHFUL_DEPS_FOUND)
     #message(${PULSEAUDIO_INCLUDE_DIR})
     #message(${PULSEAUDIO_LIBRARY})
 
-    add_subdirectory(external/glad)
-    add_subdirectory(external/glfw)
-    add_subdirectory(external/glm)
+    add_subdirectory(external/astc-encoder)
+    add_subdirectory(external/dr_libs)
+    add_subdirectory(external/libogg)
+    add_subdirectory(external/vorbis)
+    add_subdirectory(external/rapidjson)
     add_subdirectory(external/tinygltf)
-    add_subdirectory(external/assimp)
 
-    add_executable(Faithful main.cpp Shader.cpp)
+    add_dependencies(vorbis libogg)
 
+    add_subdirectory(utils/AssetProcessor)
+
+    add_executable(Faithful main.cpp)
+
+
+    target_include_directories(Faithful
+            PUBLIC /home/pavlo/CLionProjects/Faithful/external/astc-encoder/astc-encoder/Source
+            PUBLIC /home/pavlo/CLionProjects/Faithful/external/dr_libs/dr_libs
+            PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/libogg_external-build/include/ogg
+            PUBLIC /home/pavlo/CLionProjects/Faithful/external/vorbis/vorbis/include
+            PUBLIC /home/pavlo/CLionProjects/Faithful/external/libogg/libogg/include
+            PUBLIC /home/pavlo/CLionProjects/Faithful/external/rapidjson/rapidjson/include/rapidjson
+            PUBLIC /home/pavlo/CLionProjects/Faithful/external/tinygltf/tinygltf
+    )
     target_link_libraries(Faithful
-            PUBLIC assimp
-            PUBLIC glad
-            PUBLIC glfw
-            PUBLIC glm
+            PUBLIC astc-encoder
+            PUBLIC dr_libs
+            PUBLIC libogg
+            PUBLIC vorbis
+            PUBLIC RapidJSON
             PUBLIC tinygltf
     )
-    target_include_directories(Faithful
-            PUBLIC ${CMAKE_SOURCE_DIR}/assimp/assimp/include
-            PUBLIC ${GLAD_BINARY_DIR}/include
-            PUBLIC ${CMAKE_SOURCE_DIR}/external/glfw/glfw/include
-            PUBLIC ${CMAKE_SOURCE_DIR}/external/glm/glm/glm
-            PUBLIC ${CMAKE_SOURCE_DIR}/external/tinygltf/tinygltf
-    )
+
+#    add_subdirectory(src)
+
+#    target_link_libraries(Faithful INTERFACE faithful-core)
+
+#    TARGET Faithful POST_BUILD
+
+#    add_custom_target(AssetProcessorRun
+#            COMMAND $<TARGET_FILE:AssetProcessor> "/home/pavlo/Desktop/test"
+#            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#            COMMENT "Running AssetProcessor..."
+#            DEPENDS AssetProcessor external/rapidjson tinygltf
+#    )
+#    add_dependencies(Faithful AssetProcessorRun)
+
 
     # ASSET_DOWNLOADER
     #####################
@@ -188,20 +247,22 @@ if(FAITHFUL_DEPS_FOUND)
 #    )
 #    add_custom_target(RunSubproject
 #            COMMAND ${CMAKE_BINARY_DIR}/temp/AssetDownloader/AssetDownloader
-#            "${CMAKE_SOURCE_DIR}/assets"
-#            "https://drive.google.com/uc?export=download&id=1Uuu2nKZG17t-u94f1TpcUo8IWxyHvpFo"
+#            "${FAITHFUL_ASSET_LOG_PATH}"
+#            "${FAITHFUL_ASSETDOWNLOADER_SOURCE_URL}"
 #            COMMENT "Running Subproject before building Main Project"
 #            DEPENDS AssetDownloader
 #    )
 #    add_dependencies(Faithful RunSubproject)
     #####################
 
+
+
     # OpenAL
     #####################
-#    add_subdirectory(${CMAKE_SOURCE_DIR}/external/openal-soft)
-#    target_include_directories(Faithful PUBLIC external/openal-soft/openal-soft/include)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/external/openal-soft)
+    target_include_directories(Faithful INTERFACE external/openal-soft/openal-soft/include)
 #    add_dependencies(OpenAL alsa)
-#    target_link_libraries(Faithful PUBLIC OpenAL)
+    target_link_libraries(Faithful INTERFACE OpenAL)
     #####################
 
 

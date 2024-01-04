@@ -36,7 +36,7 @@ void CubeMap::Draw(glm::mat4 view, glm::mat4 projection) const {
 
   glDepthFunc(GL_LEQUAL);
 
-  shader_program_->UseProgram();
+  shader_program_->Use();
 
   shader_program_->AdjustMat4v("view", 1, GL_FALSE,
                                glm::value_ptr(glm::mat4(glm::mat3(view))));

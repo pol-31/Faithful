@@ -2,14 +2,6 @@ cmake_minimum_required(VERSION 3.26)
 
 message(STATUS "glfw building")
 
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build Assimp shared libraries" FORCE)
-set(ASSIMP_INSTALL OFF CACHE BOOL "Install Assimp" FORCE)
-set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "Disable Assimp export functionality" FORCE)
-set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "Build Assimp tools" FORCE)
-set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "Build Assimp tests" FORCE)
-set(ASSIMP_BUILD_ASSIMP_VIEW OFF CACHE BOOL "Build Assimp view tool" FORCE)
-
-
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build glfw shared libraries" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Build glfw example programs" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "Build glfw tests" FORCE)
