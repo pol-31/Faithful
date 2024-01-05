@@ -1,7 +1,7 @@
 #ifndef FAITHFUL_CURSOR_H
 #define FAITHFUL_CURSOR_H
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -59,6 +59,6 @@ class DefaultCursor {
   static bool initialized_;
 };
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_CURSOR_H
+#endif  // FAITHFUL_CURSOR_H

@@ -10,10 +10,11 @@ class RunningAnimation {
   RunningAnimation() = default;
   RunningAnimation(SkinnedObject3DImpl* obj_info, int animation_id,
                    unsigned int ubo, bool repeat)
-    : obj_info_(obj_info),
-      animation_id_(animation_id),
-      obj_ubo_(ubo),
-      repeat_(repeat) {}
+      : obj_info_(obj_info),
+        animation_id_(animation_id),
+        obj_ubo_(ubo),
+        repeat_(repeat) {
+  }
 
   void UpdateFrame(double framerate);
   bool Done() {
@@ -45,6 +46,6 @@ class RunningAnimation {
   bool repeat_;
 };
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_RUNNINGANIMATION_H
+#endif  // FAITHFUL_RUNNINGANIMATION_H

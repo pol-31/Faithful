@@ -24,8 +24,8 @@ target_link_libraries(AssetProcessor
         PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/vorbis_external-build/lib/libvorbisfile.a
         PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/vorbis_external-build/lib/libvorbis.a
         PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/libogg_external-build/src/.libs/libogg.a
-#        PUBLIC rapidjson
-#        PUBLIC tinygltf
+        #        PUBLIC rapidjson
+        #        PUBLIC tinygltf
 )
 target_include_directories(AssetProcessor
         PUBLIC /home/pavlo/CLionProjects/Faithful/external/astc-encoder/astc-encoder/Source

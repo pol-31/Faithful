@@ -3,7 +3,7 @@
 
 #include <thread>
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 #include <glm/glm.hpp>
@@ -27,18 +27,17 @@ class LoadThreadPool;
 
 class KeyboardInputHandler;
 
-void ProcessInput(GLFWwindow* window, Camera *camera, double deltaTime);
+void ProcessInput(GLFWwindow* window, Camera* camera, double deltaTime);
 
 class SimurghManager {
  public:
-
   struct FrameRate {
     double last_;
     double delta_;
   };
   SimurghManager();
 
-   static void set_camera(Camera* camera);
+  static void set_camera(Camera* camera);
   static void set_window(Window* window) {
     window_ = window;
   }
@@ -68,18 +67,18 @@ class SimurghManager {
 
   static void ProcessOpenGLFunctions();
 
-
   //-------------------------
   // object do it for itself:___ process all collisions -- > thread-pool
-  /// each object if it want should check collision with all other objects on the scene
-  /// useful optimization: segregate all objects in enum{kBig, kMedium, kSmall} and
-  /// check only those which located in the same cells(kSmall) / in the nearby 3 cells(kMedium) / everywhere(kBig)
-  /// so we DON'T need to process it HERE
+  /// each object if it want should check collision with all other objects on
+  /// the scene useful optimization: segregate all objects in enum{kBig,
+  /// kMedium, kSmall} and check only those which located in the same
+  /// cells(kSmall) / in the nearby 3 cells(kMedium) / everywhere(kBig) so we
+  /// DON'T need to process it HERE
   //-------------------------
 
   static void UpdateFramerate();
 
-  static Window* window_; // default depends on monitor resolution
+  static Window* window_;  // default depends on monitor resolution
   static FrameRate framerate_;
   static Scene* scene_;
   static ThreadPoolManager* thread_pool_manager_;
@@ -95,7 +94,6 @@ ObjectThreadPool* CurrentObjectThreadPool();
 Window* CurrentWindow();
 glm::ivec2 CurrentResolution();
 
-} // namespace faithful
+}  // namespace faithful
 
-
-#endif // FAITHFUL_ENGINE_H
+#endif  // FAITHFUL_ENGINE_H

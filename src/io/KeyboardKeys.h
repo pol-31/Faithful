@@ -58,7 +58,6 @@ enum class Key {
   Z = GLFW_KEY_Z
 };
 
+}  // namespace faithful
 
-} // namespace faithful
-
-#endif // FAITHFUL_KEYBOARDKEYS_H
+#endif  // FAITHFUL_KEYBOARDKEYS_H

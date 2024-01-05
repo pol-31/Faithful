@@ -16,17 +16,19 @@ void ReadTrivialModel(std::ifstream&& ifstream) {
    * uint32 x 3 | tangent (cast from float)
    * uint32 x 3 | bitangent (cast from float)
    * */
-   uint32_t uint_mesh_data[6];
-   ifstream.read(reinterpret_cast<char*>(uint_mesh_data), sizeof(uint_mesh_data));
+  uint32_t uint_mesh_data[6];
+  ifstream.read(reinterpret_cast<char*>(uint_mesh_data),
+                sizeof(uint_mesh_data));
 
 #if __SIZEOF_FLOAT__ == 4
   float float_mesh_data[14];
-  ifstream.read(reinterpret_cast<char*>(float_mesh_data), sizeof(float_mesh_data));
+  ifstream.read(reinterpret_cast<char*>(float_mesh_data),
+                sizeof(float_mesh_data));
 #else
   int min_copy_size;
 #if __SIZEOF_FLOAT__ < 4
   min_copy_size = sizeof(float);
-#else // stupid case, but why not...
+#else  // stupid case, but why not...
   min_copy_size = sizeof(uint32_t);
 #endif
   uint32_t buf[14];
@@ -69,7 +71,8 @@ void ReadBinModel(std::filesystem::path path) {
   std::cout << path << std::endl;
   std::ifstream read_stream(path, std::ios::binary);
   if (!read_stream.is_open()) {
-    std::cerr << "Failed to open .bin file" << std::endl; // TODO: replace by Logger
+    std::cerr << "Failed to open .bin file"
+              << std::endl;  // TODO: replace by Logger
   }
   // TODO: metadata
   /**
@@ -77,9 +80,9 @@ void ReadBinModel(std::filesystem::path path) {
    * uint16 | some_extra_info
    * uint16 | mesh_num=N, amount of 16384 is enough
    * uint16 | bone num
-  */
+   */
   uint32_t metadata[2];
-  read_stream.read(reinterpret_cast<char *>(metadata), sizeof(metadata));
+  read_stream.read(reinterpret_cast<char*>(metadata), sizeof(metadata));
   // narrowing from uint16 to int, so it's Ok
   int mesh_num = metadata[1] >> 16;
   int bone_num = metadata[1] & (1U >> 16);
@@ -101,8 +104,10 @@ void ReadModelsFromDir(const char* dir_path) {
   }
 }
 
-void WriteModelsFromDir(const char* dir_path) {}
-void WriteBinModel(std::filesystem::path path) { // TODO: Model_class instance as a parameter
+void WriteModelsFromDir(const char* dir_path) {
+}
+void WriteBinModel(
+    std::filesystem::path path) {  // TODO: Model_class instance as a parameter
   // open as "rewrite" mode
   /*std::ofstream file("test.txt", std::ios::binary);
 
@@ -115,15 +120,16 @@ void WriteBinModel(std::filesystem::path path) { // TODO: Model_class instance a
    */
 }
 
-void WriteTrivialModel(std::ifstream&& ifstream) {}
-void WriteMultimeshModel(std::ifstream&& ifstream) {}
-void WritekinnedModel(std::ifstream&& ifstream) {}
-
+void WriteTrivialModel(std::ifstream&& ifstream) {
+}
+void WriteMultimeshModel(std::ifstream&& ifstream) {
+}
+void WritekinnedModel(std::ifstream&& ifstream) {
+}
 
 static int skinless_mesh_size = 20 * sizeof(uint32_t);
 static int skinned_mesh_size = 44 * sizeof(uint32_t);
 static int metadata_size = 4 * sizeof(uint16_t);
 
-
-} // namespace static_load
-} // namespace faithful
+}  // namespace static_load
+}  // namespace faithful

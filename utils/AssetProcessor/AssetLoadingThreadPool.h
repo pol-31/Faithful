@@ -6,10 +6,7 @@
 #include <thread>
 #include <vector>
 
-
-
-#include <iostream> // todo; temp
-
+#include <iostream>  // todo; temp
 
 #include <atomic>
 #include <mutex>
@@ -23,7 +20,6 @@ class ModelProcessor;
 class TextureProcessor;
 
 #include "../Function.h"
-
 
 /** Processing order:
  * "full-threaded" audio
@@ -52,13 +48,13 @@ class TextureProcessor;
  * */
 
 /** There is two phases:
-   * 1) Main (external) thread has access to single_threaded_tasks_ and
-   *   for each threads_ it setting Task-s for each internal threads (threads_).
-   *   tasks: multi_threaded_tasks_
-   * 2) Now each threads is "independent" and can take tasks on its own.
-   *   tasks: single_threaded_tasks_
-   * ! phases should be switched MANUALLY by SwitchPhase()
-   * */
+ * 1) Main (external) thread has access to single_threaded_tasks_ and
+ *   for each threads_ it setting Task-s for each internal threads (threads_).
+ *   tasks: multi_threaded_tasks_
+ * 2) Now each threads is "independent" and can take tasks on its own.
+ *   tasks: single_threaded_tasks_
+ * ! phases should be switched MANUALLY by SwitchPhase()
+ * */
 // TODO: mb add inheritance from Faithful/utils/Executor.h
 class AssetLoadingThreadPool {
  public:
@@ -68,8 +64,7 @@ class AssetLoadingThreadPool {
   AssetLoadingThreadPool(int thread_count);
 
   /// textures are managed by Main thread
-  void Run(AudioProcessor* audio_processor,
-           ModelProcessor* model_processor);
+  void Run(AudioProcessor* audio_processor, ModelProcessor* model_processor);
 
   void PutSingleThreadedTask(AssetInfo&& task) {
     single_threaded_tasks_.push(task);
@@ -137,4 +132,4 @@ class AssetLoadingThreadPool {
   bool first_phase = true;
 };
 
-#endif //FAITHFUL_ASSETLOADINGTHREADPOOL_H
+#endif  // FAITHFUL_ASSETLOADINGTHREADPOOL_H

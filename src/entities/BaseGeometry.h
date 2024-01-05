@@ -14,6 +14,4 @@
 
 // all mentioned above classes should be inherited from BaseGeometry class?
 
-
-
-#endif // FAITHFUL_BASEGEOMETRY_H
+#endif  // FAITHFUL_BASEGEOMETRY_H

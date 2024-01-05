@@ -5,7 +5,7 @@
 #include <thread>
 #include <atomic>
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -38,7 +38,6 @@ ThreadPoolManager::ThreadPoolManager() {
   initialized_ = true;
 }*/
 
-
 void RenderThreadPool::Run() {
   thread_ = std::thread([&]() {
     while (!config_tasks_->empty()) {
@@ -47,8 +46,10 @@ void RenderThreadPool::Run() {
     }
     SimurghManager::Initialization();
     while (true) {
-      while (faithful::SimurghManager::get_window() == nullptr) {}
-      while (!glfwWindowShouldClose(faithful::SimurghManager::get_window()->Glfw())) {
+      while (faithful::SimurghManager::get_window() == nullptr) {
+      }
+      while (!glfwWindowShouldClose(
+          faithful::SimurghManager::get_window()->Glfw())) {
         while (!immediate_tasks_->empty()) {
           immediate_tasks_->front()();
           immediate_tasks_->pop();
@@ -71,7 +72,6 @@ void Executor::Put(Task task) {
 void Executor::Put(Task task, ImmediateTag) {
   task_queue_->push(std::move(task));
 }
-
 
 void RenderThreadPool::Put(Task task, ImmediateTag) {
   std::atomic_flag completed_flag = ATOMIC_FLAG_INIT;
@@ -127,4 +127,4 @@ void ObjectThreadPool::Run() {
   thread_.detach();
 }
 
-} // namespace faithful
+}  // namespace faithful

@@ -17,16 +17,16 @@ enum class AssetCategory;
 class ModelProcessor {
  public:
   ModelProcessor(
-    bool encode,
-    AssetsAnalyzer* assets_analyzer,
-    const std::filesystem::path& user_asset_root_dir,
-    const std::filesystem::path& asset_destination,
-    const std::filesystem::path& temp_dir = FAITHFUL_ASSET_TEMP_TEXTURES_PATH)
-    : encode_(encode),
-      assets_analyzer_(assets_analyzer),
-      user_asset_root_dir_(user_asset_root_dir),
-      asset_destination_(asset_destination),
-      extracted_textures_dir_(temp_dir) {}
+      bool encode, AssetsAnalyzer* assets_analyzer,
+      const std::filesystem::path& user_asset_root_dir,
+      const std::filesystem::path& asset_destination,
+      const std::filesystem::path& temp_dir = FAITHFUL_ASSET_TEMP_TEXTURES_PATH)
+      : encode_(encode),
+        assets_analyzer_(assets_analyzer),
+        user_asset_root_dir_(user_asset_root_dir),
+        asset_destination_(asset_destination),
+        extracted_textures_dir_(temp_dir) {
+  }
 
   void Process(const std::filesystem::path& model_path,
                const std::filesystem::path& path_suffix);
@@ -46,7 +46,8 @@ class ModelProcessor {
                               const std::filesystem::path& out_filename,
                               AssetCategory category);
 
-  void ExtractBufferImageData(int buffer_view_id, const std::string& out_filename);
+  void ExtractBufferImageData(int buffer_view_id,
+                              const std::string& out_filename);
 
   void ExtractExternalImageData(const std::string& uri,
                                 const std::filesystem::path& path_suffix,
@@ -70,5 +71,4 @@ class ModelProcessor {
   bool encode_;
 };
 
-
-#endif //ASSETPROCESSOR_MODELPROCESSOR_H
+#endif  // ASSETPROCESSOR_MODELPROCESSOR_H

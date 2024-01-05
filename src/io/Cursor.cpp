@@ -1,7 +1,7 @@
 #include "Cursor.h"
 #include <cstring>
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -36,7 +36,7 @@ Cursor::Cursor(SceneMode mode) {
       break;
     case SceneMode::Strategy:
       SingleSemiDeferredCall{}.Do([=]() {
-        utility::Span<unsigned char> buffer(16*16*4);
+        utility::Span<unsigned char> buffer(16 * 16 * 4);
         std::memset(buffer.get_data(), 0xff, buffer.get_size());
         GLFWimage image;
         image.width = 16;
@@ -69,7 +69,6 @@ Cursor::~Cursor() {
   });
 }
 
-
 void Cursor::MakeCursorVisible() {
   visible_ = true;
 }
@@ -79,8 +78,7 @@ void Cursor::MakeCursorUnvisible() {
 
 void Cursor::MakeCursorVisibleImpl() {
   SingleSemiDeferredCall{}.Do([=]() {
-    glfwSetInputMode(related_window_->Glfw(), GLFW_CURSOR,
-                     GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(related_window_->Glfw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
   });
 }
 void Cursor::MakeCursorUnvisibleImpl() {
@@ -103,9 +101,10 @@ void Cursor::MakeActive() {
 
 // TODO: default cursor
 void DefaultCursor::Init() {
-  if (initialized_) return;
+  if (initialized_)
+    return;
 
-  utility::Span<unsigned char> buffer(16*16*4);
+  utility::Span<unsigned char> buffer(16 * 16 * 4);
   std::memset(buffer.get_data(), 0xff, buffer.get_size());
 
   GLFWimage image;
@@ -124,4 +123,4 @@ bool DefaultCursor::initialized_ = false;
 Cursor* DefaultCursor::cursor_ = nullptr;
 Cursor* DefaultCursor::no_cursor_ = nullptr;
 
-} // namespace faithful
+}  // namespace faithful

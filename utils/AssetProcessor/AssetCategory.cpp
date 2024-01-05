@@ -7,13 +7,13 @@
 #include "../../config/AssetFormats.h"
 
 bool DetectEncodeTexHdr(const std::filesystem::path& filename) {
-  return (filename.extension() == ".hdr" ||
-          filename.extension() == ".exr");
+  return (filename.extension() == ".hdr" || filename.extension() == ".exr");
 }
 bool DetectEncodeTexNormalMap(const std::filesystem::path& filename) {
   const std::string& stem_string(filename.stem().string());
   // len of "_nmap" + at least 1 char for actual name
-  if (stem_string.length() < 6) return false;
+  if (stem_string.length() < 6)
+    return false;
   size_t suffixPos = stem_string.length() - 5;
   return stem_string.compare(suffixPos, std::string::npos, "_nmap") == 0;
 }
@@ -21,20 +21,21 @@ bool DetectEncodeTexNormalMap(const std::filesystem::path& filename) {
 bool DetectDecodeTexHdr(const std::filesystem::path& filename) {
   const std::string& stem_string(filename.stem().string());
   // len of "_hdr" + at least 1 char for actual name
-  if (stem_string.length() < 5) return false;
+  if (stem_string.length() < 5)
+    return false;
   size_t suffixPos = stem_string.length() - 4;
   return stem_string.compare(suffixPos, std::string::npos, "_hdr") == 0;
 }
 bool DetectDecodeTexNormalMap(const std::filesystem::path& filename) {
   const std::string& stem_string(filename.stem().string());
   // len of "_nmap" + at least 1 char for actual name
-  if (stem_string.length() < 6) return false;
+  if (stem_string.length() < 6)
+    return false;
   size_t suffixPos = stem_string.length() - 5;
   return stem_string.compare(suffixPos, std::string::npos, "_nmap") == 0;
 }
 
-AssetCategory DeduceAssetEncodeCategory(
-    const std::filesystem::path& filename) {
+AssetCategory DeduceAssetEncodeCategory(const std::filesystem::path& filename) {
   using namespace faithful;
   for (const auto& audio_format : config::audio_comp_formats) {
     if (filename.extension().string() == audio_format) {
@@ -64,8 +65,7 @@ AssetCategory DeduceAssetEncodeCategory(
 }
 
 /// used both for decoding and getting asset info for encoding
-AssetCategory DeduceAssetDecodeCategory(
-    const std::filesystem::path& filename) {
+AssetCategory DeduceAssetDecodeCategory(const std::filesystem::path& filename) {
   std::string file_extension = filename.extension().string();
   if (file_extension == ".ogg") {
     return AssetCategory::kAudioMusic;
@@ -87,5 +87,3 @@ AssetCategory DeduceAssetDecodeCategory(
     return AssetCategory::kUnknown;
   }
 }
-
-

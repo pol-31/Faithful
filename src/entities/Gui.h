@@ -7,7 +7,6 @@
 
 namespace simurgh {
 
-
 class Gui {
  private:
   glm::vec2 position_;
@@ -17,11 +16,10 @@ class Gui {
 class Button {
  private:
   glm::vec2 position_;
-  //scope_;
+  // scope_;
   Sprite sprite_;
 };
 
+}  // namespace simurgh
 
-} // namespace faithful
-
-#endif //FAITHFUL_GUI_H
+#endif  // FAITHFUL_GUI_H

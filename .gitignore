@@ -1,3 +1,8 @@
-/utils/AssetProcessor/cmake-build-debug/
-/cmake-build-debug/
+build
+
+# Idea
+.idea/
+cmake-build-*
+/utils/AssetProcessor/cmake-build-*/
 /utils/AssetProcessor/.idea/
+

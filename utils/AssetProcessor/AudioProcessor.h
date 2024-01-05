@@ -13,25 +13,25 @@
 
 class AssetLoadingThreadPool;
 
-
 // TODO: clang-tidy, clang-format
 
 class AudioProcessor {
  public:
   struct ThreadData {
     void Init(int channels, int sampleRate) {
-      if (initialized) return;
+      if (initialized)
+        return;
       vorbis_info_init(&vi);
       vorbis_comment_init(&vc);
       vorbis_comment_add_tag(&vc, "PROJECT", "Faithful");
       vorbis_encode_init_vbr(&vi, channels, sampleRate,
                              faithful::config::audio_comp_quality);
 
-      ogg_stream_init(&os, 0); // TODO: replace rand (or not...)
+      ogg_stream_init(&os, 0);  // TODO: replace rand (or not...)
       vorbis_analysis_init(&vd, &vi);
       vorbis_block_init(&vd, &vb);
-      vorbis_analysis_headerout(&vd, &vc, &ogg_header,
-                                &ogg_header_comm, &ogg_header_code);
+      vorbis_analysis_headerout(&vd, &vc, &ogg_header, &ogg_header_comm,
+                                &ogg_header_code);
       ogg_stream_packetin(&os, &ogg_header);
       ogg_stream_packetin(&os, &ogg_header_comm);
       ogg_stream_packetin(&os, &ogg_header_code);
@@ -53,10 +53,8 @@ class AudioProcessor {
     bool initialized = false;
   };
 
-  AudioProcessor(
-    bool encode,
-    const std::filesystem::path& asset_destination,
-    AssetLoadingThreadPool* thread_pool);
+  AudioProcessor(bool encode, const std::filesystem::path& asset_destination,
+                 AssetLoadingThreadPool* thread_pool);
 
   ~AudioProcessor();
 
@@ -76,21 +74,19 @@ class AudioProcessor {
   void DecodeSound(const std::filesystem::path& model_path,
                    const std::filesystem::path& path_suffix);
 
-  void DecompressMp3Chunk(drmp3& drmp3_context, int channels,
-                          float** pPCM, uint64_t* frames);
-  void DecompressFlacChunk(
-    const std::filesystem::path& model_path, float** pPCM, uint64_t* frames,
-    int* channels, int* sampleRate);
-  void DecompressWavChunk(
-    const std::filesystem::path& model_path, float** pPCM, uint64_t* frames,
-    int* channels, int* sampleRate);
-  void DecompressOggChunk(
-    const std::filesystem::path& model_path, float** pPCM, uint64_t* frames,
-    int* channels, int* sampleRate);
+  void DecompressMp3Chunk(drmp3& drmp3_context, int channels, float** pPCM,
+                          uint64_t* frames);
+  void DecompressFlacChunk(const std::filesystem::path& model_path,
+                           float** pPCM, uint64_t* frames, int* channels,
+                           int* sampleRate);
+  void DecompressWavChunk(const std::filesystem::path& model_path, float** pPCM,
+                          uint64_t* frames, int* channels, int* sampleRate);
+  void DecompressOggChunk(const std::filesystem::path& model_path, float** pPCM,
+                          uint64_t* frames, int* channels, int* sampleRate);
 
-  void CompressChunk(const std::filesystem::path& model_path,
-                     float* pPCM, uint64_t frames, int channels,
-                     int sampleRate, std::vector<std::pair<long int, char*>>& buffers);
+  void CompressChunk(const std::filesystem::path& model_path, float* pPCM,
+                     uint64_t frames, int channels, int sampleRate,
+                     std::vector<std::pair<long int, char*>>& buffers);
 
   void PrepareEncodingContext(const std::filesystem::path& model_path,
                               int channels, int sampleRate);
@@ -104,7 +100,6 @@ class AudioProcessor {
 
   std::vector<ThreadData>* thread_data_;
 
-
   int chunk_compress_size_ = faithful::config::audio_comp_chunk_size;
   int frames_decompress_count_ = faithful::config::audio_decomp_frames_count;
 
@@ -112,4 +107,4 @@ class AudioProcessor {
   bool encode_;
 };
 
-#endif //ASSETPROCESSOR_AUDIOPROCESSOR_H
+#endif  // ASSETPROCESSOR_AUDIOPROCESSOR_H

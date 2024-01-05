@@ -10,7 +10,7 @@ enum class AssetCategory;
 class AssetLoadingThreadPool;
 
 struct AstcHeader {
-  uint8_t magic[4]; /// format identifier
+  uint8_t magic[4];  /// format identifier
   uint8_t block_x;
   uint8_t block_y;
   uint8_t block_z;
@@ -26,8 +26,7 @@ struct AstcHeader {
  * */
 class TextureProcessor {
  public:
-  TextureProcessor(bool encode,
-                   const std::filesystem::path& asset_destination,
+  TextureProcessor(bool encode, const std::filesystem::path& asset_destination,
                    AssetLoadingThreadPool* thread_pool);
 
   ~TextureProcessor();
@@ -46,26 +45,21 @@ class TextureProcessor {
   bool InitContextNmap();
 
   bool Encode(const std::filesystem::path& path,
-              const std::filesystem::path& path_suffix,
-              AssetCategory category);
-  ///currently decompresses only as a 4-channels image
+              const std::filesystem::path& path_suffix, AssetCategory category);
+  /// currently decompresses only as a 4-channels image
   bool Decode(const std::filesystem::path& path,
-              const std::filesystem::path& path_suffix,
-              AssetCategory category);
+              const std::filesystem::path& path_suffix, AssetCategory category);
 
-  bool WriteEncodedData(const std::string& filename,
-                        unsigned int image_x,
-                        unsigned int image_y,
-                        int comp_data_size,
+  bool WriteEncodedData(const std::string& filename, unsigned int image_x,
+                        unsigned int image_y, int comp_data_size,
                         const uint8_t* comp_data);
 
-  void PrepareCompData(int image_x, int image_y,
-                       int& comp_len, uint8_t*& comp_data);
+  void PrepareCompData(int image_x, int image_y, int& comp_len,
+                       uint8_t*& comp_data);
 
-  void PrepareEncodeContextAndFilename(const std::filesystem::path& relative_path,
-                                       AssetCategory category,
-                                       std::filesystem::path& out_filename,
-                                       astcenc_context*& context);
+  void PrepareEncodeContextAndFilename(
+      const std::filesystem::path& relative_path, AssetCategory category,
+      std::filesystem::path& out_filename, astcenc_context*& context);
 
   void PrepareDecodeContextAndFilename(const std::filesystem::path& path,
                                        AssetCategory category,
@@ -88,4 +82,4 @@ class TextureProcessor {
   std::filesystem::path asset_destination_;
 };
 
-#endif //ASSETPROCESSOR_IMAGEPROCESSOR_H
+#endif  // ASSETPROCESSOR_IMAGEPROCESSOR_H

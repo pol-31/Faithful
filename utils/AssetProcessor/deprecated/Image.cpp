@@ -1,6 +1,6 @@
 #include <iostream>
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -19,7 +19,7 @@ namespace faithful {
 namespace details {
 namespace image {
 
-GLuint ImageManager::Register(const char *path, ImageType type) {
+GLuint ImageManager::Register(const char* path, ImageType type) {
   Image* img = Image::Load(path);
   GLuint id = Image::GenNewId();
   img->set_id(id);
@@ -32,7 +32,6 @@ GLuint ImageManager::Register(const char *path, ImageType type) {
 
   utility::Span<char> path_copy(path_size);
   std::memcpy(path_copy.get_data(), path, path_size);
-
 
   if (type == ImageType::kTexture) {
     details::image::ImageManager::loaded_files_->insert({path_copy, img});
@@ -56,10 +55,11 @@ GLuint ImageManager::Register(const char *path, ImageType type) {
   return id;
 }
 
-std::set<Image*, ImageIdComparator>* ImageManager::stock_images_ = new std::set<Image*, ImageIdComparator>;
+std::set<Image*, ImageIdComparator>* ImageManager::stock_images_ =
+    new std::set<Image*, ImageIdComparator>;
 
-} // namespace image
-} // namespace details
+}  // namespace image
+}  // namespace details
 
 Image::Image(const Image& img) {
   // if data_ is non-modified, then data_ become also nullptr
@@ -125,9 +125,8 @@ Image& Image::operator=(Image&& img) {
   img.set_data(nullptr);
 }
 
-
 GLuint Image::GenNewId() {
-  GLuint id = ImmediateCall{}.Do([=](){
+  GLuint id = ImmediateCall{}.Do([=]() {
     GLuint new_id;
     glGenTextures(1, &new_id);
     return new_id;
@@ -137,16 +136,18 @@ GLuint Image::GenNewId() {
 
 void Image::LoadImageToOpenGL(Image* img) {
   auto copy_data = img->get_data().MakeCopy();
-  SingleSemiDeferredCall{}.Do([=](){
+  SingleSemiDeferredCall{}.Do([=]() {
     glBindTexture(GL_TEXTURE_2D, img->get_id());
-    glTexImage2D(GL_TEXTURE_2D, 0, img->get_color_model(), img->get_width(), img->get_height(), 0,
-                 img->get_color_model(), GL_UNSIGNED_BYTE, copy_data.get_data());
+    glTexImage2D(GL_TEXTURE_2D, 0, img->get_color_model(), img->get_width(),
+                 img->get_height(), 0, img->get_color_model(), GL_UNSIGNED_BYTE,
+                 copy_data.get_data());
     glGenerateMipmap(GL_TEXTURE_2D);
   });
 }
 
 Image::Image(const char* path, ImageType type) {
-  if (path == nullptr) return;
+  if (path == nullptr)
+    return;
   auto found_image = details::image::ImageManager::Find(path);
   if (found_image != nullptr) {
     auto reused_image = *found_image;
@@ -174,8 +175,8 @@ Image::Image(const char* path, ImageType type) {
 Image* Image::Load(const char* path) {
   auto img = new Image();
   int width, height, channels, color_model;
-  //stbi_set_flip_vertically_on_load(true);
-  unsigned char *data = stbi_load(path, &width, &height, &channels, 0);
+  // stbi_set_flip_vertically_on_load(true);
+  unsigned char* data = stbi_load(path, &width, &height, &channels, 0);
   if (data) {
     if (channels == 1)
       color_model = GL_RED;
@@ -204,19 +205,22 @@ Image::~Image() {
 }
 
 void Image::DeleteImageOpenGL(GLuint id) {
-  SingleSemiDeferredCall{}.Do([=](){
+  SingleSemiDeferredCall{}.Do([=]() {
     glDeleteTextures(1, &id);
   });
 }
 
-
 void Image::DefaultConfig() {
   switch (type_) {
     case ImageType::kTexture:
-      SingleSemiDeferredCall{}.Do([=](){ DefaultTextureConfig(id_); });
+      SingleSemiDeferredCall{}.Do([=]() {
+        DefaultTextureConfig(id_);
+      });
       break;
     case ImageType::kSprite:
-      SingleSemiDeferredCall{}.Do([=](){ DefaultSpriteConfig(id_); });
+      SingleSemiDeferredCall{}.Do([=]() {
+        DefaultSpriteConfig(id_);
+      });
       break;
   }
 }
@@ -240,7 +244,8 @@ void Image::DefaultSpriteConfig(GLuint id) {
 void Image::ApplyModification(bool RenderThread) {
   Image dummy;
   dummy.set_id(id_);
-  auto original_image = *(details::image::ImageManager::stock_images_->find(&dummy));
+  auto original_image =
+      *(details::image::ImageManager::stock_images_->find(&dummy));
   data_ = (*original_image).get_data().MakeCopy();
 
   if (RenderThread) {
@@ -286,23 +291,27 @@ void Image::MagFilter(ImageFilter filter) {
 void Image::MipMapLevel(std::size_t level, const Image& img) {
   ApplyModification();
 
-  if (level == 0) return;
+  if (level == 0)
+    return;
   auto data_copy = img.get_data().MakeCopy();
   SingleSemiDeferredCall{}.Do([=]() {
     glBindTexture(GL_TEXTURE_2D, id_);
-    glTexImage2D(GL_TEXTURE_2D, level, img.get_color_model(), img.get_width(), img.get_height(), 0,
-                 img.get_color_model(), GL_UNSIGNED_BYTE, data_copy.get_data());
+    glTexImage2D(GL_TEXTURE_2D, level, img.get_color_model(), img.get_width(),
+                 img.get_height(), 0, img.get_color_model(), GL_UNSIGNED_BYTE,
+                 data_copy.get_data());
   });
 }
 void Image::MipMapLevel(std::size_t level, const char* path) {
   ApplyModification();
 
-  if (level == 0) return;
+  if (level == 0)
+    return;
   Image* img = Image::Load(path);
   SingleSemiDeferredCall{}.Do([=]() {
     glBindTexture(GL_TEXTURE_2D, id_);
-    glTexImage2D(GL_TEXTURE_2D, level, img->get_color_model(), img->get_width(), img->get_height(), 0,
-                 img->get_color_model(), GL_UNSIGNED_BYTE, img->get_data().get_data());
+    glTexImage2D(GL_TEXTURE_2D, level, img->get_color_model(), img->get_width(),
+                 img->get_height(), 0, img->get_color_model(), GL_UNSIGNED_BYTE,
+                 img->get_data().get_data());
   });
 }
 
@@ -319,7 +328,7 @@ GLuint Image::InitLoad(const char* path, ImageType type) {
     if ((*reused_image)->get_type() == type) {
       id = (*reused_image)->get_id();
       return id;
-    } // else type is founded kSprite (below) or unfounded _type_
+    }  // else type is founded kSprite (below) or unfounded _type_
   }
   Image* target_img;
 
@@ -336,7 +345,8 @@ GLuint Image::InitLoad(const char* path, ImageType type) {
     utility::Span<char> path_copy(path_size);
     std::memcpy(path_copy.get_data(), path, path_size);
     if (type == ImageType::kTexture) {
-      details::image::ImageManager::loaded_files_->insert({path_copy, target_img});
+      details::image::ImageManager::loaded_files_->insert(
+          {path_copy, target_img});
       details::image::ImageManager::stock_images_->insert(target_img);
     } else {
       auto temp_img = new Image;
@@ -354,11 +364,13 @@ GLuint Image::InitLoad(const char* path, ImageType type) {
     }
   }
   auto data_copy = target_img->get_data().MakeCopy();
-  glTexImage2D(GL_TEXTURE_2D, 0, target_img->get_color_model(), target_img->get_width(), target_img->get_height(), 0,
-               target_img->get_color_model(), GL_UNSIGNED_BYTE, data_copy.get_data());
+  glTexImage2D(GL_TEXTURE_2D, 0, target_img->get_color_model(),
+               target_img->get_width(), target_img->get_height(), 0,
+               target_img->get_color_model(), GL_UNSIGNED_BYTE,
+               data_copy.get_data());
   glGenerateMipmap(GL_TEXTURE_2D);
 
   return id;
 }
 
-} // namespace faithful
+}  // namespace faithful

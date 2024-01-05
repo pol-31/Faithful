@@ -5,8 +5,8 @@
 
 enum class AssetCategory {
   kAudioMusic,
-  kAudioSound, /// tiny files for 1-2 seconds playback
-  kBinary, /// for models buffer data
+  kAudioSound,  /// tiny files for 1-2 seconds playback
+  kBinary,      /// for models buffer data
   kModel,
   kTextureLdr,
   kTextureHdr,
@@ -23,6 +23,4 @@ bool DetectDecodeTexNormalMap(const std::filesystem::path& filename);
 AssetCategory DeduceAssetEncodeCategory(const std::filesystem::path& filename);
 AssetCategory DeduceAssetDecodeCategory(const std::filesystem::path& filename);
 
-
-
-#endif //FAITHFUL_ASSETCATEGORY_H
+#endif  // FAITHFUL_ASSETCATEGORY_H

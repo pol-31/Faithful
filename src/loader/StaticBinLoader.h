@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include <iostream> // temporarily
+#include <iostream>  // temporarily
 
 #include "../../config/config_paths.h"
 #include "../entities/common/AnimationNode.h"
@@ -182,6 +182,6 @@ void WritekinnedModel(std::ifstream&& ifstream);
 
 } // namespace static_load
 */
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_STATICBINLOADER_H
+#endif  // FAITHFUL_STATICBINLOADER_H

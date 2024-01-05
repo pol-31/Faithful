@@ -5,10 +5,6 @@
 #ifndef FAITHFUL_EXECUTOR_H
 #define FAITHFUL_EXECUTOR_H
 
+class Executor {};
 
-class Executor {
-
-};
-
-
-#endif // FAITHFUL_EXECUTOR_H
+#endif  // FAITHFUL_EXECUTOR_H

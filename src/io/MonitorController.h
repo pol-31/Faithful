@@ -2,14 +2,13 @@
 #define FAITHFUL_MONITORCONTROLLER_H
 
 #include <algorithm>
-#include <optional> // need to get rid of
+#include <optional>  // need to get rid of
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
-#include <GLFW/glfw3.h>
-#include <glad/gl.h>
+#define GLFW_INCLUDE_NONE
+#include "GLFW/glfw3.h"
+#include "glad/glad.h"
 
 #include "Monitor.h"
-
 
 #include <iostream>
 namespace faithful {
@@ -24,14 +23,13 @@ class MonitorController {
   /// Primary_monitor or window_monitor ????????
   //
 
-
   void Update() {
     int monitor_number = 0;
     GLFWmonitor** monitors_p = glfwGetMonitors(&monitor_number);
     if (monitors_ == nullptr) {
       // TODO: custom Alloc/Dealloc
-      monitors_ = new std::vector<Monitor>(monitors_p,
-                                           monitors_p + monitor_number);
+      monitors_ =
+          new std::vector<Monitor>(monitors_p, monitors_p + monitor_number);
       for (auto m = monitors_->begin(); m != monitors_->end(); ++m) {
         if (*m == glfwGetPrimaryMonitor()) {
           cur_monitor_ = &*m;
@@ -107,6 +105,6 @@ class MonitorController {
   Monitor* cur_monitor_ = nullptr;
 };
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_MONITORCONTROLLER_H
+#endif  // FAITHFUL_MONITORCONTROLLER_H

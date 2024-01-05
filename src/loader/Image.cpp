@@ -1,6 +1,6 @@
 
 #include <iostream>
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -150,8 +150,8 @@ void Image::LoadImageToOpenGL(Image* img) {
     glBindTexture(GL_TEXTURE_2D, img->get_id());
     glTexImage2D(GL_TEXTURE_2D, 0, img->get_color_model(),
                  img->get_width(), img->get_height(), 0,
-                 img->get_color_model(), GL_UNSIGNED_BYTE, copy_data.get_data());
-    glGenerateMipmap(GL_TEXTURE_2D);
+                 img->get_color_model(), GL_UNSIGNED_BYTE,
+copy_data.get_data()); glGenerateMipmap(GL_TEXTURE_2D);
   });
 }
 
@@ -315,7 +315,8 @@ void Image::MipMapLevel(std::size_t level, const char* path) {
     glBindTexture(GL_TEXTURE_2D, id_);
     glTexImage2D(GL_TEXTURE_2D, level, img->get_color_model(),
                  img->get_width(), img->get_height(), 0,
-                 img->get_color_model(), GL_UNSIGNED_BYTE, img->get_data().get_data());
+                 img->get_color_model(), GL_UNSIGNED_BYTE,
+img->get_data().get_data());
   });
 }
 
@@ -377,4 +378,4 @@ GLuint Image::InitLoad(const char* path, ImageType type) {
   return id;
 }*/
 
-} // namespace faithful
+}  // namespace faithful

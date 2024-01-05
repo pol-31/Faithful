@@ -17,15 +17,15 @@ namespace static_load {
 void ReadTrivialModel(std::ifstream&& ifstream) {
   */
 /**
-   * uint32 | idx_num
-   * uint32 x 5 | tex_ids
-   * -----------------------------------------
-   * uint32 x 3 | position (cast from float)
-   * uint32 x 2 | tex_coord (cast from float)
-   * uint32 x 3 | normal (cast from float)
-   * uint32 x 3 | tangent (cast from float)
-   * uint32 x 3 | bitangent (cast from float)
-   * *//*
+ * uint32 | idx_num
+ * uint32 x 5 | tex_ids
+ * -----------------------------------------
+ * uint32 x 3 | position (cast from float)
+ * uint32 x 2 | tex_coord (cast from float)
+ * uint32 x 3 | normal (cast from float)
+ * uint32 x 3 | tangent (cast from float)
+ * uint32 x 3 | bitangent (cast from float)
+ * *//*
 
    uint32_t uint_mesh_data[6];
    ifstream.read(reinterpret_cast<char*>(uint_mesh_data), sizeof(uint_mesh_data));
@@ -89,11 +89,11 @@ void ReadBinModel(std::filesystem::path path) {
   // TODO: metadata
   */
 /**
-   * uint16 | model_id, amount of 32768 is enough
-   * uint16 | some_extra_info
-   * uint16 | mesh_num=N, amount of 16384 is enough
-   * uint16 | bone num
-  *//*
+ * uint16 | model_id, amount of 32768 is enough
+ * uint16 | some_extra_info
+ * uint16 | mesh_num=N, amount of 16384 is enough
+ * uint16 | bone num
+ *//*
 
   uint32_t metadata[2];
   read_stream.read(reinterpret_cast<char *>(metadata), sizeof(metadata));
@@ -146,4 +146,4 @@ static int metadata_size = 4 * sizeof(uint16_t);
 
 } // namespace static_load
 */
-} // namespace faithful
+}  // namespace faithful

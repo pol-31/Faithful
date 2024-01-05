@@ -83,12 +83,15 @@ void DefaultRectangleObject::Init() {
 
   glBindVertexArray(vao_);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-  glBufferData(GL_ARRAY_BUFFER, vertex_num_ * sizeof(Object2D__not_complete::VertexData), vertex_data_, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertex_num_ *
+sizeof(Object2D__not_complete::VertexData), vertex_data_, GL_DYNAMIC_DRAW);
 
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Object2D__not_complete::VertexData), (void *) 0);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
+sizeof(Object2D__not_complete::VertexData), (void *) 0);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Object2D__not_complete::VertexData), (void *) (sizeof(Object2D__not_complete::Point2D)));
-  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+sizeof(Object2D__not_complete::VertexData), (void *)
+(sizeof(Object2D__not_complete::Point2D))); glEnableVertexAttribArray(1);
 
   initialized_ = true;
 }
@@ -119,12 +122,15 @@ void DefaultTriangleObject::Init() {
 
   glBindVertexArray(vao_);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-  glBufferData(GL_ARRAY_BUFFER, vertex_num_ * sizeof(Object2D__not_complete::VertexData), vertex_data_, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertex_num_ *
+sizeof(Object2D__not_complete::VertexData), vertex_data_, GL_DYNAMIC_DRAW);
 
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Object2D__not_complete::VertexData), (void *) 0);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
+sizeof(Object2D__not_complete::VertexData), (void *) 0);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Object2D__not_complete::VertexData), (void *) (sizeof(Object2D__not_complete::Point2D)));
-  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+sizeof(Object2D__not_complete::VertexData), (void *)
+(sizeof(Object2D__not_complete::Point2D))); glEnableVertexAttribArray(1);
 
   initialized_ = true;
 }
@@ -194,12 +200,15 @@ void DefaultCircleObject::Init() {
 
   glBindVertexArray(vao_);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-  glBufferData(GL_ARRAY_BUFFER, vertex_num_ * sizeof(Object2D__not_complete::VertexData), vertex_data_, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertex_num_ *
+sizeof(Object2D__not_complete::VertexData), vertex_data_, GL_DYNAMIC_DRAW);
 
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Object2D__not_complete::VertexData), (void *) 0);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
+sizeof(Object2D__not_complete::VertexData), (void *) 0);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Object2D__not_complete::VertexData), (void *) (sizeof(Object2D__not_complete::Point2D)));
-  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+sizeof(Object2D__not_complete::VertexData), (void *)
+(sizeof(Object2D__not_complete::Point2D))); glEnableVertexAttribArray(1);
 
   initialized_ = true;
 }
@@ -213,7 +222,8 @@ bool DefaultRectangleObject::initialized_ = false;
 Object2D__not_complete::VertexData* DefaultRectangleObject::vertex_data_ =
   new Object2D__not_complete::VertexData[4];
 std::size_t DefaultRectangleObject::vertex_num_ = 4;
-Object2D__not_complete::Point2D* DefaultRectangleObject::start_vertex_position_ = new Object2D__not_complete::Point2D[4];
+Object2D__not_complete::Point2D* DefaultRectangleObject::start_vertex_position_
+= new Object2D__not_complete::Point2D[4];
 
 GLuint DefaultTriangleObject::vao_ = 0;
 GLuint DefaultTriangleObject::vbo_ = 0;
@@ -223,7 +233,8 @@ bool DefaultTriangleObject::initialized_ = false;
 Object2D__not_complete::VertexData* DefaultTriangleObject::vertex_data_ =
   new Object2D__not_complete::VertexData[3];
 std::size_t DefaultTriangleObject::vertex_num_ = 3;
-Object2D__not_complete::Point2D* DefaultTriangleObject::start_vertex_position_ = new Object2D__not_complete::Point2D[3];
+Object2D__not_complete::Point2D* DefaultTriangleObject::start_vertex_position_ =
+new Object2D__not_complete::Point2D[3];
 
 GLuint DefaultCircleObject::vao_ = 0;
 GLuint DefaultCircleObject::vbo_ = 0;
@@ -233,9 +244,8 @@ bool DefaultCircleObject::initialized_ = false;
 Object2D__not_complete::VertexData* DefaultCircleObject::vertex_data_ =
   new Object2D__not_complete::VertexData[16];
 std::size_t DefaultCircleObject::vertex_num_ = 16;
-Object2D__not_complete::Point2D* DefaultCircleObject::start_vertex_position_ = new Object2D__not_complete::Point2D[16];
+Object2D__not_complete::Point2D* DefaultCircleObject::start_vertex_position_ =
+new Object2D__not_complete::Point2D[16];
 */
 
-
-
-} // namespace faithful
+}  // namespace faithful

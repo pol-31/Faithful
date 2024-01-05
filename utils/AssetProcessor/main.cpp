@@ -20,7 +20,7 @@
  * Currently there is no shader processing (no reason to do this)
  * */
 
-#include <iostream> // TODO: replace by Logger.h
+#include <iostream>  // TODO: replace by Logger.h
 #include <cstring>
 #include <filesystem>
 #include <string>
@@ -52,8 +52,7 @@ void LogProcessingResult(const std::string& path, bool encoded);
 
 // TODO: add README.md with naming convention: __ _nmap.astc __
 
-
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   if (argc < 2) {
     std::cout << "Incorrect program's arguments" << std::endl;
     return -1;
@@ -109,7 +108,8 @@ int main(int argc, char **argv) {
       }
     }
   }
-  if (!asset_processing) return 0;
+  if (!asset_processing)
+    return 0;
   asset_controller.All(process_all);
 
   if (user_path.empty()) {
@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
   }
 
   PrintConfigs(encode, asset_controller);
-  AssetProcessor processor(thread_count-1, FAITHFUL_ASSET_PATH);
+  AssetProcessor processor(thread_count - 1, FAITHFUL_ASSET_PATH);
   std::cout << "user's path " << user_path << std::endl;
   processor.ProcessEncoding(user_path);
 
@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
     processor.ProcessDecoding(user_path);
   }*/
 
-  //LogProcessingResult(FAITHFUL_ASSET_INFO_FILE, encode);
+  // LogProcessingResult(FAITHFUL_ASSET_INFO_FILE, encode);
 
   return 0;
 }
@@ -141,47 +141,45 @@ void PrintConfigs(bool encode, AssetController assetController) {
   } else {
     std::cout << "decoding of {";
   }
-  if (!assetController.audio &&
-      !assetController.textures &&
+  if (!assetController.audio && !assetController.textures &&
       !assetController.models) {
     " no asset types chosen }";
     return;
   }
   if (assetController.audio) {
-    std::cout <<  " audio";
+    std::cout << " audio";
   }
   if (assetController.textures) {
-    std::cout <<  " textures";
+    std::cout << " textures";
   }
   if (assetController.models) {
-    std::cout <<  " models";
+    std::cout << " models";
   }
   std::cout << " }" << std::endl;
 }
 
 void PrintHelpInfo() {
-  std::cout
-    << "Faithful::AssetProcessor help:\n"
-    << "\t\"-h\" for help\n"
-    << "\t\"-d\" for decoding\n"
-    << "\t\"-e\" for encoding\n"
-    << "\t\"-a\" turn processing audio files on\n"
-    << "\t\"-t\" turn processing texture(image) files on\n"
-    << "\t\"-m\" turn processing 3d-models on\n"
-    << "If you'll not specify any of {a, t, m}"
-    << " - all enabled by default;\n"
-    << "if you'll specify at least one of them"
-    << " - all other disabled by default\n"
-    << "\ndecoding example (decode only audio and textures):\n"
-    << "\tAssetProcessor -dat \"destination-dir\"\n"
-    << "encoding example (encode all):\n" // todo__
-    << "\nSupported formats:\n"
-    << "\ttextures: bmp, jpeg, png, tga, exr, hdr, dds, ktx;\n"
-    << "\taudio: mp3, flac, wav, ogg;\n"
-    << "\t3D models: collada (dae), obj, ply, blend, "
-    << "fbx, stl, gltf, glb.\n"
-    << "To check/adjust configurations open this file"
-    << "\t" << FAITHFUL_CONFIG_PATH << std::endl;
+  std::cout << "Faithful::AssetProcessor help:\n"
+            << "\t\"-h\" for help\n"
+            << "\t\"-d\" for decoding\n"
+            << "\t\"-e\" for encoding\n"
+            << "\t\"-a\" turn processing audio files on\n"
+            << "\t\"-t\" turn processing texture(image) files on\n"
+            << "\t\"-m\" turn processing 3d-models on\n"
+            << "If you'll not specify any of {a, t, m}"
+            << " - all enabled by default;\n"
+            << "if you'll specify at least one of them"
+            << " - all other disabled by default\n"
+            << "\ndecoding example (decode only audio and textures):\n"
+            << "\tAssetProcessor -dat \"destination-dir\"\n"
+            << "encoding example (encode all):\n"  // todo__
+            << "\nSupported formats:\n"
+            << "\ttextures: bmp, jpeg, png, tga, exr, hdr, dds, ktx;\n"
+            << "\taudio: mp3, flac, wav, ogg;\n"
+            << "\t3D models: collada (dae), obj, ply, blend, "
+            << "fbx, stl, gltf, glb.\n"
+            << "To check/adjust configurations open this file"
+            << "\t" << FAITHFUL_CONFIG_PATH << std::endl;
 }
 
 void LogProcessingResult(const std::string& path, bool encoded) {

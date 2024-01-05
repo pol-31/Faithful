@@ -5,7 +5,6 @@
 
 namespace faithful {
 
-
 /// ___________DEPRECATED_____________
 /// __________________________________
 /// __________________________________
@@ -21,20 +20,17 @@ class Cube : Object3D {
   Cube();
 };
 
-
 class Model : public Object3D {
  public:
   Model(const char* path);
   void RunAnimation(unsigned int anim_id, bool repeat = false);
 };
 
-
 class Sprite3dCreator : public TrivialObject3DImpl {
  public:
   Sprite3dCreator();
 };
 
+}  // namespace faithful
 
-} // namespace faithful
-
-#endif // FAITHFUL_OBJECTS_3D_H
+#endif  // FAITHFUL_OBJECTS_3D_H

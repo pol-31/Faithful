@@ -6,7 +6,6 @@
 
 namespace faithful {
 
-
 /// ___________DEPRECATED_____________
 /// __________________________________
 /// __________________________________
@@ -210,6 +209,4 @@ bool CollisionManager::CheckCollision(const Object2D__not_complete* obj1,
 }
 */
 
-
-} // namespace faithful
-
+}  // namespace faithful

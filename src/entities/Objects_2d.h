@@ -74,8 +74,8 @@ class Rectangle : public Object2D__not_complete {
   Rectangle(glm::vec3 position) : Object2D__not_complete(position) {
     DefaultInit();
   }
-  Rectangle(float x, float y, float z) : Object2D__not_complete(glm::vec3(x, y, z)) {
-    DefaultInit();
+  Rectangle(float x, float y, float z) : Object2D__not_complete(glm::vec3(x, y,
+z)) { DefaultInit();
   }
 
  protected:
@@ -93,8 +93,8 @@ class Triangle : public Object2D__not_complete {
   Triangle(glm::vec3 position) : Object2D__not_complete(position) {
     DefaultInit();
   }
-  Triangle(float x, float y, float z) : Object2D__not_complete(glm::vec3(x, y, z)) {
-    DefaultInit();
+  Triangle(float x, float y, float z) : Object2D__not_complete(glm::vec3(x, y,
+z)) { DefaultInit();
   }
 
  protected:
@@ -112,8 +112,8 @@ class Circle : public Object2D__not_complete {
   Circle(glm::vec3 position) : Object2D__not_complete(position) {
     DefaultInit();
   }
-  Circle(float x, float y, float z) : Object2D__not_complete(glm::vec3(x, y, z)) {
-    DefaultInit();
+  Circle(float x, float y, float z) : Object2D__not_complete(glm::vec3(x, y, z))
+{ DefaultInit();
   }
 
  protected:
@@ -135,8 +135,6 @@ void InitObjects2D();
 
 */
 
+}  // namespace faithful
 
-} // namespace faithful
-
-
-#endif // FAITHFUL_OBJECTS_2D_H
+#endif  // FAITHFUL_OBJECTS_2D_H

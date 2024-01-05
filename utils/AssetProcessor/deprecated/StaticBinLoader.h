@@ -5,9 +5,9 @@
 #include <filesystem>
 #include <fstream>
 
-#include <iostream> // temporarily
+#include <iostream>  // temporarily
 
-//#include "../../config/config_paths.h"
+// #include "../../config/config_paths.h"
 #include "AnimationNode.h"
 
 namespace faithful {
@@ -72,15 +72,13 @@ namespace static_load {
  * Animation_tree stored in DFS (pre-order)
  * */
 
-
 // TODO: need incapsulation (ReadTrivialModel, ReadBinModel, etc...)
-
 
 // TODO (further development): concurrently parse animation-tree
 //        (for now 1 tree can't be parsed concurrently)
 
-
-static std::filesystem::path default_dir_path_ = "";//SIMURGH_MODELS_BIN_PATH;
+static std::filesystem::path default_dir_path_ =
+    "";  // SIMURGH_MODELS_BIN_PATH;
 
 uint32_t CastFloatToUint32(float float_value) {
   uint32_t uint_value;
@@ -94,7 +92,6 @@ float CastUint32ToFloat(uint32_t uint_value) {
   return float_value;
 }
 
-
 void ReadModelsFromDir(const char* dir_path = default_dir_path_.c_str());
 
 void ReadBinModel(std::filesystem::path path);
@@ -102,7 +99,6 @@ void ReadBinModel(std::filesystem::path path);
 void ReadTrivialModel(std::ifstream&& ifstream);
 void ReadMultimeshModel(std::ifstream&& ifstream);
 void ReadSkinnedModel(std::ifstream&& ifstream);
-
 
 void WriteModelsFromDir(const char* dir_path = default_dir_path_.c_str());
 
@@ -112,22 +108,13 @@ void WriteTrivialModel(std::ifstream&& ifstream);
 void WriteMultimeshModel(std::ifstream&& ifstream);
 void WritekinnedModel(std::ifstream&& ifstream);
 
-
-
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 /////////////////////////  Model instances  ////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-
-
 // SaveSession --> saving of all scenes
-
-
-
-
-
 
 /**TOTAL _SAVE_ info:
  * last global_id_
@@ -163,7 +150,7 @@ void WritekinnedModel(std::ifstream&& ifstream);
 
 // TODO: the same for 2d-models, textures, sprites, sounds
 
-} // namespace static_load
-} // namespace faithful
+}  // namespace static_load
+}  // namespace faithful
 
-#endif // FAITHFUL_STATICBINLOADER_H
+#endif  // FAITHFUL_STATICBINLOADER_H

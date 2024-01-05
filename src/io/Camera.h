@@ -41,7 +41,6 @@ int lastY = 250; // depends on Camera mode
  * - cursor
  * */
 
-
 class Camera : public Object3D {
  public:
   enum class MoveDirection {
@@ -55,16 +54,15 @@ class Camera : public Object3D {
 
   Camera();
 
-  Camera(const Camera &camera) noexcept;
-  Camera(Camera &&) noexcept;
+  Camera(const Camera& camera) noexcept;
+  Camera(Camera&&) noexcept;
 
   Camera(SceneMode mode);
 
-  Camera(glm::vec3 position, float pitch = 0.0f,
-         float yaw = -90.0f) noexcept;
+  Camera(glm::vec3 position, float pitch = 0.0f, float yaw = -90.0f) noexcept;
 
-  Camera &operator=(const Camera &camera) noexcept;
-  Camera &operator=(Camera &&camera) noexcept;
+  Camera& operator=(const Camera& camera) noexcept;
+  Camera& operator=(Camera&& camera) noexcept;
 
   void Look(float offset_x, float offset_y) noexcept;
   void Move(Camera::MoveDirection direction) noexcept;
@@ -81,8 +79,7 @@ class Camera : public Object3D {
   // TODO: make castomisable
   /// CreateProjectionMatrix
   glm::mat4 CreateProjectionMatrix() const noexcept {
-    return glm::perspective(glm::radians(get_zoom()),
-                            1.0f, 0.1f, 100.0f);
+    return glm::perspective(glm::radians(get_zoom()), 1.0f, 0.1f, 100.0f);
   };
 
   void ProcessInput(Window* window);
@@ -134,35 +131,35 @@ class Camera : public Object3D {
     yaw_ = yaw;
   }
 
-  const glm::vec3 &get_direction_front() const noexcept {
+  const glm::vec3& get_direction_front() const noexcept {
     return direction_front_;
   }
 
-  void set_direction_front(const glm::vec3 &directionFront) noexcept {
+  void set_direction_front(const glm::vec3& directionFront) noexcept {
     direction_front_ = directionFront;
   }
 
-  const glm::vec3 &get_direction_right() const noexcept {
+  const glm::vec3& get_direction_right() const noexcept {
     return direction_right_;
   }
 
-  void set_direction_right(const glm::vec3 &directionRight) noexcept {
+  void set_direction_right(const glm::vec3& directionRight) noexcept {
     direction_right_ = directionRight;
   }
 
-  const glm::vec3 &get_direction_up() const noexcept {
+  const glm::vec3& get_direction_up() const noexcept {
     return direction_up_;
   }
 
-  void set_direction_up(const glm::vec3 &directionUp) noexcept {
+  void set_direction_up(const glm::vec3& directionUp) noexcept {
     direction_up_ = directionUp;
   }
 
-  const glm::vec3 &get_direction_world_up() const noexcept {
+  const glm::vec3& get_direction_world_up() const noexcept {
     return direction_world_up_;
   }
 
-  void set_direction_world_up(const glm::vec3 &directionWorldUp) noexcept {
+  void set_direction_world_up(const glm::vec3& directionWorldUp) noexcept {
     direction_world_up_ = directionWorldUp;
   }
 
@@ -172,15 +169,13 @@ class Camera : public Object3D {
   void set_handler(MouseInputHandler* input_handler) {
     mouse_handler_ = input_handler;
   }
-  void set_handler(
-      KeyboardInputHandler* keyboard_handler,
-      MouseInputHandler* mouse_handler) {
+  void set_handler(KeyboardInputHandler* keyboard_handler,
+                   MouseInputHandler* mouse_handler) {
     keyboard_handler_ = keyboard_handler;
     mouse_handler_ = mouse_handler;
   }
-  void set_handler(
-      MouseInputHandler* mouse_handler,
-      KeyboardInputHandler* keyboard_handler) {
+  void set_handler(MouseInputHandler* mouse_handler,
+                   KeyboardInputHandler* keyboard_handler) {
     keyboard_handler_ = keyboard_handler;
     mouse_handler_ = mouse_handler;
   }
@@ -190,7 +185,6 @@ class Camera : public Object3D {
   int cur_id_;
 
  protected:
-
   static int id_;
 
   void UpdateVectors() noexcept;
@@ -211,6 +205,6 @@ class Camera : public Object3D {
   MouseInputHandler* mouse_handler_ = nullptr;
 };
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_CAMERA_H
+#endif  // FAITHFUL_CAMERA_H

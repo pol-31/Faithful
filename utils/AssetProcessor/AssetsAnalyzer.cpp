@@ -13,19 +13,15 @@ void AssetsAnalyzer::LoadActiveAssets(const std::filesystem::path& path) {
     entry.category = DeduceAssetDecodeCategory(entry.source_path);
     entry.source_path.clear();
   }
-  processed_assets_.insert(
-    processed_assets_.end(),
-    std::make_move_iterator(unprocessed_assets.begin()),
-    std::make_move_iterator(unprocessed_assets.end())
-  );
+  processed_assets_.insert(processed_assets_.end(),
+                           std::make_move_iterator(unprocessed_assets.begin()),
+                           std::make_move_iterator(unprocessed_assets.end()));
   unprocessed_assets.clear();
 }
 
 void AssetsAnalyzer::GatherEncodeThreadInfo(
-    const std::filesystem::path& root_dir,
-    const std::filesystem::path& path1,
-    const std::filesystem::path& path2,
-    const std::filesystem::path& path3) {
+    const std::filesystem::path& root_dir, const std::filesystem::path& path1,
+    const std::filesystem::path& path2, const std::filesystem::path& path3) {
   // TODO: need to check is directory not "active" (not used by Faithful)
   LoadActiveAssets(path1);
   LoadActiveAssets(path2);
@@ -54,16 +50,17 @@ void AssetsAnalyzer::GatherDecodeThreadInfo(
 /// used for encoding, decoding, getting active assets info
 /// We ARE NOT deducing category, but only source_path and relative_path
 /// encoding/decoding:_ after call DeduceCategory for each entry
-/// asset info:________ we can delete source path for each (need only relative path)
+/// asset info:________ we can delete source path for each (need only relative
+/// path)
 void AssetsAnalyzer::AnalyzeDir(const std::filesystem::path& cur_dir,
                                 const std::filesystem::path& root_dir) {
-  for (const std::filesystem::path& entry
-      : std::filesystem::directory_iterator(cur_dir)) {
+  for (const std::filesystem::path& entry :
+       std::filesystem::directory_iterator(cur_dir)) {
     if (std::filesystem::is_regular_file(entry)) {
       /// AssetCategory will be recomputed after
-      unprocessed_assets.emplace_back(entry.string(),
-                                      entry.lexically_relative(root_dir).string(),
-                                      AssetCategory::kUnknown);
+      unprocessed_assets.emplace_back(
+          entry.string(), entry.lexically_relative(root_dir).string(),
+          AssetCategory::kUnknown);
     } else if (std::filesystem::is_directory(entry)) {
       AnalyzeDir(entry, root_dir);
     }
@@ -77,8 +74,9 @@ void AssetsAnalyzer::AnalyzePath(const std::filesystem::path& path) {
   } else if (std::filesystem::is_directory(path)) {
     AnalyzeDir(path, path);
   } else {
-    std::cout << "Error (AssetsInfo): incorrect path, should be file or directory"
-              << std::endl;
+    std::cout
+        << "Error (AssetsInfo): incorrect path, should be file or directory"
+        << std::endl;
   }
 }
 
@@ -115,16 +113,15 @@ void AssetsAnalyzer::SubmitTask(AssetInfo&& new_asset) {
       break;
     case AssetCategory::kAudioMusic:
       [[fallthrough]];
-    default: // ldr, hdr, nmap textures
+    default:  // ldr, hdr, nmap textures
       thread_pool_.PutMultiThreadedTask(std::move(new_asset));
   }
 }
 
 // TODO 0: namespace fs ?
-// TODO 1: sort tasks textures(because all full-threaded) --> audio --> models(all single-threaded and not balances?)
+// TODO 1: sort tasks textures(because all full-threaded) --> audio -->
+// models(all single-threaded and not balances?)
 // TODO 2: replace filenames -->-> LoadActiveAssets
-
-
 
 // TODO: PRECAUTION section
 // what if model has texture which is outside the considered dir and which name
@@ -145,7 +142,9 @@ void AssetsAnalyzer::AddEntry(AssetInfo&& new_asset) {
       break;
   }
   for (const auto& old_asset : processed_assets_) {
-    if (AreAssetsEqual(new_asset, old_asset)) { // TODO: need to process either one or another
+    if (AreAssetsEqual(
+            new_asset,
+            old_asset)) {  // TODO: need to process either one or another
       if (ReplaceIORequest(new_asset)) {
         SubmitTask(std::move(new_asset));
         std::cout << "Processed: " << new_asset.source_path << std::endl;
@@ -171,17 +170,17 @@ void AssetsAnalyzer::AddEntry(AssetInfo&& new_asset) {
 }
 
 bool AssetsAnalyzer::ReplaceIORequest(const AssetInfo& new_asset) {
-  if (force_) return true;
+  if (force_)
+    return true;
   if (all_keep_) {
     return false;
   } else if (all_replace_) {
     return true;
   }
   std::cout << "Do you want to replace "
-            << std::filesystem::path(new_asset.source_path).filename()
-            << " by " << new_asset.source_path
-            << "?\ny(yes), n(no), a(yes for all), 0(no for all))"
-            << std::endl;
+            << std::filesystem::path(new_asset.source_path).filename() << " by "
+            << new_asset.source_path
+            << "?\ny(yes), n(no), a(yes for all), 0(no for all))" << std::endl;
   // "y" means "yes"
   // "n" means "no"
   // "a" means "yes for all"

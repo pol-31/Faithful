@@ -5,12 +5,11 @@
 #include <string>
 #include <vector>
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
-#include <GLFW/glfw3.h>
-#include <glad/gl.h>
+#define GLFW_INCLUDE_NONE
+#include "GLFW/glfw3.h"
+#include "glad/glad.h"
 
 #include <glm/glm.hpp>
-
 
 #include <iostream>
 
@@ -21,16 +20,15 @@ namespace monitor {
 
 void DefaultMonitorCallback(GLFWmonitor* monitor, int event);
 
-} // namespace monitor
-} // namespace details
+}  // namespace monitor
+}  // namespace details
 
 class Monitor {
  public:
   class Mode {
    public:
     bool operator==(const GLFWvidmode* other) {
-      return (other->height == this->height) &&
-             (other->width == this->width) &&
+      return (other->height == this->height) && (other->width == this->width) &&
              (other->refreshRate == this->framerate);
     }
     std::string name = "";
@@ -39,7 +37,8 @@ class Monitor {
     int framerate;
   };
 
-  Monitor() {}
+  Monitor() {
+  }
   Monitor(GLFWmonitor* monitor) {
     monitor_ = monitor;
     InitVideoModes();
@@ -80,9 +79,7 @@ class Monitor {
     glfwSetMonitorUserPointer(monitor_, this);
     glfwSetMonitorCallback(details::monitor::DefaultMonitorCallback);
     // TODO: to MonitorController
-
   }
-
 
   ~Monitor() {
     if (owner_) {
@@ -101,12 +98,14 @@ class Monitor {
   }
 
   std::optional<glm::vec2> Resolution() {
-    if (!connected_) return {};
+    if (!connected_)
+      return {};
     return glm::vec2(mode_->width, mode_->height);
   }
 
   std::optional<glm::vec2> ContentScale() {
-    if (!connected_) return {};
+    if (!connected_)
+      return {};
     float xscale, yscale;
     glfwGetMonitorContentScale(monitor_, &xscale, &yscale);
     return glm::vec2(xscale, yscale);
@@ -122,7 +121,8 @@ class Monitor {
   }
 
   std::optional<glm::vec2> PhysicalSize() {
-    if (!connected_) return {};
+    if (!connected_)
+      return {};
     int width, height;
     glfwGetMonitorPhysicalSize(monitor_, &width, &height);
     return glm::vec2(width, height);
@@ -131,14 +131,16 @@ class Monitor {
   // for virtual position (where multiple screen are accessible)
   // useless function by now
   std::optional<glm::vec2> Position() {
-    if (!connected_) return {};
+    if (!connected_)
+      return {};
     int xpos, ypos;
     glfwGetMonitorPos(monitor_, &xpos, &ypos);
     return glm::vec2(xpos, ypos);
   }
 
   std::optional<glm::vec4> Workarea() {
-    if (!connected_) return {};
+    if (!connected_)
+      return {};
     int xpos, ypos, width, height;
     glfwGetMonitorWorkarea(monitor_, &xpos, &ypos, &width, &height);
     return glm::vec4(xpos, ypos, width, height);
@@ -172,9 +174,8 @@ class Monitor {
     // we don't use info about RGB and refresh rate from GLFWvidmode,
     // so we can take resolution and its conversion to string, for the purpose
     // of using that window's size that is most desired for user
-    const GLFWvidmode *vidmodes = glfwGetVideoModes(monitor_, &count);
+    const GLFWvidmode* vidmodes = glfwGetVideoModes(monitor_, &count);
     for (int i = 0; i < count; ++i) {
-
       // TODO: reserve string size
       modes_ = new std::vector<Mode>();
 
@@ -203,6 +204,6 @@ class Monitor {
   bool owner_ = false;
 };
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_MONITOR_H
+#endif  // FAITHFUL_MONITOR_H

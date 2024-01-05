@@ -1,6 +1,6 @@
 #include "Texture.h"
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -116,7 +116,8 @@ void DefaultTextures::Init() {
   for (const auto& entry : std::filesystem::directory_iterator(dir_path_)) {
     if (entry.is_regular_file()) {
       std::cout << entry.path() << std::endl;
-      ids_[++ids_pos_] = (Image::InitLoad(entry.path().c_str(), ImageType::kTexture));
+      ids_[++ids_pos_] = (Image::InitLoad(entry.path().c_str(),
+ImageType::kTexture));
     }
   }
   initialized_ = true;
@@ -124,9 +125,10 @@ void DefaultTextures::Init() {
 
 bool DefaultTextures::initialized_ = false;
 uint8_t DefaultTextures::ids_pos_ = 0;
-std::array<GLuint, sizeof(uint8_t)> DefaultTextures::ids_ = std::array<GLuint, sizeof(uint8_t)>();
+std::array<GLuint, sizeof(uint8_t)> DefaultTextures::ids_ = std::array<GLuint,
+sizeof(uint8_t)>();
 // precaution: path relative to cmake-build-debug
 std::filesystem::path DefaultTextures::dir_path_ = "../assets/textures";
 */
 
-} // namespace faithful
+}  // namespace faithful

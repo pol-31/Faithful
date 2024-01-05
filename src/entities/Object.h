@@ -22,12 +22,13 @@ namespace faithful {
 
 namespace utility {
 class ShaderProgram;
-} // namespace utility
+}  // namespace utility
 
 class Texture;
 class Sprite;
 
-// TODO (maybe one day...) : NO origin (only functions: rotate/scale RelativeToOrigin)
+// TODO (maybe one day...) : NO origin (only functions: rotate/scale
+// RelativeToOrigin)
 
 // TODO: ctor-s for initially "not drawable"
 // TODO: object 2d skinned/ not skinned, plural / not plural
@@ -73,9 +74,12 @@ class Object {
   unsigned int get_texture() const {
     return texture_id_;
   }
-  void set_texture(const Sprite&) {}
-  void set_texture(const Texture&) {}
-  void set_texture(unsigned int image_id) {}
+  void set_texture(const Sprite&) {
+  }
+  void set_texture(const Texture&) {
+  }
+  void set_texture(unsigned int image_id) {
+  }
 
   void DetectCollision() const;
   void MakeVisible();
@@ -85,12 +89,13 @@ class Object {
 
   /// How it should be used: inherit from Object and
   ///   simply HIDE it by redeclaring (we don't need V-tables)
-  void RunAnimation(int animation_id) {}
+  void RunAnimation(int animation_id) {
+  }
 
  protected:
   Object* collision_ = nullptr;
   unsigned int global_id_;
-  unsigned int local_id_; // + {drawable, collisionable} flags
+  unsigned int local_id_;  // + {drawable, collisionable} flags
   unsigned int texture_id_;
 };
 
@@ -106,34 +111,55 @@ class Object2D : public Object {
   }
 
   // TODO: does the OpenMP has sense
-  glm::vec2 get_position() const {}
-  float get_rotation() const {}
-  glm::vec2 get_scale() const {}
+  glm::vec2 get_position() const {
+  }
+  float get_rotation() const {
+  }
+  glm::vec2 get_scale() const {
+  }
 
-  void TranslateTo(float x, float y) {}
-  void TranslateOn(float x, float y) {}
+  void TranslateTo(float x, float y) {
+  }
+  void TranslateOn(float x, float y) {
+  }
 
-  void RotateTo(float angle) {}
-  void RotateOn(float angle) {}
-  void RotateToRelated(float angle, float origin_x, float origin_y) {}
-  void RotateOnRelated(float angle, float origin_x, float origin_y) {}
+  void RotateTo(float angle) {
+  }
+  void RotateOn(float angle) {
+  }
+  void RotateToRelated(float angle, float origin_x, float origin_y) {
+  }
+  void RotateOnRelated(float angle, float origin_x, float origin_y) {
+  }
 
-  void ScaleTo(float x, float y) {}
-  void ScaleOn(float x, float y) {}
-  void ScaleToRelated(float x, float y, float origin_x, float origin_y) {}
-  void ScaleOnRelated(float x, float y, float origin_x, float origin_y) {}
+  void ScaleTo(float x, float y) {
+  }
+  void ScaleOn(float x, float y) {
+  }
+  void ScaleToRelated(float x, float y, float origin_x, float origin_y) {
+  }
+  void ScaleOnRelated(float x, float y, float origin_x, float origin_y) {
+  }
 
   /// Some syntactic sugar for convenience
-  void TranslateTo(glm::vec2 position) {}
-  void TranslateOn(glm::vec2 position) {}
+  void TranslateTo(glm::vec2 position) {
+  }
+  void TranslateOn(glm::vec2 position) {
+  }
 
-  void RotateToRelated(float angle, glm::vec2 origin_position) {}
-  void RotateOnRelated(float angle, glm::vec2 origin_position) {}
+  void RotateToRelated(float angle, glm::vec2 origin_position) {
+  }
+  void RotateOnRelated(float angle, glm::vec2 origin_position) {
+  }
 
-  void ScaleTo(glm::vec2 size) {}
-  void ScaleOn(glm::vec2 size) {}
-  void ScaleToRelated(glm::vec2 size, glm::vec2 origin_position) {}
-  void ScaleOnRelated(glm::vec2 size, glm::vec2 origin_position) {}
+  void ScaleTo(glm::vec2 size) {
+  }
+  void ScaleOn(glm::vec2 size) {
+  }
+  void ScaleToRelated(glm::vec2 size, glm::vec2 origin_position) {
+  }
+  void ScaleOnRelated(glm::vec2 size, glm::vec2 origin_position) {
+  }
 
  protected:
   int draw_priority_ = -1;
@@ -149,8 +175,10 @@ class Object3D : public Object {
   glm::vec3 get_position() const {
     return {(*transform_)[3].x, (*transform_)[3].y, (*transform_)[3].z};
   }
-  glm::vec3 get_rotation() const {}
-  glm::vec3 get_scale() const {}
+  glm::vec3 get_rotation() const {
+  }
+  glm::vec3 get_scale() const {
+  }
 
   void TranslateTo(float x, float y, float z) {
     (*transform_)[3].x = x;
@@ -161,23 +189,30 @@ class Object3D : public Object {
     *transform_ = glm::translate(*transform_, glm::vec3(x, y, z));
   }
 
-  void RotateTo(float angle, float x, float y, float z) {}
-  void RotateOn(float angle, float x, float y, float z) {
-    *transform_ = glm::rotate(*transform_, glm::radians(angle), glm::vec3(x, y, z));
+  void RotateTo(float angle, float x, float y, float z) {
   }
-  void RotateToRelated(float angle, float x, float y, float z,
-                       float origin_x, float origin_y, float origin_z) {}
-  void RotateOnRelated(float angle, float x, float y, float z,
-                       float origin_x, float origin_y, float origin_z) {}
+  void RotateOn(float angle, float x, float y, float z) {
+    *transform_ =
+        glm::rotate(*transform_, glm::radians(angle), glm::vec3(x, y, z));
+  }
+  void RotateToRelated(float angle, float x, float y, float z, float origin_x,
+                       float origin_y, float origin_z) {
+  }
+  void RotateOnRelated(float angle, float x, float y, float z, float origin_x,
+                       float origin_y, float origin_z) {
+  }
 
-  void ScaleTo(float x, float y, float z) {}
+  void ScaleTo(float x, float y, float z) {
+  }
   void ScaleOn(float x, float y, float z) {
     *transform_ = glm::scale(*transform_, glm::vec3(x, y, z));
   }
-  void ScaleToRelated(float x, float y, float z,
-                      float origin_x, float origin_y, float origin_z) {}
-  void ScaleOnRelated(float x, float y, float z,
-                      float origin_x, float origin_y, float origin_z) {}
+  void ScaleToRelated(float x, float y, float z, float origin_x, float origin_y,
+                      float origin_z) {
+  }
+  void ScaleOnRelated(float x, float y, float z, float origin_x, float origin_y,
+                      float origin_z) {
+  }
 
   /// Some syntactic sugar for convenience
   void TranslateTo(glm::vec3 position) {
@@ -187,26 +222,34 @@ class Object3D : public Object {
     TranslateOn(position.x, position.y, position.z);
   }
 
-  void RotateTo(float angle, glm::vec3 rotation) {}
-  void RotateOn(float angle, glm::vec3 rotation) {}
+  void RotateTo(float angle, glm::vec3 rotation) {
+  }
+  void RotateOn(float angle, glm::vec3 rotation) {
+  }
   void RotateToRelated(float angle, glm::vec3 rotation,
-                       glm::vec3 origin_position) {}
+                       glm::vec3 origin_position) {
+  }
   void RotateOnRelated(float angle, glm::vec3 rotation,
-                       glm::vec3 origin_position) {}
+                       glm::vec3 origin_position) {
+  }
 
-  void ScaleTo(glm::vec3 size) {}
-  void ScaleOn(glm::vec3 size) {}
-  void ScaleToRelated(glm::vec3 size, glm::vec3 origin_position) {}
-  void ScaleOnRelated(glm::vec3 size, glm::vec3 origin_position) {}
+  void ScaleTo(glm::vec3 size) {
+  }
+  void ScaleOn(glm::vec3 size) {
+  }
+  void ScaleToRelated(glm::vec3 size, glm::vec3 origin_position) {
+  }
+  void ScaleOnRelated(glm::vec3 size, glm::vec3 origin_position) {
+  }
 
  protected:
   glm::mat4* transform_ = nullptr;
 };
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////       IMPLEMENTATION       ////////////////////////////////////////
+///////////////////////////////       IMPLEMENTATION
+///////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -239,11 +282,12 @@ class ObjectImplBase {
   unsigned int get_ebo() const {
     return ebo_;
   }
+
  protected:
   static unsigned int NewGlobalId() {
-static int skinless_mesh_size;
-static int skinned_mesh_size;
-static int metadata_size;
+    static int skinless_mesh_size;
+    static int skinned_mesh_size;
+    static int metadata_size;
     return ++last_global_id_;
   }
 
@@ -263,7 +307,7 @@ class SingleShaderObjectImplBase : public ObjectImplBase {
   SingleShaderObjectImplBase() = default;
 
  protected:
-  mutable utility::ShaderProgram *shader_program_ = nullptr;
+  mutable utility::ShaderProgram* shader_program_ = nullptr;
 };
 
 class TrivialObjectImplBase : public SingleShaderObjectImplBase {
@@ -328,12 +372,10 @@ class MultimeshObject3DImpl : public SingleShaderObjectImplBase {
 
   // TODO: depends on _static_load_ bool
   void Configurate1(unsigned int num);
-  void Configurate2(utility::Span<Mesh*> meshes,
-                    ObjectRenderCategory category);
+  void Configurate2(utility::Span<Mesh*> meshes, ObjectRenderCategory category);
 
   std::tuple<glm::mat4*, int, int> CreateInstance();
   void Draw(ObjectRenderPhase phase) const;
-
 
   void MakeDrawable(unsigned int local_id);
   void MakeUndrawable(unsigned int local_id);
@@ -343,7 +385,7 @@ class MultimeshObject3DImpl : public SingleShaderObjectImplBase {
  protected:
   std::map<unsigned int, glm::mat4*> drawable_instances_transform_;
   std::map<unsigned int, glm::mat4*> undrawable_instances_transform_;
-  mutable utility::Span<Mesh*> meshes_; // TODO: NOT-mutable
+  mutable utility::Span<Mesh*> meshes_;  // TODO: NOT-mutable
 };
 
 class SkinnedObject3DImpl : public ObjectImplBase {
@@ -352,8 +394,7 @@ class SkinnedObject3DImpl : public ObjectImplBase {
 
   // TODO: depends on _static_load_ bool
   void Configurate1(unsigned int num);
-  void Configurate2(utility::Span<Mesh*> meshes,
-                    ObjectRenderCategory category,
+  void Configurate2(utility::Span<Mesh*> meshes, ObjectRenderCategory category,
                     unsigned int bone_num,
                     utility::Span<AnimationNode*> animation_nodes,
                     glm::mat4 global_inverse_transform);
@@ -374,8 +415,10 @@ class SkinnedObject3DImpl : public ObjectImplBase {
 
  protected:
   friend class RunningAnimation;
-  //////////////////////////////////////   CAUTION   /////////////////////////////////////////
-  // TODO: for each phase you should add new data into vector !!!!!!<-----------------------
+  //////////////////////////////////////   CAUTION
+  ////////////////////////////////////////////
+  // TODO: for each phase you should add new data into vector
+  // !!!!!!<-----------------------
   struct InstanceInfo {
     glm::mat4* transform;
     utility::ShaderProgram* shader_program;
@@ -387,7 +430,8 @@ class SkinnedObject3DImpl : public ObjectImplBase {
 
   mutable utility::Span<Mesh*> meshes_;
   utility::Span<AnimationNode*> animation_nodes_;
-  glm::mat4 global_inverse_transform_ = glm::mat4(1.0f); // TODO: not necessary (?)
+  glm::mat4 global_inverse_transform_ =
+      glm::mat4(1.0f);  // TODO: not necessary (?)
   unsigned int bone_num_ = 0;
 
   std::forward_list<RunningAnimation> animated_objects_;
@@ -400,7 +444,6 @@ class SkinnedObject3DImpl : public ObjectImplBase {
   static unsigned int last_ubo_bind_point_;
 };
 
-
 /// --------------------------------
 /// --------NOT_IMPLEMENTED_________
 /// ________________________________
@@ -410,6 +453,6 @@ class SkinlessAnimatedObject2DImpl {
   // rather rapid sprite switching
 };
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_OBJECT_H
+#endif  // FAITHFUL_OBJECT_H

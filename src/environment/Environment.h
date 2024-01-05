@@ -13,7 +13,6 @@ class Floor2D {
   };
 
   Floor2D(DefaultType mode);
-
 };
 
 class Floor3D : public Cube {
@@ -35,6 +34,6 @@ class Wallpaper {
   Wallpaper(DefaultType mode);
 };
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_ENVIRONMENT_H
+#endif  // FAITHFUL_ENVIRONMENT_H

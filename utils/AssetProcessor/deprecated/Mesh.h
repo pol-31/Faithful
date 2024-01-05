@@ -1,7 +1,7 @@
 #ifndef FAITHFUL_MESH_H
 #define FAITHFUL_MESH_H
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -10,25 +10,23 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <assimp/scene.h>
 
-
 #include <string>
 #include <vector>
 
 #include "Image.h"
-
 
 namespace faithful {
 
 class ModelLoader;
 
 struct Material {
-  GLuint tex_albedo_ = 1; // TOOD: set on default (grey?)
-  GLuint tex_roughness_ = 0; // TOOD: set on default (mid)
-  GLuint tex_metallic_ = 0; // TOOD: set on default (mid)
+  GLuint tex_albedo_ = 1;     // TOOD: set on default (grey?)
+  GLuint tex_roughness_ = 0;  // TOOD: set on default (mid)
+  GLuint tex_metallic_ = 0;   // TOOD: set on default (mid)
   GLuint tex_normal_ = 0;
   GLuint tex_height_ = 0;
-  GLuint padding1_for_further_tex_ = 0; // AO?
-  GLuint padding2_for_further_tex_ = 0; // Emission?
+  GLuint padding1_for_further_tex_ = 0;  // AO?
+  GLuint padding2_for_further_tex_ = 0;  // Emission?
 };
 
 struct UnprocessedMesh {
@@ -54,11 +52,12 @@ class Mesh {
   Mesh& operator=(Mesh&&) = default;
 
   // indices and vertices as r-value Span<T>
-  Mesh(std::vector<Vertex> &&vertices, std::vector<unsigned int> &&indices,
+  Mesh(std::vector<Vertex>&& vertices, std::vector<unsigned int>&& indices,
        Material material, GLuint vao, GLuint vbo, GLuint ebo);
 
   // vertices/indices as r-value
-  void Setup(std::vector<Vertex> vertices, std::vector<unsigned int> indices, GLuint vao, GLuint vbo, GLuint ebo);
+  void Setup(std::vector<Vertex> vertices, std::vector<unsigned int> indices,
+             GLuint vao, GLuint vbo, GLuint ebo);
 
   int get_index_num() {
     return index_num_;
@@ -90,18 +89,17 @@ class SkinnedMesh : public Mesh {
   SkinnedMesh& operator=(const SkinnedMesh&) = default;
   SkinnedMesh& operator=(SkinnedMesh&&) = default;
 
-
   // indices and vertices as r-value Span<T>
-  SkinnedMesh(std::vector<SkinnedVertex> &&vertices, std::vector<unsigned int> &&indices,
-    Material material, GLuint vao, GLuint vbo, GLuint ebo);
+  SkinnedMesh(std::vector<SkinnedVertex>&& vertices,
+              std::vector<unsigned int>&& indices, Material material,
+              GLuint vao, GLuint vbo, GLuint ebo);
 
   // vertices/indices as r-value
   void Setup(std::vector<SkinnedVertex> vertices,
-             std::vector<unsigned int> indices,
-             GLuint vao, GLuint vbo, GLuint ebo);
-
+             std::vector<unsigned int> indices, GLuint vao, GLuint vbo,
+             GLuint ebo);
 };
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_MESH_H
+#endif  // FAITHFUL_MESH_H

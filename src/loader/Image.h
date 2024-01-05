@@ -4,7 +4,7 @@
 #include <map>
 #include <set>
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 #include <glm/glm.hpp>
@@ -13,7 +13,6 @@
 #include "LoadPathManager.h"
 
 namespace faithful {
-
 
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
@@ -39,7 +38,8 @@ enum class ImageType {
 };
 
 // TODO:
-// TODO: comments (COMMENTS !!!!!!!!!! <<<--------------------------------------------------)
+// TODO: comments (COMMENTS !!!!!!!!!!
+<<<--------------------------------------------------)
 // TODO:
 
 namespace details {
@@ -171,8 +171,8 @@ class Image {
   ImageType type_ = ImageType::kTexture;
 
   // if (data.Empty()) - id the same as is image and we don't need copy
-  // BUT if we want to change image (resize/rotate/custom__glTexImage), then we making a copy
-  utility::Span<unsigned char> data_;
+  // BUT if we want to change image (resize/rotate/custom__glTexImage), then we
+making a copy utility::Span<unsigned char> data_;
 
   // used in derived classes: Texture, Sprite...
   GLuint id_ = 0;
@@ -185,7 +185,6 @@ struct ImageIdComparator {
 };
 */
 
+}  // namespace faithful
 
-} // namespace faithful
-
-#endif // FAITHFUL_IMAGE_H
+#endif  // FAITHFUL_IMAGE_H

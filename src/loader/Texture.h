@@ -1,7 +1,7 @@
 #ifndef FAITHFUL_TEXTURE_H
 #define FAITHFUL_TEXTURE_H
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -11,7 +11,6 @@
 #include <filesystem>
 
 namespace faithful {
-
 
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
@@ -151,6 +150,6 @@ class DefaultTextures {
 
 */
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_TEXTURE_H
+#endif  // FAITHFUL_TEXTURE_H

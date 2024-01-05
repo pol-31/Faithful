@@ -8,17 +8,16 @@
 #include "Mesh.h"
 #include "AnimationNode.h"
 
-#define AI_CONFIG_PP_RVC_FLAGS aiComponent_COLORS | \
-                               aiComponent_LIGHTS | \
-                               aiComponent_CAMERAS
+#define AI_CONFIG_PP_RVC_FLAGS \
+  aiComponent_COLORS | aiComponent_LIGHTS | aiComponent_CAMERAS
 
 #define AI_CONFIG_PP_LBW_MAX_WEIGHTS 4
 
 namespace faithful {
 
 /// returns: transformation matrix, global_id, local_id
-std::tuple<glm::mat4*, unsigned int, unsigned int>
-    ModelSupervisor::Load(const char* path, bool static_load) {
+std::tuple<glm::mat4*, unsigned int, unsigned int> ModelSupervisor::Load(
+    const char* path, bool static_load) {
   unsigned int* found_model = details::model::ModelManager::Find(path);
   if (found_model) {
     std::cout << " MODEL (global_id_) REUSED" << std::endl;
@@ -34,8 +33,8 @@ std::tuple<glm::mat4*, unsigned int, unsigned int>
   } else {
     /*
      TODO 4: glEnable(GL_CULLING)
-     TODO 6: Assimp logging? (aiProcess_ValudateDataStructure / aiGetErrorString())
-             {scene & material(texture) loading}
+     TODO 6: Assimp logging? (aiProcess_ValudateDataStructure /
+     aiGetErrorString()) {scene & material(texture) loading}
      TODO 9: bug no_response
      TODO 10: bug no 3d_object renderings
      */
@@ -45,28 +44,27 @@ std::tuple<glm::mat4*, unsigned int, unsigned int>
 
     std::cout << "START " << glfwGetTime() << std::flush;
 
-    const aiScene *scene = importer_.ReadFile(
-      path,
-      aiProcess_Triangulate |
-      aiProcess_GenUVCoords |
-      aiProcess_GenSmoothNormals |
-      aiProcess_CalcTangentSpace |
-      aiProcess_FlipUVs |
-      aiProcess_LimitBoneWeights |
-      aiProcess_RemoveComponent |
-      aiProcess_FindInvalidData
-      // TODO: aiProcess_JoinIdenticalVertices is senseless because of aiProcess_GenSmoothNormals
+    const aiScene* scene = importer_.ReadFile(
+        path, aiProcess_Triangulate | aiProcess_GenUVCoords |
+                  aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace |
+                  aiProcess_FlipUVs | aiProcess_LimitBoneWeights |
+                  aiProcess_RemoveComponent | aiProcess_FindInvalidData
+        // TODO: aiProcess_JoinIdenticalVertices is senseless because of
+        // aiProcess_GenSmoothNormals
     );
 
     std::cout << "\nEND " << glfwGetTime() << std::flush << "\n";
 
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-      std::cout /*<< Log(LogType::kFatal)*/ << "ERROR::ASSIMP:: " << importer_.GetErrorString();
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
+        !scene->mRootNode) {
+      std::cout /*<< Log(LogType::kFatal)*/ << "ERROR::ASSIMP:: "
+                                            << importer_.GetErrorString();
       return {nullptr, 0, 0};
     }
 
     std::size_t meshes_num = scene->mNumMeshes;
-    if (meshes_num == 0) return {nullptr, 0, 0}; // no work
+    if (meshes_num == 0)
+      return {nullptr, 0, 0};  // no work
 
     std::size_t path_size = 0;
     for (auto i = path; *i != '\0'; ++i) {
@@ -81,13 +79,15 @@ std::tuple<glm::mat4*, unsigned int, unsigned int>
     if (scene->mNumAnimations == 0) {
       skinless_objects_.push_back(loader_.LoadSkinless(scene));
       global_id = skinless_objects_.back()->get_global_id();
-      details::model::ModelManager::loaded_files_->insert({path_copy, global_id});
+      details::model::ModelManager::loaded_files_->insert(
+          {path_copy, global_id});
       importer_.FreeScene();
       return skinless_objects_.back()->CreateInstance();
     } else {
       skinned_objects_.push_back(loader_.LoadSkinned(scene));
       global_id = skinned_objects_.back()->get_global_id();
-      details::model::ModelManager::loaded_files_->insert({path_copy, global_id});
+      details::model::ModelManager::loaded_files_->insert(
+          {path_copy, global_id});
       importer_.FreeScene();
       return skinned_objects_.back()->CreateInstance();
     }
@@ -101,8 +101,8 @@ std::tuple<glm::mat4*, unsigned int, unsigned int>
 //      utility::Span with enough space)
 
 /// should be called for each animation
-AnimationNode* ModelLoader::GetInterpolatedAnimationKey(const aiAnimation* animation,
-                                                        const aiNode* node) {
+AnimationNode* ModelLoader::GetInterpolatedAnimationKey(
+    const aiAnimation* animation, const aiNode* node) {
   aiString node_name(node->mName.data);
   glm::mat4 node_transform(AssimpMatrixToGlm(node->mTransformation));
   const aiNodeAnim* ai_node_anim = GetNodeAnimation(animation, node_name);
@@ -122,10 +122,10 @@ AnimationNode* ModelLoader::GetInterpolatedAnimationKey(const aiAnimation* anima
     bone_id = BoneIdByName(node_name);
     bone_offset_matrix = founded_bone->second.offset_matrix;
   } else if (!(has_animation || is_bone)) {
-    bone_id = bones_->size() - 1; // dummy bone (not used)
+    bone_id = bones_->size() - 1;  // dummy bone (not used)
     bone_offset_matrix = glm::mat4(1.0f);
   } else if (has_animation) {
-    bone_id = bones_->size() - 1; // dummy bone (not used)
+    bone_id = bones_->size() - 1;  // dummy bone (not used)
     bone_offset_matrix = glm::mat4(1.0f);
   } else /** is_bone == true */ {
     bone_id = BoneIdByName(node_name);
@@ -133,21 +133,26 @@ AnimationNode* ModelLoader::GetInterpolatedAnimationKey(const aiAnimation* anima
   }
 
   int children_num = 0;
-  for (int i = 0 ; i < node->mNumChildren ; ++i) {
-//    if (important_nodes_->find(&*node->mChildren[i]) != important_nodes_->end())
-      ++children_num;
+  for (int i = 0; i < node->mNumChildren; ++i) {
+    //    if (important_nodes_->find(&*node->mChildren[i]) !=
+    //    important_nodes_->end())
+    ++children_num;
   }
-  anim_node = new AnimationNode(ai_node_anim, bone_offset_matrix, node_transform, bone_id, children_num);
+  anim_node = new AnimationNode(ai_node_anim, bone_offset_matrix,
+                                node_transform, bone_id, children_num);
   std::size_t cur_pos = 0;
-  for (int i = 0 ; i < node->mNumChildren ; ++i) {
-//    if (important_nodes_->find(&*node->mChildren[i]) != important_nodes_->end()) {
-    anim_node->InsertNode(cur_pos++, GetInterpolatedAnimationKey(animation, node->mChildren[i]));
-//    }
+  for (int i = 0; i < node->mNumChildren; ++i) {
+    //    if (important_nodes_->find(&*node->mChildren[i]) !=
+    //    important_nodes_->end()) {
+    anim_node->InsertNode(
+        cur_pos++, GetInterpolatedAnimationKey(animation, node->mChildren[i]));
+    //    }
   }
   return anim_node;
 }
 
-bool ModelLoader::NodeImportanceCheck(const aiNode* node, const aiScene* scene) {
+bool ModelLoader::NodeImportanceCheck(const aiNode* node,
+                                      const aiScene* scene) {
   bool important = false;
   for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
     important |= (scene->mMeshes[node->mMeshes[i]]->mNumBones != 0);
@@ -157,15 +162,16 @@ bool ModelLoader::NodeImportanceCheck(const aiNode* node, const aiScene* scene) 
   }
   if (important) {
     important_nodes_->insert(&*node);
-    //std::cout << "Important +1" << std::endl;
+    // std::cout << "Important +1" << std::endl;
   } else {
-    //std::cout << "NOT important" << std::endl;
+    // std::cout << "NOT important" << std::endl;
   }
   return important;
 }
 
-const aiNodeAnim* ModelLoader::GetNodeAnimation(const aiAnimation* animation, const aiString& node_name) {
-  for (uint i = 0 ; i < animation->mNumChannels ; i++) {
+const aiNodeAnim* ModelLoader::GetNodeAnimation(const aiAnimation* animation,
+                                                const aiString& node_name) {
+  for (uint i = 0; i < animation->mNumChannels; i++) {
     const aiNodeAnim* node_anim = animation->mChannels[i];
     // TODO: give each node ID so now we could compare by id
     //    OR compare by pointer
@@ -175,7 +181,6 @@ const aiNodeAnim* ModelLoader::GetNodeAnimation(const aiAnimation* animation, co
   }
   return nullptr;
 }
-
 
 MultimeshObject3DImpl* ModelLoader::LoadSkinless(const aiScene* scene) {
   std::size_t meshes_num = scene->mNumMeshes;
@@ -214,7 +219,8 @@ SkinnedObject3DImpl* ModelLoader::LoadSkinned(const aiScene* scene) {
 
   ProcessNode(scene->mRootNode, scene);
   InitCategory();
-  global_inverse_transform_ = glm::inverse(AssimpMatrixToGlm(scene->mRootNode->mTransformation));
+  global_inverse_transform_ =
+      glm::inverse(AssimpMatrixToGlm(scene->mRootNode->mTransformation));
 
   NodeImportanceCheck(scene->mRootNode, scene);
 
@@ -232,17 +238,21 @@ SkinnedObject3DImpl* ModelLoader::LoadSkinned(const aiScene* scene) {
     std::cout << "There's no bones" << std::endl;
     // TODO: need optimization
   }
-  /// dummy bone for nodes which don't have nodes but have animations and bones in children nodes
-  bones_->insert({aiString{}, {glm::mat4(1.0f), bones_->size()}}); // TODO: emplace?
-  assert(bones_->size() < 200); // TODO: max amount of bones = 200
+  /// dummy bone for nodes which don't have nodes but have animations and bones
+  /// in children nodes
+  bones_->insert(
+      {aiString{}, {glm::mat4(1.0f), bones_->size()}});  // TODO: emplace?
+  assert(bones_->size() < 200);  // TODO: max amount of bones = 200
 
   animation_nodes_ = utility::Span<AnimationNode*>(scene->mNumAnimations);
   // TODO: may be parallelized
   for (int i = 0; i < scene->mNumAnimations; ++i)
-    animation_nodes_[i] = GetInterpolatedAnimationKey(scene->mAnimations[i], scene->mRootNode);
+    animation_nodes_[i] =
+        GetInterpolatedAnimationKey(scene->mAnimations[i], scene->mRootNode);
 
-  new_object->Configurate2(std::move(processed_meshes_), category_, bones_->size(),
-                           std::move(animation_nodes_), global_inverse_transform_);
+  new_object->Configurate2(std::move(processed_meshes_), category_,
+                           bones_->size(), std::move(animation_nodes_),
+                           global_inverse_transform_);
   return new_object;
 }
 
@@ -261,9 +271,9 @@ void ModelLoader::InitCategory() {
     category_ = ObjectRenderCategory::kHeightMap;
 }
 
-void ModelLoader::ProcessNode(const aiNode *node, const aiScene *scene) {
+void ModelLoader::ProcessNode(const aiNode* node, const aiScene* scene) {
   for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
-    const aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
+    const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
     Material mesh_material = InitMeshMaterials(scene, mesh);
     unprocessed_meshes_[meshes_cur_id_] = {mesh, mesh_material, meshes_cur_id_};
     ++meshes_cur_id_;
@@ -300,7 +310,8 @@ struct Vertex {
 // Custom hash function for unordered_map to check vertex equality
 struct VertexHash {
     std::size_t operator()(const Vertex& v) const {
-        return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z);
+        return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^
+std::hash<float>()(v.z);
     }
 };
 
@@ -322,8 +333,8 @@ void manualVertexDuplication(aiMesh* mesh) {
             // Check if the vertex is already in the map
             auto it = vertexMap.find(originalVertex);
             if (it == vertexMap.end()) {
-                unsigned int newIndex = static_cast<unsigned int>(duplicatedVertices.size());
-                vertexMap[originalVertex] = newIndex;
+                unsigned int newIndex = static_cast<unsigned
+int>(duplicatedVertices.size()); vertexMap[originalVertex] = newIndex;
                 duplicatedVertices.push_back(originalVertex);
             }
         }
@@ -335,8 +346,10 @@ void manualVertexDuplication(aiMesh* mesh) {
     mesh->mNormals = new aiVector3D[mesh->mNumVertices];
 
     for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
-        mesh->mVertices[i] = aiVector3D(duplicatedVertices[i].x, duplicatedVertices[i].y, duplicatedVertices[i].z);
-        mesh->mNormals[i] = aiVector3D(duplicatedVertices[i].nx, duplicatedVertices[i].ny, duplicatedVertices[i].nz);
+        mesh->mVertices[i] = aiVector3D(duplicatedVertices[i].x,
+duplicatedVertices[i].y, duplicatedVertices[i].z); mesh->mNormals[i] =
+aiVector3D(duplicatedVertices[i].nx, duplicatedVertices[i].ny,
+duplicatedVertices[i].nz);
     }
 }
 
@@ -345,9 +358,7 @@ void manualVertexDuplication(aiMesh* mesh) {
  *
  * */
 
-
-
-Mesh* ModelLoader::ProcessSkinlessMesh(const UnprocessedMesh *mesh) {
+Mesh* ModelLoader::ProcessSkinlessMesh(const UnprocessedMesh* mesh) {
   const aiMesh* ai_mesh = mesh->mesh;
   // TODO: NOT std::vector, BUT utility::Span
   std::vector<Mesh::Vertex> vertices;
@@ -356,12 +367,16 @@ Mesh* ModelLoader::ProcessSkinlessMesh(const UnprocessedMesh *mesh) {
 
   for (unsigned int i = 0; i < ai_mesh->mNumVertices; ++i) {
     Mesh::Vertex vertex;
-    vertex.position = {ai_mesh->mVertices[i].x, ai_mesh->mVertices[i].y, ai_mesh->mVertices[i].z};
-    //vertex.normal = {ai_mesh->mNormals[i].x, ai_mesh->mNormals[i].y, ai_mesh->mNormals[i].z};
-    //vertex.tangent = {ai_mesh->mTangents[i].x, ai_mesh->mTangents[i].y, ai_mesh->mTangents[i].z};
-    //vertex.bitangent = {ai_mesh->mBitangents[i].x, ai_mesh->mBitangents[i].y, ai_mesh->mBitangents[i].z};
+    vertex.position = {ai_mesh->mVertices[i].x, ai_mesh->mVertices[i].y,
+                       ai_mesh->mVertices[i].z};
+    // vertex.normal = {ai_mesh->mNormals[i].x, ai_mesh->mNormals[i].y,
+    // ai_mesh->mNormals[i].z}; vertex.tangent = {ai_mesh->mTangents[i].x,
+    // ai_mesh->mTangents[i].y, ai_mesh->mTangents[i].z}; vertex.bitangent =
+    // {ai_mesh->mBitangents[i].x, ai_mesh->mBitangents[i].y,
+    // ai_mesh->mBitangents[i].z};
     if (ai_mesh->mTextureCoords[0]) {
-      vertex.tex_coords = {ai_mesh->mTextureCoords[0][i].x, ai_mesh->mTextureCoords[0][i].y};
+      vertex.tex_coords = {ai_mesh->mTextureCoords[0][i].x,
+                           ai_mesh->mTextureCoords[0][i].y};
     } else {
       vertex.tex_coords = {0.0f, 0.0f};
     }
@@ -370,10 +385,11 @@ Mesh* ModelLoader::ProcessSkinlessMesh(const UnprocessedMesh *mesh) {
   InitMeshIndices(ai_mesh, indices);
 
   return new Mesh(std::move(vertices), std::move(indices), mesh->material,
-                  cur_vao_+mesh->id, cur_vbo_+mesh->id, cur_ebo_+mesh->id);
+                  cur_vao_ + mesh->id, cur_vbo_ + mesh->id,
+                  cur_ebo_ + mesh->id);
 }
 
-SkinnedMesh* ModelLoader::ProcessSkinnedMesh(const UnprocessedMesh *mesh) {
+SkinnedMesh* ModelLoader::ProcessSkinnedMesh(const UnprocessedMesh* mesh) {
   const aiMesh* ai_mesh = mesh->mesh;
   // TODO: NOT std::vector, BUT utility::Span
   std::vector<SkinnedMesh::SkinnedVertex> vertices;
@@ -383,20 +399,26 @@ SkinnedMesh* ModelLoader::ProcessSkinnedMesh(const UnprocessedMesh *mesh) {
 
   for (int i = 0; i < ai_mesh->mNumBones; ++i) {
     aiBone* bone = ai_mesh->mBones[i];
-    bones_->insert({bone->mName, {AssimpMatrixToGlm(bone->mOffsetMatrix), bones_->size()}}); // TODO: emplace?
-    // TODO: bones_->try_emplace(bone->mName, AssimpMatrixToGlm(bone->mOffsetMatrix), bones_->size());
-    assert(bones_->size() < 200); // TODO: max amount of bones = 200
+    bones_->insert({bone->mName,
+                    {AssimpMatrixToGlm(bone->mOffsetMatrix),
+                     bones_->size()}});  // TODO: emplace?
+    // TODO: bones_->try_emplace(bone->mName,
+    // AssimpMatrixToGlm(bone->mOffsetMatrix), bones_->size());
+    assert(bones_->size() < 200);  // TODO: max amount of bones = 200
     for (int j = 0; j < bone->mNumWeights; ++j)
       vertex_bone_info[bone->mWeights[j].mVertexId].AddBone(
-        BoneIdByName(bone->mName), bone->mWeights[j].mWeight);
+          BoneIdByName(bone->mName), bone->mWeights[j].mWeight);
   }
 
   for (unsigned int i = 0; i < ai_mesh->mNumVertices; ++i) {
     SkinnedMesh::SkinnedVertex vertex;
-    vertex.position = {ai_mesh->mVertices[i].x, ai_mesh->mVertices[i].y, ai_mesh->mVertices[i].z};
-    vertex.normal = {ai_mesh->mNormals[i].x, ai_mesh->mNormals[i].y, ai_mesh->mNormals[i].z};
-    //vertex.tangent = {ai_mesh->mTangents[i].x, ai_mesh->mTangents[i].y, ai_mesh->mTangents[i].z};
-    //vertex.bitangent = {ai_mesh->mBitangents[i].x, ai_mesh->mBitangents[i].y, ai_mesh->mBitangents[i].z};
+    vertex.position = {ai_mesh->mVertices[i].x, ai_mesh->mVertices[i].y,
+                       ai_mesh->mVertices[i].z};
+    vertex.normal = {ai_mesh->mNormals[i].x, ai_mesh->mNormals[i].y,
+                     ai_mesh->mNormals[i].z};
+    // vertex.tangent = {ai_mesh->mTangents[i].x, ai_mesh->mTangents[i].y,
+    // ai_mesh->mTangents[i].z}; vertex.bitangent = {ai_mesh->mBitangents[i].x,
+    // ai_mesh->mBitangents[i].y, ai_mesh->mBitangents[i].z};
     for (int j = 0; j < 4; ++j) {
       vertex.bone_ids[j] = vertex_bone_info[i].bone_info[j].id;
       vertex.bone_weights[j] = vertex_bone_info[i].bone_info[j].weight;
@@ -404,18 +426,21 @@ SkinnedMesh* ModelLoader::ProcessSkinnedMesh(const UnprocessedMesh *mesh) {
     if (ai_mesh->mTextureCoords[0]) {
       // TODO: 1) compare with nullptr;
       //       2) other way to check existing of teture coords for model
-      vertex.tex_coords = {ai_mesh->mTextureCoords[0][i].x, ai_mesh->mTextureCoords[0][i].y};
+      vertex.tex_coords = {ai_mesh->mTextureCoords[0][i].x,
+                           ai_mesh->mTextureCoords[0][i].y};
     } else {
       vertex.tex_coords = {0.0f, 0.0f};
     }
     vertices.push_back(vertex);
   }
   InitMeshIndices(ai_mesh, indices);
-  return new SkinnedMesh(std::move(vertices), std::move(indices), mesh->material,
-                         cur_vao_+mesh->id, cur_vbo_+mesh->id, cur_ebo_+mesh->id);
+  return new SkinnedMesh(std::move(vertices), std::move(indices),
+                         mesh->material, cur_vao_ + mesh->id,
+                         cur_vbo_ + mesh->id, cur_ebo_ + mesh->id);
 }
 
-void ModelLoader::InitMeshIndices(const aiMesh *mesh, std::vector<unsigned int>& indices) {
+void ModelLoader::InitMeshIndices(const aiMesh* mesh,
+                                  std::vector<unsigned int>& indices) {
   for (int i = 0; i < mesh->mNumFaces; ++i) {
     const aiFace& face = mesh->mFaces[i];
     for (int j = 0; j < face.mNumIndices; ++j)
@@ -425,8 +450,9 @@ void ModelLoader::InitMeshIndices(const aiMesh *mesh, std::vector<unsigned int>&
 // TODO: int / unsigned int / std::size_t
 
 /// Currently there's no aiTextureType_AMBIENT_OCCLUSION
-Material ModelLoader::InitMeshMaterials(const aiScene *scene, const aiMesh *mesh) {
-  aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+Material ModelLoader::InitMeshMaterials(const aiScene* scene,
+                                        const aiMesh* mesh) {
+  aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
   Material mesh_material;
   // only first texture of certain type from aiMaterial
   mesh_material.tex_albedo_ = LoadTexture(material, aiTextureType_BASE_COLOR);
@@ -437,9 +463,11 @@ Material ModelLoader::InitMeshMaterials(const aiScene *scene, const aiMesh *mesh
   if (mesh_material.tex_metallic_ == 0)
     mesh_material.tex_metallic_ = LoadTexture(material, aiTextureType_SPECULAR);
 
-  mesh_material.tex_roughness_ = LoadTexture(material, aiTextureType_DIFFUSE_ROUGHNESS);
+  mesh_material.tex_roughness_ =
+      LoadTexture(material, aiTextureType_DIFFUSE_ROUGHNESS);
   if (mesh_material.tex_roughness_ == 0)
-    mesh_material.tex_roughness_ = LoadTexture(material, aiTextureType_SPECULAR);
+    mesh_material.tex_roughness_ =
+        LoadTexture(material, aiTextureType_SPECULAR);
 
   mesh_material.tex_normal_ = LoadTexture(material, aiTextureType_NORMALS);
   mesh_material.tex_height_ = LoadTexture(material, aiTextureType_HEIGHT);
@@ -447,12 +475,12 @@ Material ModelLoader::InitMeshMaterials(const aiScene *scene, const aiMesh *mesh
   return mesh_material;
 }
 
-GLuint ModelLoader::LoadTexture(aiMaterial *mat, aiTextureType type) {
+GLuint ModelLoader::LoadTexture(aiMaterial* mat, aiTextureType type) {
   aiString str;
   if (mat->GetTexture(type, 0, &str) == AI_FAILURE) {
     return 0;
   }
-  //std::cout << "type " << type << std::endl;
+  // std::cout << "type " << type << std::endl;
   std::string rel_path(path_);
   rel_path = rel_path.substr(0, rel_path.find_last_of('/'));
   rel_path += '/';
@@ -484,14 +512,11 @@ glm::mat4 AssimpMatrixToGlm(const aiMatrix4x4& aiMatrix) {
 }
 
 void ModelSupervisor::Draw(ObjectRenderPhase phase) const {
-  for (auto obj : skinless_objects_)
-    obj->Draw(phase);
-  for (auto obj : skinned_objects_)
-    obj->Draw(phase);
+  for (auto obj : skinless_objects_) obj->Draw(phase);
+  for (auto obj : skinned_objects_) obj->Draw(phase);
 }
 void ModelSupervisor::RunAnimation(unsigned int global_id,
-                                   unsigned int local_id,
-                                   unsigned int anim_id,
+                                   unsigned int local_id, unsigned int anim_id,
                                    bool repeat) {
   for (auto obj : skinned_objects_) {
     if (obj->get_global_id() == global_id)
@@ -500,8 +525,7 @@ void ModelSupervisor::RunAnimation(unsigned int global_id,
 }
 
 void ModelSupervisor::Update(double framerate) {
-  for (auto obj : skinned_objects_)
-    obj->Update(framerate);
+  for (auto obj : skinned_objects_) obj->Update(framerate);
 }
 
-} // namespace faithful
+}  // namespace faithful

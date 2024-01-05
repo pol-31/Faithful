@@ -92,7 +92,6 @@ class CubeMap {
 
  private:
   void DefaultInit(/* bool add_texture */) {
-
     DefaultCubeMap::Init();
     vao_ = DefaultCubeMap::vao_;
     vbo_ = DefaultCubeMap::vbo_;
@@ -127,9 +126,9 @@ class CubeMap {
   GLuint vao_ = 0;
   GLuint vbo_ = 0;
   GLuint texture_id_ = 0;
-  utility::ShaderProgram *shader_program_ = nullptr;
+  utility::ShaderProgram* shader_program_ = nullptr;
 };
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_CUBEMAP_H
+#endif  // FAITHFUL_CUBEMAP_H

@@ -5,8 +5,8 @@
 
 #include "Mesh.h"
 #include "RunningAnimation.h"
-//#include "ShaderProgram.h"
-//#include "../Engine.h"
+// #include "ShaderProgram.h"
+// #include "../Engine.h"
 
 namespace faithful {
 
@@ -27,7 +27,7 @@ std::tuple<glm::mat3*, int, int> TrivialObject2DImpl::CreateInstance() {
   assert(ready_instantiate_);
   auto new_instance_transform = new glm::mat3(1.0f);
   drawable_instances_.insert(
-    {++last_local_id_, {new_instance_transform, DefaultSprites::ids_[1]}});
+      {++last_local_id_, {new_instance_transform, DefaultSprites::ids_[1]}});
   return {new_instance_transform, global_id_, last_local_id_};
 }
 
@@ -48,12 +48,12 @@ void TrivialObject2DImpl::Draw(ObjectRenderPhase phase) const {
 
 void TrivialObject2DImpl::MakeDrawable(unsigned int local_id) {
   drawable_instances_.insert(
-    std::move(undrawable_instances_.extract(local_id)));
+      std::move(undrawable_instances_.extract(local_id)));
 }
 
 void TrivialObject2DImpl::MakeUndrawable(unsigned int local_id) {
   undrawable_instances_.insert(
-    std::move(drawable_instances_.extract(local_id)));
+      std::move(drawable_instances_.extract(local_id)));
 }
 
 glm::mat3* TrivialObject2DImpl::get_transform(unsigned int local_id) const {
@@ -72,7 +72,6 @@ TrivialObject3DImpl::TrivialObject3DImpl() {
   shader_program_ = utility::DefaultShaderProgram::object3d_;
 }
 
-
 ////////////////////////////______MATERIAL_______////////////////////////////////
 ////////////////////////////______MATERIAL_______////////////////////////////////
 ////////////////////////////______MATERIAL_______////////////////////////////////
@@ -80,8 +79,8 @@ TrivialObject3DImpl::TrivialObject3DImpl() {
 std::tuple<glm::mat4*, int, int> TrivialObject3DImpl::CreateInstance() {
   assert(ready_instantiate_);
   auto new_instance_transform = new glm::mat4(1.0f);
-  drawable_instances_.insert( // TODO: NOT tex_id, BUT material
-    {++last_local_id_, {new_instance_transform, DefaultTextures::ids_[4]}});
+  drawable_instances_.insert(  // TODO: NOT tex_id, BUT material
+      {++last_local_id_, {new_instance_transform, DefaultTextures::ids_[4]}});
   return {new_instance_transform, global_id_, last_local_id_};
 }
 
@@ -118,11 +117,11 @@ void TrivialObject3DImpl::Draw(ObjectRenderPhase phase) const {
 
 void TrivialObject3DImpl::MakeDrawable(unsigned int local_id) {
   drawable_instances_.insert(
-    std::move(undrawable_instances_.extract(local_id)));
+      std::move(undrawable_instances_.extract(local_id)));
 }
 void TrivialObject3DImpl::MakeUndrawable(unsigned int local_id) {
   undrawable_instances_.insert(
-    std::move(drawable_instances_.extract(local_id)));
+      std::move(drawable_instances_.extract(local_id)));
 }
 
 glm::mat4* TrivialObject3DImpl::get_transform(unsigned int local_id) const {
@@ -148,7 +147,8 @@ void MultimeshObject3DImpl::Configurate1(unsigned int num) {
   ebo_ = buffer_ids[0];
 }
 
-void MultimeshObject3DImpl::Configurate2(utility::Span<Mesh*> meshes, ObjectRenderCategory category) {
+void MultimeshObject3DImpl::Configurate2(utility::Span<Mesh*> meshes,
+                                         ObjectRenderCategory category) {
   meshes_ = std::move(meshes);
   switch (category) {
     case ObjectRenderCategory::kDefault:
@@ -167,7 +167,8 @@ void MultimeshObject3DImpl::Configurate2(utility::Span<Mesh*> meshes, ObjectRend
 std::tuple<glm::mat4*, int, int> MultimeshObject3DImpl::CreateInstance() {
   assert(ready_instantiate_);
   auto new_instance_transform = new glm::mat4(1.0f);
-  drawable_instances_transform_.insert({++last_local_id_, new_instance_transform});
+  drawable_instances_transform_.insert(
+      {++last_local_id_, new_instance_transform});
   return {new_instance_transform, global_id_, last_local_id_};
 }
 
@@ -180,7 +181,8 @@ void MultimeshObject3DImpl::Draw(ObjectRenderPhase phase) const {
       auto cur_index_num = cur_mesh->get_index_num();
 
       // TODO: wait until Model is ready (check mesh::ebo_num)
-      if (cur_index_num == 0) return;
+      if (cur_index_num == 0)
+        return;
 
       auto cur_mat = cur_mesh->get_material();
       glActiveTexture(GL_TEXTURE0);
@@ -199,7 +201,8 @@ void MultimeshObject3DImpl::Draw(ObjectRenderPhase phase) const {
       shader_program_->AdjustVar("texture_height", 4);
       glBindTexture(GL_TEXTURE_2D, cur_mat.tex_height_);
 
-      shader_program_->AdjustMat4v("model", 1, GL_FALSE, glm::value_ptr(*(transform.second)));
+      shader_program_->AdjustMat4v("model", 1, GL_FALSE,
+                                   glm::value_ptr(*(transform.second)));
 
       glBindVertexArray(vao_ + i);
       glDrawElements(GL_TRIANGLES, cur_index_num, GL_UNSIGNED_INT, 0);
@@ -209,11 +212,11 @@ void MultimeshObject3DImpl::Draw(ObjectRenderPhase phase) const {
 
 void MultimeshObject3DImpl::MakeDrawable(unsigned int local_id) {
   drawable_instances_transform_.insert(
-    std::move(undrawable_instances_transform_.extract(local_id)));
+      std::move(undrawable_instances_transform_.extract(local_id)));
 }
 void MultimeshObject3DImpl::MakeUndrawable(unsigned int local_id) {
   undrawable_instances_transform_.insert(
-    std::move(drawable_instances_transform_.extract(local_id)));
+      std::move(drawable_instances_transform_.extract(local_id)));
 }
 
 glm::mat4* MultimeshObject3DImpl::get_transform(unsigned int local_id) const {
@@ -242,11 +245,10 @@ void SkinnedObject3DImpl::Configurate1(unsigned int num) {
 }
 
 /// intentionally hides TODO: what?
-void SkinnedObject3DImpl::Configurate2(utility::Span<Mesh*> meshes,
-                  ObjectRenderCategory category,
-                  unsigned int bone_num,
-                  utility::Span<AnimationNode*> animation_nodes,
-                  glm::mat4 global_inverse_transform) {
+void SkinnedObject3DImpl::Configurate2(
+    utility::Span<Mesh*> meshes, ObjectRenderCategory category,
+    unsigned int bone_num, utility::Span<AnimationNode*> animation_nodes,
+    glm::mat4 global_inverse_transform) {
   bone_num_ = bone_num;
   meshes_ = std::move(meshes);
   // TODO:
@@ -258,8 +260,8 @@ void SkinnedObject3DImpl::Configurate2(utility::Span<Mesh*> meshes,
       shader_program_ = utility::DefaultShaderProgram::object3d_skinned_light_;
       break;
     case ObjectRenderCategory::kHeightParallaxMap:
-      shader_program_ = utility::DefaultShaderProgram::object3d_skinned_light_parallax_;
-      break;
+      shader_program_ =
+  utility::DefaultShaderProgram::object3d_skinned_light_parallax_; break;
   }*/
   animation_nodes_ = std::move(animation_nodes);
   global_inverse_transform_ = global_inverse_transform;
@@ -272,18 +274,23 @@ std::tuple<glm::mat4*, int, int> SkinnedObject3DImpl::CreateInstance() {
   glGenBuffers(1, &new_ubo);
   auto new_shader_program = utility::DefaultShaderProgram::CreateBoneProgram();
   auto new_instance_transform = new glm::mat4(1.0f);
-  drawable_instances_.insert({++last_local_id_, {new_instance_transform, new_shader_program, new_ubo}});
+  drawable_instances_.insert(
+      {++last_local_id_,
+       {new_instance_transform, new_shader_program, new_ubo}});
 
   glBindBuffer(GL_UNIFORM_BUFFER, new_ubo);
-  glBufferData(GL_UNIFORM_BUFFER, 200 * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW);
+  glBufferData(GL_UNIFORM_BUFFER, 200 * sizeof(glm::mat4), nullptr,
+               GL_DYNAMIC_DRAW);
 
   GLuint bindingPoint = ++last_ubo_bind_point_;
-  glUniformBlockBinding(new_shader_program->get_program(),
-                        glGetUniformBlockIndex(new_shader_program->get_program(), "BoneData"),
-                        bindingPoint);
+  glUniformBlockBinding(
+      new_shader_program->get_program(),
+      glGetUniformBlockIndex(new_shader_program->get_program(), "BoneData"),
+      bindingPoint);
   glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, new_ubo);
 
-  // TODO: EITHER related to instance OR to class (then there's no parallelizing)
+  // TODO: EITHER related to instance OR to class (then there's no
+  // parallelizing)
   cur_pose_ = utility::Span<glm::mat4>(bone_num_);
 
   DefaultPose(new_ubo);
@@ -300,7 +307,8 @@ void SkinnedObject3DImpl::Draw(ObjectRenderPhase phase) const {
       auto cur_mesh = meshes_[i];
 
       // TODO: wait until Model is ready (check mesh::ebo_num)
-      if (cur_mesh->get_index_num() == 0) return;
+      if (cur_mesh->get_index_num() == 0)
+        return;
 
       auto cur_index_num = cur_mesh->get_index_num();
       auto cur_mat = cur_mesh->get_material();
@@ -330,18 +338,20 @@ void SkinnedObject3DImpl::Draw(ObjectRenderPhase phase) const {
 }
 
 void SkinnedObject3DImpl::DefaultPose(unsigned int ubo) {
-  animation_nodes_[0]->ProcessAnimationKey(0, glm::mat4(1.0f), cur_pose_, global_inverse_transform_);
+  animation_nodes_[0]->ProcessAnimationKey(0, glm::mat4(1.0f), cur_pose_,
+                                           global_inverse_transform_);
   glBindBuffer(GL_UNIFORM_BUFFER, ubo);
-  glBufferSubData(GL_UNIFORM_BUFFER, 0, bone_num_ * sizeof(glm::mat4), glm::value_ptr(cur_pose_[0]));
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, bone_num_ * sizeof(glm::mat4),
+                  glm::value_ptr(cur_pose_[0]));
 }
 
 void SkinnedObject3DImpl::MakeDrawable(unsigned int local_id) {
   drawable_instances_.insert(
-    std::move(undrawable_instances_.extract(local_id)));
+      std::move(undrawable_instances_.extract(local_id)));
 }
 void SkinnedObject3DImpl::MakeUndrawable(unsigned int local_id) {
   undrawable_instances_.insert(
-    std::move(drawable_instances_.extract(local_id)));
+      std::move(drawable_instances_.extract(local_id)));
 }
 
 glm::mat4* SkinnedObject3DImpl::get_transform(unsigned int local_id) const {
@@ -356,19 +366,21 @@ glm::mat4* SkinnedObject3DImpl::get_transform(unsigned int local_id) const {
   return nullptr;
 }
 
-void SkinnedObject3DImpl::RunAnimation(unsigned int local_id, int anim_id, bool repeat) {
+void SkinnedObject3DImpl::RunAnimation(unsigned int local_id, int anim_id,
+                                       bool repeat) {
   auto found_instance = drawable_instances_.find(local_id);
   if (found_instance == drawable_instances_.end()) {
     found_instance = undrawable_instances_.find(local_id);
     if (found_instance == drawable_instances_.end())
-      return; // TODO: in general it's not possible because it manages by Me (dev)
+      return;  // TODO: in general it's not possible because it manages by Me
+               // (dev)
   }
-  animated_objects_.emplace_front(this, anim_id, found_instance->second.ubo, repeat);
+  animated_objects_.emplace_front(this, anim_id, found_instance->second.ubo,
+                                  repeat);
 }
 
 void SkinnedObject3DImpl::Update(double framerate) {
-  animated_objects_.remove_if(
-    [framerate] (RunningAnimation &obj) {
+  animated_objects_.remove_if([framerate](RunningAnimation& obj) {
     if (obj.Done())
       return true;
     obj.UpdateFrame(framerate);
@@ -376,11 +388,10 @@ void SkinnedObject3DImpl::Update(double framerate) {
   });
 }
 
-
 unsigned int ObjectImplBase::last_global_id_ = 0;
 
 /// preserve 16 binding points for further usage
 ///   (not 15 but 14 is because we use pre-increment)
 unsigned int SkinnedObject3DImpl::last_ubo_bind_point_ = 14;
 
-} // namespace faithful
+}  // namespace faithful

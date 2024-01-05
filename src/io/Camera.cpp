@@ -9,9 +9,11 @@ Camera::Camera() {
   transform_ = new glm::mat4(1.0f);
 }
 
-Camera::Camera(const Camera &camera) noexcept {} // TODO:
+Camera::Camera(const Camera& camera) noexcept {
+}  // TODO:
 
-Camera::Camera(Camera &&) noexcept {} // TODO:
+Camera::Camera(Camera&&) noexcept {
+}  // TODO:
 
 Camera::Camera(SceneMode mode) {
   transform_ = new glm::mat4(1.0f);
@@ -35,12 +37,15 @@ Camera::Camera(SceneMode mode) {
   }
 }
 
-Camera& Camera::operator=(const Camera &camera) noexcept {} // TODO:
-Camera& Camera::operator=(Camera &&camera) noexcept {} // TODO:
+Camera& Camera::operator=(const Camera& camera) noexcept {
+}  // TODO:
+Camera& Camera::operator=(Camera&& camera) noexcept {
+}  // TODO:
 
 // Is non-constexpr because of UpdateVectors
 Camera::Camera(glm::vec3 position, float pitch, float yaw) noexcept
-    : pitch_(pitch), yaw_(yaw) {
+    : pitch_(pitch),
+      yaw_(yaw) {
   transform_ = new glm::mat4(1.0f);
   move_speed_ = 5.0f;
   sensitivity_ = 0.1f;
@@ -105,11 +110,11 @@ void Camera::ProcessInput(Window* window) {
 
 void Camera::UpdateVectors() noexcept {
   glm::vec3 direction_front;
-  direction_front.x = glm::cos(glm::radians(yaw_))
-                      * glm::cos(glm::radians(pitch_));
+  direction_front.x =
+      glm::cos(glm::radians(yaw_)) * glm::cos(glm::radians(pitch_));
   direction_front.y = glm::sin(glm::radians(pitch_));
-  direction_front.z = glm::sin(glm::radians(yaw_))
-                      * glm::cos(glm::radians(pitch_));
+  direction_front.z =
+      glm::sin(glm::radians(yaw_)) * glm::cos(glm::radians(pitch_));
   direction_front_ = glm::normalize(direction_front);
 
   direction_right_ = glm::cross(direction_world_up_, direction_front_);
@@ -126,7 +131,6 @@ void Camera::MakeActive() {
     mouse_handler_->ConfigureCursor();
 }
 
-
 int Camera::id_ = 0;
 
-} // namespace faithful
+}  // namespace faithful

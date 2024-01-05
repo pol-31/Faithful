@@ -2,7 +2,7 @@
 #define FAITHFUL_SPRITE_H
 
 #include <glm/glm.hpp>
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -12,7 +12,6 @@
 #include <filesystem>
 
 namespace faithful {
-
 
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
@@ -137,6 +136,6 @@ class DefaultSprites {
 };
 */
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_SPRITE_H
+#endif  // FAITHFUL_SPRITE_H

@@ -31,11 +31,9 @@ class LoadPathManager {
       return nullptr;
     bool found = false;
 
-    for (auto entry = founded_file.first; entry != founded_file.second; ++entry) {
-      for (auto it1 = entry->first.cbegin(), it2 = new_file.cbegin(); it1 != entry->first.cend(); ++it1, ++it2) {
-        if (*it1 != *it2) {
-          found = false;
-          break;
+    for (auto entry = founded_file.first; entry != founded_file.second; ++entry)
+{ for (auto it1 = entry->first.cbegin(), it2 = new_file.cbegin(); it1 !=
+entry->first.cend(); ++it1, ++it2) { if (*it1 != *it2) { found = false; break;
         }
         found = true;
       }
@@ -57,6 +55,6 @@ std::multimap<typename LoadPathManager<T>::FileNameType,
     LoadPathManager<T>::FileNameCmpType>;
 
 */
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_LOADPATHMANAGER_H
+#endif  // FAITHFUL_LOADPATHMANAGER_H

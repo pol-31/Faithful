@@ -4,7 +4,7 @@
 #include <map>
 #include <set>
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 #include <glm/glm.hpp>
@@ -23,14 +23,14 @@ class DefaultImage;
 class Texture;
 class CubeMap;
 
-
 enum class ImageType {
   kTexture,
   kSprite
 };
 
 // TODO:
-// TODO: comments (COMMENTS !!!!!!!!!! <<<--------------------------------------------------)
+// TODO: comments (COMMENTS !!!!!!!!!!
+// <<<--------------------------------------------------)
 // TODO:
 
 namespace details {
@@ -40,13 +40,13 @@ namespace image {
 class ImageManager : public LoadPathManager<Image*> {
  protected:
   friend class faithful::Image;
-  static GLuint Register(const char *path, faithful::ImageType type);
+  static GLuint Register(const char* path, faithful::ImageType type);
   /// loaded_files_ find by path; stock_images_ find by id.
   static std::set<Image*, ImageIdComparator>* stock_images_;
 };
 
-} // namespace image
-} // namespace details
+}  // namespace image
+}  // namespace details
 
 enum class ImageFilter {
   kNearest,
@@ -61,7 +61,8 @@ class Image {
   friend class ImageIdComparator;
   friend class DefaultCubeMap;
 
-  Image() {}
+  Image() {
+  }
   Image(const Image& tex);
   Image(Image&& tex);
 
@@ -71,7 +72,6 @@ class Image {
   Image(const char* path, ImageType type);
 
   ~Image();
-
 
   static GLuint InitLoad(const char* path, ImageType type);
 
@@ -123,7 +123,8 @@ class Image {
   void set_data(utility::Span<unsigned char> data) {
     if (data == nullptr) {
       data_ = nullptr;
-    } else data_ = data;
+    } else
+      data_ = data;
   }
 
   int get_width() const {
@@ -162,7 +163,8 @@ class Image {
   ImageType type_ = ImageType::kTexture;
 
   // if (data.Empty()) - id the same as is image and we don't need copy
-  // BUT if we want to change image (resize/rotate/custom__glTexImage), then we making a copy
+  // BUT if we want to change image (resize/rotate/custom__glTexImage), then we
+  // making a copy
   utility::Span<unsigned char> data_;
 
   // used in derived classes: Texture, Sprite...
@@ -175,7 +177,6 @@ struct ImageIdComparator {
   }
 };
 
+}  // namespace faithful
 
-} // namespace faithful
-
-#endif // FAITHFUL_IMAGE_H
+#endif  // FAITHFUL_IMAGE_H

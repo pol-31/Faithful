@@ -21,17 +21,16 @@
 namespace faithful {
 
 template <typename T>
-struct IsLogCompatibleStringType : std::disjunction<
-  std::is_same<std::decay_t<T>, const char*>,
-  std::is_same<std::decay_t<T>, const std::string&>,
-  std::is_same<std::decay_t<T>, std::string>,
-  std::is_same<std::decay_t<T>, std::string&>,
-  std::is_same<std::decay_t<T>, std::string&&>
-> {};
+struct IsLogCompatibleStringType
+    : std::disjunction<std::is_same<std::decay_t<T>, const char*>,
+                       std::is_same<std::decay_t<T>, const std::string&>,
+                       std::is_same<std::decay_t<T>, std::string>,
+                       std::is_same<std::decay_t<T>, std::string&>,
+                       std::is_same<std::decay_t<T>, std::string&&>> {};
 
 template <typename T>
 constexpr bool IsLogCompatibleStringType_v =
-  IsLogCompatibleStringType<T>::value;
+    IsLogCompatibleStringType<T>::value;
 
 enum class LogType {
   kInfo,
@@ -70,7 +69,9 @@ class Logger {
   };
 
   Logger() = default;
-  Logger(LogLevel log_level) : log_level_(log_level) {}
+  Logger(LogLevel log_level)
+      : log_level_(log_level) {
+  }
 
   /// there is no need for them
   Logger(const Logger&) = delete;
@@ -91,7 +92,7 @@ class Logger {
   ///    in Debug: all types
   ///    in Release: kError, kWarning (BUT we can add command for showing kInfo)
   template <typename T,
-    typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
+            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
   void Log(LogType type, T error_info) {
     switch (type) {
       // TODO: FAITHFUL_MAIN_LOGGER
@@ -117,7 +118,7 @@ class Logger {
     }
   }
   template <typename T,
-    typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
+            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
   void LogIf(LogType type, bool cond, T error_info) {
     if (cond)
       Log(type, error_info);
@@ -132,7 +133,7 @@ class Logger {
   // TODO: FAITHFUL_MAIN_LOGGER
 #ifndef ASSET_PROCESSOR
   template <typename T,
-    typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
+            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
   void GLCheckError(T error_info) {
     GLenum error = glGetError();
     if (error != GL_NO_ERROR) {
@@ -166,7 +167,7 @@ class Logger {
   }
 
   template <typename T,
-    typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
+            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
   void GLFWCheckError(T error_info) {
     int error = glfwGetError(nullptr);
     if (error != GLFW_NO_ERROR) {
@@ -222,12 +223,14 @@ class Logger {
 #endif
 
   template <typename T,
-    typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void AssimpCheckError(T error_info) {}
+            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
+  void AssimpCheckError(T error_info) {
+  }
 
   template <typename T,
-    typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void ALCheckError(T error_info) {}
+            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
+  void ALCheckError(T error_info) {
+  }
 
   virtual void Flush() = 0;
 
@@ -250,8 +253,7 @@ class Logger {
 
  protected:
   virtual void HandleFatalError(const char* error_info) {
-    std::ofstream log_file(filename_,
-                           std::ofstream::out | std::ofstream::app);
+    std::ofstream log_file(filename_, std::ofstream::out | std::ofstream::app);
     log_file << "\nFatal error: ";
     if (error_info)
       log_file.write(error_info, std::strlen(error_info));
@@ -259,17 +261,16 @@ class Logger {
     log_file.close();
 
     // TODO: show error to screen
-    std::terminate();// TODO: not Terminate, but safe_program_exit
+    std::terminate();  // TODO: not Terminate, but safe_program_exit
   }
   virtual void HandleFatalError(const std::string& error_info) {
-    std::ofstream log_file(filename_,
-                           std::ofstream::out | std::ofstream::app);
+    std::ofstream log_file(filename_, std::ofstream::out | std::ofstream::app);
     log_file << "\nFatal error: " << error_info;
     log_file.flush();
     log_file.close();
 
     // TODO: show error to screen
-    std::terminate();// TODO: not Terminate, but safe_program_exit
+    std::terminate();  // TODO: not Terminate, but safe_program_exit
   }
 
   virtual void WriteMessage(const char* error_info,
@@ -292,8 +293,10 @@ class Logger {
 
 class ConsoleLogger : public Logger {
  public:
-  ConsoleLogger() = default; // LogLevel::kAll by default
-  explicit ConsoleLogger(LogLevel log_level) : Logger(log_level) {}
+  ConsoleLogger() = default;  // LogLevel::kAll by default
+  explicit ConsoleLogger(LogLevel log_level)
+      : Logger(log_level) {
+  }
 
   void Flush() override {
     std::cout << std::flush;
@@ -318,18 +321,19 @@ class ConsoleLogger : public Logger {
   /// it seems we lose immediate error information, but corresponding
   /// IOThreadPool should handle it adequately in term of time
   template <typename T,
-    typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
+            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
   void WriteMessageImpl(T error_info, const char* extra_error_info) {
     if (!busy_.test_and_set(std::memory_order_relaxed)) {
       auto accumulated_data = buffer_.Read();
       for (auto i : accumulated_data) {
-        if (*(i.Data()) == 0) break;
+        if (*(i.Data()) == 0)
+          break;
         std::cout.write(i.Data(), i.Size()) << '\n';
       }
       std::cout.write(extra_error_info, std::strlen(extra_error_info));
       WriteConsoleMessage(error_info);
 
-      Flush(); // TODO: its too often, call FileLogger::Flush instead
+      Flush();  // TODO: its too often, call FileLogger::Flush instead
       busy_.clear();
     } else {
       utility::SpanBuffer<char> error_str;
@@ -349,13 +353,13 @@ class ConsoleLogger : public Logger {
 };
 class FileLogger : public Logger {
  public:
-  FileLogger() : Logger(LogLevel::kNoInfo) {
-    log_file_.open(default_filename,
-                   std::ofstream::out | std::ofstream::app);
+  FileLogger()
+      : Logger(LogLevel::kNoInfo) {
+    log_file_.open(default_filename, std::ofstream::out | std::ofstream::app);
   }
-  explicit FileLogger(LogLevel log_level) : Logger(log_level) {
-    log_file_.open(default_filename,
-                   std::ofstream::out | std::ofstream::app);
+  explicit FileLogger(LogLevel log_level)
+      : Logger(log_level) {
+    log_file_.open(default_filename, std::ofstream::out | std::ofstream::app);
   }
 
   ~FileLogger() {
@@ -374,7 +378,7 @@ class FileLogger : public Logger {
     log_file_.close();
 
     // TODO: show error to screen
-    std::terminate();// TODO: not Terminate, but safe_program_exit
+    std::terminate();  // TODO: not Terminate, but safe_program_exit
   }
   void HandleFatalError(const std::string& error_info) override {
     log_file_ << "\nFatal error: " << error_info;
@@ -382,7 +386,7 @@ class FileLogger : public Logger {
     log_file_.close();
 
     // TODO: show error to screen
-    std::terminate();// TODO: not Terminate, but safe_program_exit
+    std::terminate();  // TODO: not Terminate, but safe_program_exit
   }
 
   void WriteMessage(const char* error_info,
@@ -400,22 +404,24 @@ class FileLogger : public Logger {
 
  private:
   template <typename T,
-    typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
+            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
   void WriteMessageImpl(T error_info, const char* extra_error_info) {
 #ifdef DEBUG_BUILD
     if (!busy_.test_and_set(std::memory_order_relaxed)) {
       if ((buffering_on && buffer_.Full()) || !buffering_on) {
         auto accumulated_data = buffer_.Read();
         for (auto i : accumulated_data.first) {
-          if (*(i.Data()) == 0) break;
+          if (*(i.Data()) == 0)
+            break;
           log_file_.write(i.Data(), i.Size()) << '\n';
         }
         for (auto i : accumulated_data.second) {
-          if (*(i.Data()) == 0) break;
+          if (*(i.Data()) == 0)
+            break;
           log_file_.write(i.Data(), i.Size()) << '\n';
         }
         log_file_ << extra_error_info << error_info << '\n';
-        Flush(); // TODO: its too often, call FileLogger::Flush instead
+        Flush();  // TODO: its too often, call FileLogger::Flush instead
         busy_.clear();
         return;
       }
@@ -427,27 +433,29 @@ class FileLogger : public Logger {
     buffer_.Write(error_str);
 #else
     if (!busy_.test_and_set(std::memory_order_relaxed)) {
-    if (buffer_.Full()) {
-      auto accumulated_data = buffer_.Read();
-      for (auto i : accumulated_data.first) {
-        if (*(i.Data()) == 0) break;
-        log_file_.write(i.Data(), i.Size()) << '\n';
+      if (buffer_.Full()) {
+        auto accumulated_data = buffer_.Read();
+        for (auto i : accumulated_data.first) {
+          if (*(i.Data()) == 0)
+            break;
+          log_file_.write(i.Data(), i.Size()) << '\n';
+        }
+        for (auto i : accumulated_data.second) {
+          if (*(i.Data()) == 0)
+            break;
+          log_file_.write(i.Data(), i.Size()) << '\n';
+        }
+        log_file_ << extra_error_info << error_info << '\n';
+        Flush();  // TODO: its too often, call FileLogger::Flush instead
+        busy_.clear();
+        return;
       }
-      for (auto i : accumulated_data.second) {
-        if (*(i.Data()) == 0) break;
-        log_file_.write(i.Data(), i.Size()) << '\n';
-      }
-      log_file_ << extra_error_info << error_info << '\n';
-      Flush(); // TODO: its too often, call FileLogger::Flush instead
       busy_.clear();
-      return;
     }
-    busy_.clear();
-  }
-  utility::SpanBuffer<char> error_str;
-  error_str.Write(extra_error_info);
-  error_str.Write(error_info);
-  buffer_.Write(error_str);
+    utility::SpanBuffer<char> error_str;
+    error_str.Write(extra_error_info);
+    error_str.Write(error_info);
+    buffer_.Write(error_str);
 #endif
   }
 
@@ -475,7 +483,6 @@ Logger* CreateLogger(Logger::LogMode mode) {
 bool Logger::buffering_on = true;
 #endif
 
+}  // namespace faithful
 
-} // namespace faithful
-
-#endif // FAITHFUL_LOGGER_H
+#endif  // FAITHFUL_LOGGER_H

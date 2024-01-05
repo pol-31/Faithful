@@ -1,7 +1,7 @@
 #include "../Logger.h"
 #include "../../external/curl/curl/include/curl/curl.h"
 
-#include <iostream> // TODO: delete
+#include <iostream>  // TODO: delete
 #include <fstream>
 #include <string>
 #include <vector>
@@ -25,8 +25,8 @@
 // TODO: replace by .in.h file (or .h.in -idk:D)
 #include "../../external/miniz/miniz.h"
 
-static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream) {
-  return fwrite(ptr, size, nmemb, (FILE *)stream);
+static size_t write_data(void* ptr, size_t size, size_t nmemb, void* stream) {
+  return fwrite(ptr, size, nmemb, (FILE*)stream);
 }
 
 bool DownloadAssetZip(const std::string& url, const std::string& dst) {
@@ -51,7 +51,8 @@ bool DownloadAssetZip(const std::string& url, const std::string& dst) {
   if (res != CURLE_OK) {
     fclose(file);
     curl_easy_cleanup(curl);
-    std::cerr << "cURL request failed: " << curl_easy_strerror(res) << std::endl;
+    std::cerr << "cURL request failed: " << curl_easy_strerror(res)
+              << std::endl;
     return false;
   }
 
@@ -61,16 +62,16 @@ bool DownloadAssetZip(const std::string& url, const std::string& dst) {
   std::cout << "Download file: " << dst << std::endl;
   return true;
 }
-bool UnzipAndInstallAssets(const std::string& dst, const std::string& src) {}
+bool UnzipAndInstallAssets(const std::string& dst, const std::string& src) {
+}
 
-enum AssetDownloaderError{
+enum AssetDownloaderError {
   kArgumentsFaulure = 1,
   kDownloadFailure = 2,
   kUnzipFailure = 3
 };
 
 int main(int argc, char** argv) {
-
   // TODO: don't need command-line arguments
   //       need .h.in file with: audio/models/texture-path, url
   if (argc != 3) {
@@ -117,7 +118,6 @@ int main(int argc, char** argv) {
 ///////////////////////////////////////////////////
 ///////////////////////////////////////////////////
 
-
 bool extractZip(const char* targetDir, const char* zipFilename) {
   mz_zip_archive zip_archive;
   memset(&zip_archive, 0, sizeof(zip_archive));
@@ -135,12 +135,14 @@ bool extractZip(const char* targetDir, const char* zipFilename) {
       return false;
     }
 
-    std::filesystem::path targetPath = std::filesystem::path(targetDir) / file_stat.m_filename;
+    std::filesystem::path targetPath =
+        std::filesystem::path(targetDir) / file_stat.m_filename;
     if (file_stat.m_is_directory) {
       try {
         std::filesystem::create_directories(targetPath);
       } catch (const std::filesystem::filesystem_error& e) {
-        std::cerr << "Error creating directory " << targetPath << ": " << e.what() << "\n";
+        std::cerr << "Error creating directory " << targetPath << ": "
+                  << e.what() << "\n";
         mz_zip_reader_end(&zip_archive);
         return false;
       }
@@ -149,7 +151,8 @@ bool extractZip(const char* targetDir, const char* zipFilename) {
       mz_uint uncompressed_size = static_cast<mz_uint>(file_stat.m_uncomp_size);
       std::vector<char> file_data(uncompressed_size);
 
-      if (!mz_zip_reader_extract_to_mem(&zip_archive, i, file_data.data(), uncompressed_size, 0)) {
+      if (!mz_zip_reader_extract_to_mem(&zip_archive, i, file_data.data(),
+                                        uncompressed_size, 0)) {
         std::cerr << "Error extracting file " << targetPath << "\n";
         mz_zip_reader_end(&zip_archive);
         return false;
@@ -167,4 +170,3 @@ bool extractZip(const char* targetDir, const char* zipFilename) {
   mz_zip_reader_end(&zip_archive);
   return true;
 }
-

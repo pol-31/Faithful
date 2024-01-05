@@ -22,4 +22,4 @@ class AssetProcessor {
   std::filesystem::path asset_destination_;
 };
 
-#endif //FAITHFUL_ASSETPROCESSOR_H
+#endif  // FAITHFUL_ASSETPROCESSOR_H

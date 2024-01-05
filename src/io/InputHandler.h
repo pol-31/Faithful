@@ -3,7 +3,7 @@
 
 #include <forward_list>
 
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
+#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
@@ -18,8 +18,8 @@ namespace faithful {
 class Camera;
 enum class SceneMode;
 
-void CallbackMouseButton(GLFWwindow* window [[maybe_unused]],
-                         int button, int action, int mods);
+void CallbackMouseButton(GLFWwindow* window [[maybe_unused]], int button,
+                         int action, int mods);
 
 /*
 void CallbackCursorEnter(GLFWwindow* window, int entered) {
@@ -51,7 +51,8 @@ glfwSetScrollCallback(window, CallbackScroll);
 
 class InputHandler {
  public:
-  void Run(faithful::Window*) {}
+  void Run(faithful::Window*) {
+  }
 
  protected:
   struct KeyCond {
@@ -84,10 +85,9 @@ class KeyboardInputHandler : public InputHandler {
   Window* get_window();
   Camera* get_camera();
 
-  std::forward_list<std::pair<KeyCond,
-                    folly::Function<void(void)>*>> action_list_;
+  std::forward_list<std::pair<KeyCond, folly::Function<void(void)>*>>
+      action_list_;
 };
-
 
 // the purpose if:
 //    continiously track mouse cursor
@@ -122,6 +122,6 @@ void StrategyMouseHandler(MouseInputHandler* input_handler);
 void ShooterMouseHandler(MouseInputHandler* input_handler);
 void ShooterKeyboardHandler(KeyboardInputHandler* input_handler);
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_INPUTHANDLER_H
+#endif  // FAITHFUL_INPUTHANDLER_H

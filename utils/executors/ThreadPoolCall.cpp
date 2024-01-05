@@ -8,7 +8,6 @@ SingleSemiDeferredCall::SingleSemiDeferredCall() {
   executor_ = CurrentRenderThreadPool();
 }
 
-
 SingleSemiDeferredCall& SingleSemiDeferredCall::Executor(ExecutorType type) {
   switch (type) {
     case ExecutorType::GLFWThread:
@@ -30,4 +29,4 @@ SingleSemiDeferredCall& SingleSemiDeferredCall::Executor(ExecutorType type) {
   return *this;
 }
 
-} // namespace faithful
+}  // namespace faithful

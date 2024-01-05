@@ -12,11 +12,11 @@ namespace utility {
 
 /// thread-unsafe
 /// in case of overflow - the least data lost
-template<typename T, typename Alloc = SpanBufferAllocator<T>>
+template <typename T, typename Alloc = SpanBufferAllocator<T>>
 class SpanBuffer {
  public:
-  template<typename... Args>
-  SpanBuffer(Args &&... args, std::size_t n = 64) {
+  template <typename... Args>
+  SpanBuffer(Args&&... args, std::size_t n = 64) {
     primary_storage_ = Span(n, allocator_.Allocate(n));
     if (primary_storage_.get_data()) {
       global_pos_ = primary_storage_.begin();
@@ -36,45 +36,50 @@ class SpanBuffer {
   }
 
   void Write(const Span<T> str) {
-    if (Full()) return;
+    if (Full())
+      return;
     for (auto i = str.get_data(); i < str.get_data() + str.get_size(); ++i) {
       *global_pos_ = *i;
-      if (++global_pos_ == primary_storage_.end()) return;
+      if (++global_pos_ == primary_storage_.end())
+        return;
     }
   };
 
   void Write(const std::basic_string<T>& str) {
-    if (Full()) return;
+    if (Full())
+      return;
     int free_space = primary_storage_.end() - global_pos_;
     int write_size = std::min(static_cast<int>(str.length()), free_space);
-    for (int i = 0; i < write_size; ++i)
-      *global_pos_ = str[i];
+    for (int i = 0; i < write_size; ++i) *global_pos_ = str[i];
   };
 
   void Write(std::basic_string<T>&& str) {
-    if (Full()) return;
+    if (Full())
+      return;
     int free_space = primary_storage_.end() - global_pos_;
     int write_size = std::min(static_cast<int>(str.length()), free_space);
     std::move(str.begin(), str.begin() + write_size, global_pos_);
     global_pos_ += write_size;
   };
 
-  void Write(const T *str, std::size_t str_size = -1) {
-    if (Full()) return;
+  void Write(const T* str, std::size_t str_size = -1) {
+    if (Full())
+      return;
     if (str_size <= -1)
       for (auto i = str; *i != '\0'; ++i) ++str_size;
     for (auto s = str; str_size > 0; ++s, --str_size) {
       *global_pos_ = *s;
-      if (++global_pos_ == primary_storage_.end()) return;
+      if (++global_pos_ == primary_storage_.end())
+        return;
     }
   };
 
   void Write(const T ch) {
-    if (Full()) return;
+    if (Full())
+      return;
     *global_pos_ = ch;
     ++global_pos_;
   };
-
 
   T* Data() {
     return primary_storage_.get_data();
@@ -94,6 +99,7 @@ class SpanBuffer {
 
  protected:
   Span<T> primary_storage_;
+
  private:
   typename Span<T>::Iterator global_pos_;
   Alloc allocator_;
@@ -101,7 +107,7 @@ class SpanBuffer {
 
 /// thread-safe
 /// for more than 10 messages - any next will be lost
-template<typename T, typename Alloc = SpanBufferAllocator<T>>
+template <typename T, typename Alloc = SpanBufferAllocator<T>>
 class SpanBufferPool {
  public:
   using BufferType = SpanBuffer<T, Alloc>;
@@ -109,7 +115,8 @@ class SpanBufferPool {
   using ReadType = DataType;
 
   SpanBufferPool(std::size_t messages_num = 10) {
-    if (messages_num <= 0) messages_num = 10;
+    if (messages_num <= 0)
+      messages_num = 10;
     records_max_ = messages_num;
     CreateStorage(primary_storage_);
     records_left_.store(messages_num);
@@ -148,9 +155,9 @@ class SpanBufferPool {
   };
 
   void CreateStorage(DataType& storage) {
-    storage = DataType(records_max_); // TODO: Alloc should handle it
+    storage = DataType(records_max_);  // TODO: Alloc should handle it
     for (auto msg : storage)
-      *(msg.Data()) = 0; // char 0 means Null accordingly to ASCII
+      *(msg.Data()) = 0;  // char 0 means Null accordingly to ASCII
   }
 
   void Clear() {
@@ -174,12 +181,12 @@ class SpanBufferPool {
 /// thread-safe
 /// for more than 2 * 10 messages (10 messages for each storage)
 ///   - any next will be lost
-template<typename T, typename Alloc = SpanBufferAllocator<T>>
+template <typename T, typename Alloc = SpanBufferAllocator<T>>
 class SwitchSpanBufferPool : public SpanBufferPool<T, Alloc> {
  public:
   using Base = SpanBufferPool<T, Alloc>;
   using BufferType = typename Base::BufferType;
-  using DataType = typename Base::DataType ;
+  using DataType = typename Base::DataType;
   using ReadType = std::pair<DataType, DataType>;
 
   SwitchSpanBufferPool(std::size_t messages_num = 10)
@@ -238,13 +245,13 @@ class SwitchSpanBufferPool : public SpanBufferPool<T, Alloc> {
   }
 
   using Base::primary_storage_;
-  using Base::records_max_;
   using Base::records_left_;
+  using Base::records_max_;
   DataType secondary_storage_;
   mutable std::atomic_flag secondary_storage_full_ = ATOMIC_FLAG_INIT;
 };
 
-} // namespace utility
-} // namespace faithful
+}  // namespace utility
+}  // namespace faithful
 
-#endif // FAITHFUL_BUFFER_H
+#endif  // FAITHFUL_BUFFER_H

@@ -1,10 +1,8 @@
 #include "Window.h"
 
-
-#define GLFW_INCLUDE_NONE // for arbitrary OpenGL functions including order
-#include <GLFW/glfw3.h>
-#include <glad/gl.h>
-
+#define GLFW_INCLUDE_NONE
+#include "GLFW/glfw3.h"
+#include "glad/glad.h"
 
 #include <iostream>
 
@@ -29,17 +27,12 @@ Window::Window(std::string_view title, std::size_t width) {
 Window::Window(std::size_t width, std::size_t height) {
   CreateDefaultGlfwWindow("Simurgh project", width, height);
 }
-Window::Window(std::string_view title, std::size_t width,
-               std::size_t height) {
+Window::Window(std::string_view title, std::size_t width, std::size_t height) {
   CreateDefaultGlfwWindow(title, width, height);
 }
 
-
-void Window::CreateDefaultGlfwWindow(
-    std::string_view title,
-    std::size_t width,
-    std::size_t height) {
-
+void Window::CreateDefaultGlfwWindow(std::string_view title, std::size_t width,
+                                     std::size_t height) {
   // TODO: more default hints _________________________________<<
 
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -50,10 +43,10 @@ void Window::CreateDefaultGlfwWindow(
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-  GLFWwindow *window =
-    glfwCreateWindow(width, height, "Faithful", nullptr, nullptr);
-  //simurgh::Logger::LogIf(simurgh::LogType::kFatal, !window)
-  //  <<"Unable to create GLFW window";
+  GLFWwindow* window =
+      glfwCreateWindow(width, height, "Faithful", nullptr, nullptr);
+  // simurgh::Logger::LogIf(simurgh::LogType::kFatal, !window)
+  //   <<"Unable to create GLFW window";
   glfwMakeContextCurrent(window);
   window_ = window;
 
@@ -76,25 +69,30 @@ Window::~Window() {
   glfwDestroyWindow(window_);
 }
 
+
+void Window::Resize() {
+  GLint w, h;
+  glfwGetWindowSize(window_, &w, &h);
+  glViewport(0, 0, w, h);
+}
+
 void Window::Close() {
   glfwSetWindowShouldClose(window_, true);
 }
 
 void Window::FullscreenOn() {
   Monitor::Mode mode = monitors_.Current()->CurMode();
-  glfwSetWindowMonitor(window_, monitors_.Current()->Glfw(), 0, 0,
-                       mode.width, mode.height, mode.framerate);
+  glfwSetWindowMonitor(window_, monitors_.Current()->Glfw(), 0, 0, mode.width,
+                       mode.height, mode.framerate);
 }
 
 void Window::FullscreenOff() {
-  glfwSetWindowMonitor(window_, nullptr, 0, 0,
-                       resolution_.x, resolution_.y, 0);
+  glfwSetWindowMonitor(window_, nullptr, 0, 0, resolution_.x, resolution_.y, 0);
 }
 
-void DefaultSizeCallback(GLFWwindow* window __attribute__((unused)),
-                         int width, int height) {
+void DefaultSizeCallback(GLFWwindow* window __attribute__((unused)), int width,
+                         int height) {
   glViewport(0, 0, width, height);
 }
 
-
-} // namespace faithful
+}  // namespace faithful

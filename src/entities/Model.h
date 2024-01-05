@@ -46,20 +46,20 @@ class ModelManager : public LoadPathManager<unsigned int> {
  protected:
   friend class faithful::ModelSupervisor;
   friend class faithful::ModelLoader;
-  static GLuint Register(const char *path);
+  static GLuint Register(const char* path);
 };
 
-} // namespace image
-} // namespace details
+}  // namespace model
+}  // namespace details
 
 /**
- * each model has N meshes and for each we need separate vao, vbo, ebo and ubo (for animated)
- * So we can create all needed buffer at once: if we have 30 meshes we creating 30 id's for each mesh
- * and store just offset for each type of buffer in Model_class alongside with total amount
- * In Mesh_class we also storing offset to each type of buffer but related to parent Model_class
+ * each model has N meshes and for each we need separate vao, vbo, ebo and ubo
+ * (for animated) So we can create all needed buffer at once: if we have 30
+ * meshes we creating 30 id's for each mesh and store just offset for each type
+ * of buffer in Model_class alongside with total amount In Mesh_class we also
+ * storing offset to each type of buffer but related to parent Model_class
  * (reducing memory usage)
  * */
-
 
 struct Bone {
   glm::mat4 offset_matrix;
@@ -85,7 +85,8 @@ struct VertexBoneInfo {
     float weight = 0;
   };
   void AddBone(std::size_t bone_id, float weight) {
-    if (weight == 0) return;
+    if (weight == 0)
+      return;
     BoneWeightInfo buf, new_bone;
     new_bone = {bone_id, weight};
     for (int i = 0; i < 4; ++i) {
@@ -103,8 +104,6 @@ struct VertexBoneInfo {
   BoneWeightInfo bone_info[4];
 };
 
-
-
 // TODO: have sense replace "std::size_t" by just int / unsigned_int
 
 /// 1 mesh - 1 Material (e.g. can't be 2 albedo textures for 1 Mesh)
@@ -116,17 +115,20 @@ struct VertexBoneInfo {
 // TODO: read about friend (private/protected/public specifier)
 // TODO: i forgot...
 
-
 // TODO: Model("../path"); --> Model calls ModelCreator, which
 //    create either SkinnedModelImpl either SkinlessModelImpl, store it in
-//    std::vector<Skinned, ubo_> or std::vector<Skinless> and returns ID-s & ptr to transform mat
-//  Then when we call Model::RunAnimation(global_id, local_id, anim_num, bool repeat),
-//    it sends signal to ModelCreator which search it in std::vector<Skinned, ubo>
-/// --> firstly try to find in animation_list_ that is in the most cases smaller (good!)
-/// --> find animations by local_id, find ubo by local_id, if exist --> to animation_list_;
+//    std::vector<Skinned, ubo_> or std::vector<Skinless> and returns ID-s & ptr
+//    to transform mat
+//  Then when we call Model::RunAnimation(global_id, local_id, anim_num, bool
+//  repeat),
+//    it sends signal to ModelCreator which search it in std::vector<Skinned,
+//    ubo>
+/// --> firstly try to find in animation_list_ that is in the most cases smaller
+/// (good!)
+/// --> find animations by local_id, find ubo by local_id, if exist --> to
+/// animation_list_;
 
 // TODO: optimization with 1 Mesh
-
 
 class ModelLoader {
  public:
@@ -134,20 +136,19 @@ class ModelLoader {
 
   std::size_t BoneIdByName(const aiString& name);
 
-  void InitMeshIndices(const aiMesh *mesh,
-                       std::vector<unsigned int>& indices);
+  void InitMeshIndices(const aiMesh* mesh, std::vector<unsigned int>& indices);
 
-  Material InitMeshMaterials(const aiScene *scene, const aiMesh *mesh);
+  Material InitMeshMaterials(const aiScene* scene, const aiMesh* mesh);
 
   MultimeshObject3DImpl* LoadSkinless(const aiScene* scene);
   SkinnedObject3DImpl* LoadSkinned(const aiScene* scene);
 
   void InitCategory();
 
-  void ProcessNode(const aiNode *node, const aiScene *scene);
+  void ProcessNode(const aiNode* node, const aiScene* scene);
 
-  Mesh* ProcessSkinlessMesh(const UnprocessedMesh *mesh);
-  SkinnedMesh* ProcessSkinnedMesh(const UnprocessedMesh *mesh);
+  Mesh* ProcessSkinlessMesh(const UnprocessedMesh* mesh);
+  SkinnedMesh* ProcessSkinnedMesh(const UnprocessedMesh* mesh);
 
   AnimationNode* GetInterpolatedAnimationKey(const aiAnimation* animation,
                                              const aiNode* node);
@@ -155,17 +156,16 @@ class ModelLoader {
   const aiNodeAnim* GetNodeAnimation(const aiAnimation* animation,
                                      const aiString& node_name);
 
-
   bool NodeImportanceCheck(const aiNode* node, const aiScene* scene);
 
-  GLuint LoadTexture(aiMaterial *mat, aiTextureType type);
+  GLuint LoadTexture(aiMaterial* mat, aiTextureType type);
 
   void set_path(const char* path) {
     path_ = path;
   }
 
  protected:
-// TODO: do we need "protected"?
+  // TODO: do we need "protected"?
   friend class Mesh;
   friend class Model;
 
@@ -176,28 +176,29 @@ class ModelLoader {
   std::string path_;
   mutable utility::Span<UnprocessedMesh> unprocessed_meshes_;
   // TODO: not_mutable
-  std::set<const aiNode*, AiNodeComparator> *important_nodes_ = nullptr;
+  std::set<const aiNode*, AiNodeComparator>* important_nodes_ = nullptr;
 
   ObjectRenderCategory category_ = ObjectRenderCategory::kDefault;
 
   utility::Span<AnimationNode*> animation_nodes_;
-  mutable utility::Span<Mesh*> processed_meshes_; // TODO: not_mutable
+  mutable utility::Span<Mesh*> processed_meshes_;  // TODO: not_mutable
 
-  std::map<aiString, Bone, AiStringComparator> *bones_ = nullptr;
+  std::map<aiString, Bone, AiStringComparator>* bones_ = nullptr;
   glm::mat4 global_inverse_transform_ = glm::mat4(1.0f);
 };
 
 class ModelSupervisor {
  public:
   ModelSupervisor() = default;
-  std::tuple<glm::mat4*, unsigned int, unsigned int>
-  Load(const char* path, bool static_load = false);
+  std::tuple<glm::mat4*, unsigned int, unsigned int> Load(
+      const char* path, bool static_load = false);
 
   // TODO: sort models by "shader_level" (?)
   void Draw(ObjectRenderPhase phase) const;
   void RunAnimation(unsigned int global_id, unsigned int local_id,
                     unsigned int anim_id, bool repeat);
   void Update(double framerate);
+
  private:
   Assimp::Importer importer_;
   /// we could store skinned elements in map, BUT
@@ -208,7 +209,6 @@ class ModelSupervisor {
   std::vector<SkinnedObject3DImpl*> skinned_objects_;
   ModelLoader loader_;
 };
-
 
 /*class Model : public Object3D {
  public:
@@ -222,8 +222,10 @@ class ModelSupervisor {
 // TODO: aiString don't have comparisons, iterators.....
 struct AiStringComparator {
   bool operator()(const aiString& arg1, const aiString& arg2) const noexcept {
-    if (arg1 == arg2) return false;
-    if (arg1.length != arg2.length) return (arg1.length < arg2.length);
+    if (arg1 == arg2)
+      return false;
+    if (arg1.length != arg2.length)
+      return (arg1.length < arg2.length);
     for (int i = 0; i < arg1.length; ++i) {
       if (arg1.data[i] != arg2.data[i])
         return (arg1.data[i] < arg2.data[i]);
@@ -240,6 +242,6 @@ struct AiNodeComparator {
 
 glm::mat4 AssimpMatrixToGlm(const aiMatrix4x4& src);
 
-} // namespace faithful
+}  // namespace faithful
 
-#endif // FAITHFUL_MODEL_H
+#endif  // FAITHFUL_MODEL_H

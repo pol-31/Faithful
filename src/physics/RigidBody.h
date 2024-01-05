@@ -5,14 +5,14 @@
 
 namespace simurgh {
 
-
 class Rigidbody {
  public:
   Rigidbody() = default;
-  Rigidbody(Object* object,
-            float mass = 0,
+  Rigidbody(Object* object, float mass = 0,
             glm::vec3 velocity = glm::vec3(0.0f, 0.0f, 0.0f))
-    : object_(object), mass_(mass), velocity_(velocity) {};
+      : object_(object),
+        mass_(mass),
+        velocity_(velocity){};
 
   void ApplyForce(float forceX, float forceY) {
     //
@@ -31,8 +31,7 @@ class Rigidbody {
   glm::vec3 get_velocity() const {
     return velocity_;
   }
-  void setVelocity(float velocity_x, float velocity_y,
-                   float velocity_z = 0) {
+  void setVelocity(float velocity_x, float velocity_y, float velocity_z = 0) {
     velocity_ = glm::vec3(velocity_x, velocity_y, velocity_z);
   }
 
@@ -42,8 +41,6 @@ class Rigidbody {
   glm::vec3 velocity_ = glm::vec3(0.0f, 0.0f, 0.0f);
 };
 
+}  // namespace simurgh
 
-
-} // namespace faithful
-
-#endif // FAITHFUL_RIGIDBODY_H
+#endif  // FAITHFUL_RIGIDBODY_H
