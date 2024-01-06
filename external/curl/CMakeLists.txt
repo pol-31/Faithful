@@ -2,6 +2,14 @@ cmake_minimum_required(VERSION 3.26)
 
 message(STATUS "curl building")
 
+include(FetchContent)
+FetchContent_Declare(
+        curl
+        GIT_REPOSITORY https://github.com/curl/curl.git
+        GIT_TAG master
+#        EXCLUDE_FROM_ALL # cmake 3.28
+)
+
 set(BUILD_CURL_EXE OFF CACHE BOOL "Set to ON to build curl executable." FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build curl shared libraries" FORCE)
 set(BUILD_STATIC_LIBS ON CACHE BOOL "Build curl static libraries" FORCE)
@@ -12,10 +20,4 @@ set(CURL_DISABLE_INSTALL ON CACHE BOOL "Set to ON to disable curl installation t
 set(CURL_LTO ON CACHE BOOL "Turn on curl compiler Link Time Optimizations" FORCE)
 set(CURL_ENABLE_EXPORT_TARGET OFF CACHE BOOL "To enable curl cmake export target" FORCE)
 
-
-set(CURL_BINARY_DIR ${CMAKE_BINARY_DIR}/curl-build CACHE INTERNAL "curl binary directory" FORCE)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CURL_BINARY_DIR} CACHE INTERNAL "curl executable output directory" FORCE)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CURL_BINARY_DIR} CACHE INTERNAL "curl library output directory" FORCE)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CURL_BINARY_DIR} CACHE INTERNAL "curl archive output directory" FORCE)
-
-add_subdirectory(curl)
+FetchContent_MakeAvailable(curl)

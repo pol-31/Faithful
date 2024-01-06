@@ -16,7 +16,7 @@
 #include "io/Cursor.h"
 #include "io/Window.h"
 
-#include "../utils/executors/ThreadPools.h"
+#include "../utils/ThreadPools.h"
 
 namespace faithful {
 

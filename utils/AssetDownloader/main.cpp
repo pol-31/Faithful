@@ -1,5 +1,5 @@
 #include "../Logger.h"
-#include "../../external/curl/curl/include/curl/curl.h"
+#include "../../external/curl/include/curl/curl.h"
 
 #include <iostream>  // TODO: delete
 #include <fstream>
@@ -17,10 +17,6 @@
 #endif
 #endif
 
-#define MINIZ_NO_DEFLATE_APIS
-#define MINIZ_NO_ARCHIVE_WRITING_APIS
-#define MINIZ_NO_ZLIB_APIS
-#define MINIZ_NO_TIME
 
 // TODO: replace by .in.h file (or .h.in -idk:D)
 #include "../../external/miniz/miniz.h"

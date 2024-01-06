@@ -1,13 +1,27 @@
-cmake_minimum_required(VERSION 3.26)
+# Note: CMake support is community-based. The maintainers do not use CMake
+# internally.
 
-message(STATUS "googletest building")
+cmake_minimum_required(VERSION 3.13)
 
-set(BUILD_GMOCK OFF CACHE BOOL "Build GoogleTest GMock" FORCE)
-set(INSTALL_GTEST OFF CACHE BOOL "Install GoogleTest" FORCE)
+project(googletest-distribution)
+set(GOOGLETEST_VERSION 1.14.0)
 
-set(GTEST_BINARY_DIR ${CMAKE_BINARY_DIR}/googletest-build CACHE INTERNAL "googletest binary directory" FORCE)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${GTEST_BINARY_DIR} CACHE INTERNAL "googletest executable output directory" FORCE)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${GTEST_BINARY_DIR} CACHE INTERNAL "googletest library output directory" FORCE)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${GTEST_BINARY_DIR} CACHE INTERNAL "googletest archive output directory" FORCE)
+if(NOT CYGWIN AND NOT MSYS AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL QNX)
+  set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
 
-add_subdirectory(googletest)
+enable_testing()
+
+include(CMakeDependentOption)
+include(GNUInstallDirs)
+
+#Note that googlemock target already builds googletest
+option(BUILD_GMOCK "Builds the googlemock subproject" ON)
+option(INSTALL_GTEST "Enable installation of googletest. (Projects embedding googletest may want to turn this OFF.)" ON)
+option(GTEST_HAS_ABSL "Use Abseil and RE2. Requires Abseil and RE2 to be separately added to the build." OFF)
+
+if(BUILD_GMOCK)
+  add_subdirectory( googlemock )
+else()
+  add_subdirectory( googletest )
+endif()

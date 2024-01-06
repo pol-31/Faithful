@@ -48,40 +48,9 @@ function(external_find_or_compile name findName)
     endif()
 endfunction()
 
-function(faithful_build_external)
-    external_find_or_compile(astc-encoder Astcenc)
-    external_find_or_compile(cgltf Cgltf)
-    external_find_or_compile(freetype Freetype)
-    external_find_or_compile(glad Glad)
-    external_find_or_compile(glfw GLFW)
-    external_find_or_compile(glm Glm)
-    external_find_or_compile(vorbis Libvorbis)
-    external_find_or_compile(openal-soft OpenALspec)
-    include(${CMAKE_SOURCE_DIR}/cmake/FindOpenGLspec.cmake)
-endfunction()
-
-function(faithful_asset_downloader_build_external)
-    external_find_or_compile(curl Curl)
-endfunction()
-
-function(faithful_asset_processor_build_external)
-    external_find_or_compile(astc-encoder Astcenc)
-    external_find_or_compile(assimp Assimp)
-    external_find_or_compile(cgltf Cgltf)
-    external_find_or_compile(glm Glm)
-endfunction()
-
 
 function(target_include_main_deps target)
-    target_include_directories(target ${CMAKE_BINARY_DIR}/astc-encoder-build)
-    target_include_directories(target ${CMAKE_BINARY_DIR}/cgltf-build)
-    target_include_directories(target ${CMAKE_BINARY_DIR}/freetype-build)
-    target_include_directories(target ${CMAKE_BINARY_DIR}/glad-build)
-    target_include_directories(target ${CMAKE_BINARY_DIR}/glfw-build)
-    target_include_directories(target ${CMAKE_BINARY_DIR}/glm-build)
-    target_include_directories(target ${CMAKE_BINARY_DIR}/vorbis-build)
-    target_include_directories(target ${CMAKE_BINARY_DIR}/openal-soft-build)
-    target_include_directories(target ${CMAKE_BINARY_DIR}/opengl-build)
+    # TODO:
 endfunction()
 
 function(target_include_asset_downloader_deps target)
@@ -89,32 +58,20 @@ function(target_include_asset_downloader_deps target)
 endfunction()
 
 function(target_include_asset_processor_deps target)
-    target_include_directories(target astc-encoder-build)
-    target_include_directories(target assimp-build)
-    target_include_directories(target cgltf-build)
-    target_include_directories(target glm-build)
+    # TODO:
 endfunction()
 
 
 function(target_link_main_deps target)
-    target_link_libraries(target astc-encoder)
-    target_link_libraries(target cgltf)
-    target_link_libraries(target freetype)
-    target_link_libraries(target glad)
-    target_link_libraries(target glfw)
-    target_link_libraries(target glm)
-    target_link_libraries(target vorbis)
-    target_link_libraries(target openal-soft)
-    target_link_libraries(target opengl)
+    target_link_libraries(target alsa)
+    target_link_libraries(target astc-encoder) # TODO: can missing
+    # TODO:
 endfunction()
 
 function(target_link_asset_downloader_deps target)
-    target_link_libraries(target curl)
+    # TODO:
 endfunction()
 
 function(target_link_asset_processor_deps target)
-    target_link_libraries(target astc-encoder)
-    target_link_libraries(target assimp)
-    target_link_libraries(target cgltf)
-    target_link_libraries(target glm)
+    # TODO:
 endfunction()

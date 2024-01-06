@@ -2,19 +2,16 @@ cmake_minimum_required(VERSION 3.26)
 
 project(faithful-core)
 
-add_executable(faithful-core)
+file(GLOB_RECURSE FAITHFUL_MAIN_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
-set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+add_executable(faithful-core ${FAITHFUL_MAIN_SOURCES})
 
-file(GLOB_RECURSE SOURCE_FILES ${SOURCE_DIR}/*.cpp)
+include(../cmake/FaithfulFunctions.cmake)
+target_link_main_deps(faithful-core)
+target_include_main_deps(faithful-core)
 
-target_sources(faithful-core PRIVATE ${SOURCE_FILES})
-
-target_link_libraries(faithful-core PUBLIC OpenAL)
-target_include_directories(faithful-core
-        PRIVATE ${SOURCE_DIR}
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/openal-soft/openal-soft/include
-)
-
-
-
+#add_executable(Faithful src/main.cpp
+#        src/io/Window.cpp
+#        src/io/Monitor.cpp
+#        src/loader/ShaderProgram.cpp
+#)

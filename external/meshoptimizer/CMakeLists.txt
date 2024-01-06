@@ -2,9 +2,14 @@ cmake_minimum_required(VERSION 3.26)
 
 message(STATUS "meshoptimizer building")
 
-set(MESHOPTIMIZER_BINARY_DIR ${CMAKE_BINARY_DIR}/meshoptimizer-build CACHE INTERNAL "meshoptimizer binary directory" FORCE)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${MESHOPTIMIZER_BINARY_DIR} CACHE INTERNAL "meshoptimizer executable output directory" FORCE)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${MESHOPTIMIZER_BINARY_DIR} CACHE INTERNAL "meshoptimizer library output directory" FORCE)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${MESHOPTIMIZER_BINARY_DIR} CACHE INTERNAL "meshoptimizer archive output directory" FORCE)
+include(FetchContent)
+FetchContent_Declare(
+        rapidjson
+        GIT_REPOSITORY https://github.com/zeux/meshoptimizer.git
+        GIT_TAG master
+#        EXCLUDE_FROM_ALL # cmake 3.28
+)
 
-add_subdirectory(meshoptimizer EXCLUDE_FROM_ALL)
+set(MESHOPT_BUILD_GLTFPACK ON CACHE BOOL "Enable meshoptimizer gltfpack" FORCE)
+
+FetchContent_MakeAvailable(rapidjson)

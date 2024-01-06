@@ -4,22 +4,25 @@ message(STATUS "alsa building")
 
 include(ExternalProject)
 
-set(ALSA_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/alsa/alsa)
+set(ALSA_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/alsa)
 set(ALSA_BINARY_DIR ${CMAKE_BINARY_DIR}/alsa-build CACHE INTERNAL "alsa binary directory" FORCE)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ALSA_BINARY_DIR} CACHE INTERNAL "alsa executable output directory" FORCE)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${ALSA_BINARY_DIR} CACHE INTERNAL "alsa library output directory" FORCE)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${ALSA_BINARY_DIR} CACHE INTERNAL "alsa archive output directory" FORCE)
+
+set(ALSA_URL https://github.com/alsa-project/alsa-lib.git)
+set(ALSA_REVISION master)
 
 ExternalProject_Add(
-        alsa
-        PREFIX ${ALSA_BINARY_DIR}
-        SOURCE_DIR ${ALSA_SOURCE_DIR}
-        CONFIGURE_COMMAND ${ALSA_SOURCE_DIR}/gitcompile
+        alsa_external
+        PREFIX ${CMAKE_BINARY_DIR}/alsa
+        GIT_REPOSITORY ${ALSA_URL}
+        GIT_TAG ${ALSA_REVISION}
+        CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/alsa/src/alsa/gitcompile
         BUILD_COMMAND make -j8
         INSTALL_COMMAND cmake -E echo "Skipping install step"
+        UPDATE_DISCONNECTED 1
 )
 
+add_library(alsa INTERFACE)
+add_dependencies(alsa alsa_external)
 
-
-include_directories(${ALSA_SOURCE_DIR})
-#target_link_libraries(libvpx ${VPX_BINARY_DIR}/libvpx.a)
+target_link_libraries(alsa INTERFACE alsa_external)
+target_include_directories(alsa INTERFACE ${ALSA_SOURCE_DIR}/include)
