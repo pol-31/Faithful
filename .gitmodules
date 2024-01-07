@@ -38,9 +38,3 @@
 	path = external/astc-encoder
 	url = https://github.com/ARM-software/astc-encoder.git
 	branch = 3.x
-[submodule "external/glm/glm"]
-    path = external/glm/glm
-    url = https://github.com/example/glm.git
-[submodule "external/googletest/googletest"]
-	path = external/googletest/googletest
-	url = https://github.com/google/googletest.git

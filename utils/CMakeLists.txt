@@ -22,6 +22,11 @@ add_library(faithful-utils ${SOURCE_FILES} ${HEADER_FILES})
 #    add_dependencies(Faithful AssetProcessorRun)
 
 
+option(FAITHFUL_ASSET_DOWNLOADER_DOWNLOADED OFF)
+set(FAITHFUL_ASSET_DOWNLOADER_MINIZ_LIB_PATH MINIZ_LIBRARIES)
+set(FAITHFUL_ASSET_DOWNLOADER_MINIZ_INCLUDE_PATH MINIZ_INCLUDE_DIRS)
+set(FAITHFUL_ASSET_DOWNLOADER_CURL_LIB_PATH ${CURL_LIBRARIES})
+set(FAITHFUL_ASSET_DOWNLOADER_CURL_INCLUDE_PATH ${CURL_INCLUDE_DIRS})
 
 # ASSET_DOWNLOADER
 #####################
@@ -47,3 +52,6 @@ add_library(faithful-utils ${SOURCE_FILES} ${HEADER_FILES})
 #    )
 #    add_dependencies(Faithful RunSubproject)
 #####################
+
+
+# todo; clean up curl(if was installed during build)

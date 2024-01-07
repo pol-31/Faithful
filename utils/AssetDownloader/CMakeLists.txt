@@ -1,43 +1,34 @@
 cmake_minimum_required(VERSION 3.26)
 
+# !! Should be built as ExternalProject
 project(AssetDownloader)
 
 cmake_policy(SET CMP0069 NEW)  # LTO support
 cmake_policy(SET CMP0091 NEW)  # MSVC runtime support
 
-
-# TODO: include(cmake/FindDepsAssetProcessor.cmake)
-# TODO: add compile options
-# TODO: integrate ${CMAKE_SOURCE_DIR}
-
 set(CMAKE_CXX_STANDARD 17)
 
+# does the file already downloaded (if no we going to use cURL
+#    that was already downloaded by parent project)
+option(FAITHFUL_ASSET_DOWNLOADER_DOWNLOADED OFF)
 
-#include(../../cmake/FaithfulFunctions.cmake)
-#target_link_asset_downloader_deps(AssetDownloader)
-#target_include_asset_downloader_deps(AssetDownloader)
+set(FAITHFUL_ASSET_DOWNLOADER_MINIZ_LIB_PATH "")
+set(FAITHFUL_ASSET_DOWNLOADER_MINIZ_INCLUDE_PATH "")
+set(FAITHFUL_ASSET_DOWNLOADER_CURL_LIB_PATH "")
+set(FAITHFUL_ASSET_DOWNLOADER_CURL_INCLUDE_PATH "")
 
-# TODO: THERE IS NO FAITHFUL_project (AssetDownloader built as an ExternalProject_Add())
+add_executable(AssetDownloader main.cpp)
 
-#set(ASSETS_AUDIO_PATH "${CMAKE_SOURCE_DIR}/assets/audio")
-#set(ASSETS_MODEL_PATH "${CMAKE_SOURCE_DIR}/assets/models")
-#set(ASSETS_TEXTURE_PATH "${CMAKE_SOURCE_DIR}/assets/textures")
-#set(ASSETS_CONFIGURE_PATH "${CMAKE_SOURCE_DIR}/config/config_paths.h.in")
-#configure_file(${ASSETS_CONFIGURE_PATH} ${CMAKE_SOURCE_DIR}/config/config_paths.h)
+if (FAITHFUL_ASSET_DOWNLOADER_DOWNLOADED)
+    target_compile_definitions(AssetDownloader PUBLIC FILE_ALREADY_DOWNLOADED)
+endif()
 
-#add_subdirectory(
-#        "/home/pavlo/CLionProjects/Faithful/external/curl"
-#        "/home/pavlo/CLionProjects/Faithful/cmake-build-debug/temp/external/curl"
-#)
-#add_subdirectory(
-#        "/home/pavlo/CLionProjects/Faithful/external/miniz"
-#        "/home/pavlo/CLionProjects/Faithful/cmake-build-debug/temp/external/miniz"
-#)
+target_link_libraries(AssetDownloader
+        PUBLIC FAITHFUL_ASSET_DOWNLOADER_MINIZ_LIB_PATH
+        PUBLIC FAITHFUL_ASSET_DOWNLOADER_CURL_LIB_PATH
+)
 
-#add_executable(AssetDownloader main.cpp)
-
-#target_link_libraries(AssetDownloader PUBLIC curl)
-#target_link_libraries(AssetDownloader PUBLIC miniz)
-#target_include_directories(AssetDownloader
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/curl/curl/include
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/miniz/miniz)
+target_include_directories(AssetDownloader
+        PUBLIC FAITHFUL_ASSET_DOWNLOADER_MINIZ_INCLUDE_PATH
+        PUBLIC FAITHFUL_ASSET_DOWNLOADER_CURL_INCLUDE_PATH
+)

@@ -54,10 +54,12 @@ endif()
 include(cmake/ConfigPaths.cmake)
 config_asset_paths()
 
-set(FAITHFUL_ASSETDOWNLOADER_SOURCE_URL
-        "https://drive.google.com/uc?export=download&id=1Uuu2nKZG17t-u94f1TpcUo8IWxyHvpFo")
 configure_file(${CMAKE_SOURCE_DIR}/config/paths.h.in ${CMAKE_SOURCE_DIR}/config/Paths.h)
 
+add_custom_target()
+
+set(FAITHFUL_CONFIG_PATH "${CMAKE_SOURCE_DIR}/config")
+configure_file(${CMAKE_SOURCE_DIR}/config/paths.h.in ${CMAKE_SOURCE_DIR}/config/Paths.h)
 
 # There also could be such definitions:
 #   supporting specific OpenGL extensions (like KHR_texture_compression_astc_ldr);
@@ -84,13 +86,29 @@ print_dir_info()
 print_build_options()
 
 
+set(FILE_URL "https://drive.google.com/uc?export=download&id=1Uuu2nKZG17t-u94f1TpcUo8IWxyHvpFo")
+set(DOWNLOAD_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/file.png")
+
+message(STATUS "Downloading assets")
+
+file(DOWNLOAD ${FILE_URL} ${DOWNLOAD_DESTINATION}
+        SHOW_PROGRESS
+        EXPECTED_HASH SHA256=01ca7a3b6cf5dbfeb72e5105e442c71ec57de72196d46959f3f16b6ff20b4029
+)
+
+if(NOT EXISTS ${DOWNLOAD_DESTINATION})
+    message(STATUS "Can't download assets, cURL will be temporarily installed")
+    set(FAITHFUL_BUILD_CURL ON)
+endif()
+
+
 include(${CMAKE_SOURCE_DIR}/cmake/FaithfulFunctions.cmake)
 include(cmake/FindDeps.cmake)
 
 if(FAITHFUL_BUILD_EXTERNAL)
     add_subdirectory(external EXCLUDE_FROM_ALL)
-else()
-    # in that case if we can't find external lib - building fails.
+# else()
+#     in that case if we can't find external lib - building fails.
 endif()
 
 if(FAITHFUL_DEPS_FOUND)
@@ -99,6 +117,7 @@ if(FAITHFUL_DEPS_FOUND)
 
     add_subdirectory(utils)
     target_link_libraries(Faithful INTERFACE faithful-utils)
+    add_dependencies(utils external) # assets will be installed (if specified) during building
 
     message(STATUS "+> Building of Faithful is completed")
     message("")

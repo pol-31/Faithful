@@ -314,9 +314,12 @@ if (FAITHFUL_DOWNLOAD_ASSETS)
     )
     target_include_directories(miniz INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/miniz")
 
+    set(MINIZ_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/external/miniz" CACHE INTERNAL "Path to miniz include directory")
+    set(MINIZ_LIBRARIES "${BINARY_DIR}/miniz-build/miniz.a" CACHE INTERNAL "Path to miniz library")
+
     #    --------------------------------------------------------------------
     #    CURL (AssetDownloader only: single http request to Google Drive)
-    if (NOT CURL_FOUND)
+    if (FAITHFUL_BUILD_CURL AND NOT CURL_FOUND)
         add_subdirectory(curl EXCLUDE_FROM_ALL)
     endif ()
 endif ()

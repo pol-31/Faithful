@@ -13,4 +13,7 @@ macro(config_asset_paths)
     set(FAITHFUL_ASSET_MODEL_INFO_FILE "${FAITHFUL_ASSET_MODEL_PATH}/models_info.txt")
     set(FAITHFUL_ASSET_SHADER_INFO_FILE "${FAITHFUL_ASSET_SHADER_PATH}/shaders_info.txt")
     set(FAITHFUL_ASSET_TEXTURE_INFO_FILE "${FAITHFUL_ASSET_TEXTURE_PATH}/textures_info.txt")
+
+    set(FAITHFUL_ASSET_URL "https://drive.google.com/uc?export=download&id=1Uuu2nKZG17t-u94f1TpcUo8IWxyHvpFo")
+
 endmacro(config_asset_paths)
