@@ -2,11 +2,18 @@ cmake_minimum_required(VERSION 3.26)
 
 project(Faithful LANGUAGES CXX C)
 
+add_library(Faithful INTERFACE)
+
 cmake_policy(SET CMP0069 NEW)  # LTO support
 cmake_policy(SET CMP0091 NEW)  # MSVC runtime support
+cmake_policy(SET CMP0075 NEW)  # honor to CMAKE_REQUIRED_LIBRARIES
+
+# TODO: clang-tidy, exclude external/
+
 
 set(FAITHFUL_FREEZE_DIR "${CMAKE_SOURCE_DIR}/Faithful" CACHE STRING
         "The subdirectory where to install")
+# TODO: build/source/runtime dirs
 
 set(CMAKE_MODULE_PATH
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
@@ -14,22 +21,22 @@ set(CMAKE_MODULE_PATH
 )
 
 # For FREEZE_BUILD there's 2 stages of compilation:
-# 1) Freeze - all external libs, assets downloading by AssetDownloader,
-#      compiling of AssetProcessor - only once (Release mode). It works
-#      like installing - all static/dynamic libraries, licenses, assets
+# 1) Freeze - all external libs, compiling of AssetProcessor, AssetDownloader
+#      - only once (Release mode). It works like installing:
+#      all static/dynamic libraries, licenses, assets
 #      simply copied to some folder (FAITHFUL_FREEZE_DIR).
 # 2) Then you don't have any ... but TODO: idk how to call it
 # TODO: commits only to certain Git Work-tree
 
 option(FAITHFUL_FREEZE_BUILD
-        "Build & compile external libs and download assets only once (RELEASE)
+        "Build & compile external libs, AssetProcessor, AssetDownloader only once (RELEASE)
         (further build/compiling depends solely on Faithful code)" ON
 )
 
 option(FAITHFUL_BUILD_ASSET_PROCESSOR "Build Faithful::AssetProcessor" ON)
 option(FAITHFUL_DOWNLOAD_ASSETS "Faithful download assets from GoogleDrive" ON)
 option(FAITHFUL_BUILD_EXTERNAL "Build Faithful external libs if missing (they won't be installed)" ON)
-option(FAITHFUL_EMBED_EXTERNAL "Build all(!) Faithful external libs in-place" OFF)
+option(FAITHFUL_EMBED_EXTERNAL "Build all(!) Faithful external libs in-place" ON)
 option(FAITHFUL_BUILD_TESTS "If enabled, compile Faithful tests" OFF)
 
 option(FAITHFUL_LOGGER_BUFFERING "Faithful logger buffering" OFF)
@@ -44,19 +51,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-include(cmake/PrintInfo.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/PrintInfo.cmake)
 print_system_and_cmake_info()
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     add_definitions(-DFAITHFUL_DEBUG_BUILD)
 endif()
 
-include(cmake/ConfigPaths.cmake)
+include(cmake/ConfigAssetsPaths.cmake)
 config_asset_paths()
 
 configure_file(${CMAKE_SOURCE_DIR}/config/paths.h.in ${CMAKE_SOURCE_DIR}/config/Paths.h)
-
-add_custom_target()
 
 set(FAITHFUL_CONFIG_PATH "${CMAKE_SOURCE_DIR}/config")
 configure_file(${CMAKE_SOURCE_DIR}/config/paths.h.in ${CMAKE_SOURCE_DIR}/config/Paths.h)
@@ -83,27 +88,13 @@ print_compiler_info()
 
 print_dir_info()
 
-print_build_options()
-
-
-set(FILE_URL "https://drive.google.com/uc?export=download&id=1Uuu2nKZG17t-u94f1TpcUo8IWxyHvpFo")
-set(DOWNLOAD_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/file.png")
-
-message(STATUS "Downloading assets")
-
-file(DOWNLOAD ${FILE_URL} ${DOWNLOAD_DESTINATION}
-        SHOW_PROGRESS
-        EXPECTED_HASH SHA256=01ca7a3b6cf5dbfeb72e5105e442c71ec57de72196d46959f3f16b6ff20b4029
-)
-
-if(NOT EXISTS ${DOWNLOAD_DESTINATION})
-    message(STATUS "Can't download assets, cURL will be temporarily installed")
-    set(FAITHFUL_BUILD_CURL ON)
-endif()
-
+#print_build_options() # TODO: ___
 
 include(${CMAKE_SOURCE_DIR}/cmake/FaithfulFunctions.cmake)
 include(cmake/FindDeps.cmake)
+
+
+set(FETCHCONTENT_FULLY_DISCONNECTED ON)
 
 if(FAITHFUL_BUILD_EXTERNAL)
     add_subdirectory(external EXCLUDE_FROM_ALL)
@@ -113,11 +104,12 @@ endif()
 
 if(FAITHFUL_DEPS_FOUND)
     add_subdirectory(src)
-    target_link_libraries(Faithful INTERFACE faithful-core)
+    target_link_libraries(Faithful INTERFACE src)
+#    add_dependencies(src external)
 
     add_subdirectory(utils)
-    target_link_libraries(Faithful INTERFACE faithful-utils)
-    add_dependencies(utils external) # assets will be installed (if specified) during building
+    target_link_libraries(Faithful INTERFACE utils)
+#    add_dependencies(utils external)
 
     message(STATUS "+> Building of Faithful is completed")
     message("")

@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <string>
 
-#include "document.h"
+#include "rapidjson/document.h"
 
 #include "../../config/Paths.h"
 

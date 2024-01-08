@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <string>
 
-#include "astcenc.h"
+#include "astc-encoder/Source/astcenc.h"
 
 enum class AssetCategory;
 class AssetLoadingThreadPool;

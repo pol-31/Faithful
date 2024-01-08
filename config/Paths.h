@@ -19,7 +19,5 @@
 #define FAITHFUL_ASSET_SHADER_INFO_FILE "/home/pavlo/CLionProjects/Faithful/assets/shaders/shaders_info.txt"
 #define FAITHFUL_ASSET_TEXTURE_INFO_FILE "/home/pavlo/CLionProjects/Faithful/assets/textures/textures_info.txt"
 
-// AssetDownloader
-#define FAITHFUL_ASSET_URL "https://drive.google.com/uc?export=download&id=1Uuu2nKZG17t-u94f1TpcUo8IWxyHvpFo"
 
 #endif FAITHFUL_CONFIG_PATHS_H_IN

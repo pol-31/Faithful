@@ -1,15 +1,19 @@
-[submodule "external/glad"]
-	path = external/glad
-	url = https://github.com/Dav1dde/glad.git
+[submodule "external/glm"]
+	path = external/glm
+	url = https://github.com/g-truc/glm.git
 	branch = master
 [submodule "external/glfw"]
 	path = external/glfw
 	url = https://github.com/glfw/glfw.git
 	branch = master
-[submodule "external/glm"]
-	path = external/glm
-	url = https://github.com/g-truc/glm.git
+[submodule "external/glad"]
+	path = external/glad
+	url = https://github.com/Dav1dde/glad.git
 	branch = master
+[submodule "external/astc-encoder"]
+	path = external/astc-encoder
+	url = https://github.com/ARM-software/astc-encoder.git
+	branch = 3.x
 [submodule "external/googletest"]
 	path = external/googletest
 	url = https://github.com/google/googletest.git
@@ -34,7 +38,3 @@
 	path = external/mimalloc
 	url = https://github.com/microsoft/mimalloc.git
 	branch = master
-[submodule "external/astc-encoder"]
-	path = external/astc-encoder
-	url = https://github.com/ARM-software/astc-encoder.git
-	branch = 3.x

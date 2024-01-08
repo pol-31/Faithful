@@ -4,7 +4,7 @@
 #include <fstream>
 #include <filesystem>
 
-#include "astcenc.h"
+#include "astc-encoder/Source/astcenc.h"
 // #define STB_IMAGE_IMPLEMENTATION // TODO: already implemented in ModelProc...
 #include "stb_image.h"
 // #define STB_IMAGE_WRITE_IMPLEMENTATION

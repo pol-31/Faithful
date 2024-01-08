@@ -4,15 +4,15 @@
 #include <fstream>
 #include <iostream>
 
-#define TINYGLTF_IMPLEMENTATION
-#define TINYGLTF_USE_RAPIDJSON
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+//#define TINYGLTF_IMPLEMENTATION
+//#define TINYGLTF_USE_RAPIDJSON
+//#define STB_IMAGE_IMPLEMENTATION
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include "tiny_gltf.h"
-#include "document.h"
-#include "ostreamwrapper.h"
-#include "istreamwrapper.h"
+#include "rapidjson/document.h"
+#include "rapidjson/ostreamwrapper.h"
+#include "rapidjson/istreamwrapper.h"
 
 #include "AssetCategory.h"
 #include "AssetInfo.h"

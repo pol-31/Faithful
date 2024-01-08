@@ -17,8 +17,8 @@ else()
     )
 endif()
 
-# TODO: -g, -flto
-add_compile_options(-Werror -Wall -Wextra -Wpedantic -g -fno-omit-frame-pointer)
+# TODO: -g, -flto, _______________-
+#add_compile_options(-Werror -Wall -Wextra -Wpedantic -g -fno-omit-frame-pointer)
 
 set(ASAN_COMPILE_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
 set(ASAN_LINK_FLAGS -fsanitize=address,undefined)

@@ -15,26 +15,33 @@ add_executable(AssetProcessor main.cpp
         AudioProcessor.cpp
 )
 
+add_dependencies(AssetProcessor build_libraries)
 
-include(../../cmake/FaithfulFunctions.cmake)
-target_link_asset_processor_deps(AssetProcessor)
-target_include_asset_processor_deps(AssetProcessor)
+target_link_libraries(AssetProcessor
+        PUBLIC mimalloc
+        PUBLIC stb
+        PUBLIC dr_libs
+        PUBLIC RapidJSON
+        PUBLIC vorbis
+        PUBLIC libogg
+        PUBLIC tinygltf
+        PUBLIC meshoptimizer
+)
+if (FAITHFUL_BUILD_ASSET_PROCESSOR)
+    target_link_libraries(AssetProcessor PUBLIC astc-encoder)
+endif()
 
-#target_link_libraries(AssetProcessor
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/astcencoder_external-build/Source/libastcenc-native-static.a
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/astc-encoder-build/libdr_libsd.a
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/vorbis_external-build/lib/libvorbisenc.a
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/vorbis_external-build/lib/libvorbisfile.a
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/vorbis_external-build/lib/libvorbis.a
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/libogg_external-build/src/.libs/libogg.a
-#)
-#target_include_directories(AssetProcessor
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/external/astc-encoder/astc-encoder/Source
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/external/dr_libs/dr_libs
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/src/libogg_external-build/include/ogg
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/external/vorbis/vorbis/include
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/external/libogg/libogg/include
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/external/rapidjson/rapidjson/include/rapidjson
-#        PUBLIC /home/pavlo/CLionProjects/Faithful/external/tinygltf/tinygltf
-#)
+target_include_directories(AssetProcessor
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/stb
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/dr_libs
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/rapidjson/include
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/rapidjson/include/rapidjson
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/tinygltf
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/vorbis/include
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/libogg/include
+        PUBLIC ${CMAKE_SOURCE_DIR}/external
+        PUBLIC ${meshoptimizer_INCLUDE_DIRS}
+)
+
 

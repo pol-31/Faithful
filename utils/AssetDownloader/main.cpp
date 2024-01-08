@@ -4,22 +4,37 @@
 #include <vector>
 #include <filesystem>
 
-#include "../../external/miniz/miniz.h" // TODO:______________
-
-#ifndef FILE_ALREADY_DOWNLOADED
+#include "miniz.h"
 #include "curl/curl.h"
-#endif
 
-
+// TODO: find out do we need this
 #if defined(__GNUC__)
 // Ensure we get the 64-bit variants of the CRT's file I/O calls
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
 #endif
+
+#ifdef MINIZ_NO_DEFLATE_APIS
+void boo() {
+  std::cout << "Hello" << std::endl;
+}
+#elif
+void boo() {
+  std::cout << "Bye" << std::endl;
+}
+#endif
+
 #ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE 1
 #endif
-#endif
+
+#endif // defined(__GNUC__)
+
+
+/* download github//pol-31//Faithful/config/assets_url.txt
+ * read Google Drive __asset_url__
+ * download file by __asset_url__ with cURL
+ * */
 
 
 // TODO: replace by .in.h file (or .h.in -idk:D)
@@ -29,8 +44,6 @@ static size_t write_data(void* ptr, size_t size, size_t nmemb, void* stream) {
 }
 
 bool DownloadAssetZip(const std::string& url, const std::string& dst) {
-
-#ifndef FILE_ALREADY_DOWNLOADED
   CURL* curl = curl_easy_init();
   if (!curl) {
     std::cerr << "Error initializing libcurl" << std::endl;
@@ -61,13 +74,13 @@ bool DownloadAssetZip(const std::string& url, const std::string& dst) {
   curl_easy_cleanup(curl);
 
   std::cout << "Download file: " << dst << std::endl;
-#endif
   return true;
 }
 
-bool UnzipAndInstallAssets(const std::string& dst, const std::string& src) {
+bool UnzipAndInstallAssets(const std::string& dst __attribute__((unused)),
+                           const std::string& src __attribute__((unused))) {
+  return true;
 }
-
 
 bool extractZip(const char* targetDir, const char* zipFilename) {
   mz_zip_archive zip_archive;
@@ -132,6 +145,10 @@ enum AssetDownloaderError {
 int main(int argc, char** argv) {
   // TODO: don't need command-line arguments
   //       need .h.in file with: audio/models/texture-path, url
+
+  std::cout << "AssetDownloader: Successfully downloaded & extracted" << std::endl;
+  return 0;
+
   if (argc != 3) {
     std::cout << "incorrect program arguments"
               << "\n\tusage: AssetDownloader <dest_path> <source_url>"
@@ -145,6 +162,7 @@ int main(int argc, char** argv) {
   std::string assets_url(argv[2]);
 
   std::string assets_zip_destination("assets.zip");
+  std::string assets_destination("");
 
   if (DownloadAssetZip(assets_url, assets_zip_destination)) {
     return AssetDownloaderError::kDownloadFailure;

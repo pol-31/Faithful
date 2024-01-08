@@ -2,14 +2,11 @@
 
 #include <fstream>
 
-#define DR_MP3_IMPLEMENTATION
-#define DRMP3_IMPLEMENTATION
+//#define DR_MP3_IMPLEMENTATION
+//#define DRMP3_IMPLEMENTATION
 #include "dr_mp3.h"
 #include "dr_flac.h"
 #include "dr_wav.h"
-#include "vorbis/vorbisenc.h"
-#include "vorbis/vorbisfile.h"
-#include "vorbis/codec.h"
 
 // TODO: check dr_lib/vorbis macros
 

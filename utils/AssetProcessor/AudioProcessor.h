@@ -7,6 +7,9 @@
 #include <iostream>
 
 #include "vorbis/vorbisenc.h"
+#include "vorbis/vorbisfile.h"
+#include "vorbis/codec.h"
+
 #include "dr_mp3.h"
 
 #include "../../config/AssetFormats.h"

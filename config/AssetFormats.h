@@ -4,7 +4,7 @@
 #include <thread>
 #include <array>
 
-#include "../external/astc-encoder/astc-encoder/Source/astcenc.h"
+#include "../external/astc-encoder/Source/astcenc.h"
 
 namespace faithful {
 namespace config {

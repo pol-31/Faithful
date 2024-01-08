@@ -1,4 +1,4 @@
-include(${CMAKE_SOURCE_DIR}/FindExternalMacros.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/FindExternalMacros.cmake)
 
 find_alsa()
 find_glfw()
