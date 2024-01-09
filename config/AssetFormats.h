@@ -9,6 +9,13 @@
 namespace faithful {
 namespace config {
 
+/// _____AssetDownloader_____
+
+inline constexpr char asset_info_url[] =
+    "https://raw.githubusercontent.com/pol-31/Faithful/main/config/asset_info.txt";
+
+/// _____AssetProcessor_____
+
 /// compression:
 
 constexpr std::array<std::string_view, 4> audio_comp_formats = {

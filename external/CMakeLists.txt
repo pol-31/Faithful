@@ -10,11 +10,12 @@ include(CheckCXXSourceRuns)
 
 #    --------------------------------------------------------------------
 #    ALSA (Linux only; Windows, MacOS doesn't need it
-if (UNIX AND NOT APPLE)
-    if (FAITHFUL_EMBED_EXTERNAL OR NOT ALSA_FOUND)
-        add_subdirectory(alsa EXCLUDE_FROM_ALL)
-    endif ()
-endif ()
+#if (UNIX AND NOT APPLE)
+#    if (FAITHFUL_EMBED_EXTERNAL OR NOT AUDIO_BACKEND_FOUND)
+#        add_subdirectory(alsa EXCLUDE_FROM_ALL)
+#    endif ()
+#endif ()
+add_subdirectory(alsa EXCLUDE_FROM_ALL)
 
 # glad should be built/compiled first to find out FAITHFUL_GL_SUPPORTS_ASTC
 
@@ -49,27 +50,26 @@ add_subdirectory(glad EXCLUDE_FROM_ALL)
 # if FAITHFUL_GL_SUPPORTS_ASTC, OpenGL has embedded support of astc textures,
 # so we don't need astc-decoder (astc-encoder depends on AssetProcessor)
 
-#set(CMAKE_REQUIRED_INCLUDES "${GLAD_OUT_DIR}/include")
-#set(CMAKE_REQUIRED_LINK_OPTIONS "-lglad")
+set(CMAKE_REQUIRED_INCLUDES "${GLAD_OUT_DIR}/include")
 
 check_cxx_source_runs("
-    int main() { return 0; }
-" FAITHFUL_GL_SUPPORTS_ASTC)
-#[[
-check_cxx_source_runs("
     #include \"glad/glad.h\"
-    int main() { return (glCompressedTexImage2D ? 0 : 1); }
-" FAITHFUL_GL_SUPPORTS_ASTC)]]
+    #include <iostream>
+    int main() {
+      #ifdef glCompressedTexImage2D
+      return 0;
+      #else
+      return 1;
+      #endif
+    }" FAITHFUL_GL_SUPPORTS_ASTC)
 
 if (FAITHFUL_GL_SUPPORTS_ASTC)
     message(STATUS "FAITHFUL_GL_SUPPORTS_ASTC --- supported")
 else ()
-    message(STATUS "bambam ${GLAD_OUT_DIR}/include")
     message(STATUS "FAITHFUL_GL_SUPPORTS_ASTC --- not supported")
 endif ()
 
 unset(CMAKE_REQUIRED_INCLUDES)
-unset(CMAKE_REQUIRED_LINK_OPTIONS)
 
 #    --------------------------------------------------------------------
 #    Astc-encoder: Faithful (runtime decoding only
@@ -195,18 +195,29 @@ endif()
 #    mimalloc (all: general-purpose allocator - overrides malloc/new/etc...)
 if (FAITHFUL_EMBED_EXTERNAL OR NOT MIMALLOC_FOUND)
     message(STATUS "mimalloc building")
-    set(MI_BUILD_SHARED OFF CACHE BOOL "Build shared library" FORCE)
-    set(MI_BUILD_STATIC ON CACHE BOOL "Build static library" FORCE)
-    set(MI_BUILD_OBJECT OFF CACHE BOOL "Build object library" FORCE)
-    set(MI_BUILD_TESTS OFF CACHE BOOL "Build test executables" FORCE)
-    add_subdirectory(mimalloc EXCLUDE_FROM_ALL)
+    set(MIMALLOC_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/mimalloc)
+#    set(MIMALLOC_BINARY_DIR ${CMAKE_BINARY_DIR}/mimalloc-build CACHE INTERNAL "mimalloc binary directory" FORCE)
+
+    ExternalProject_Add(
+            mimalloc_external
+            PREFIX ${CMAKE_BINARY_DIR}/mimalloc
+            SOURCE_DIR ${MIMALLOC_SOURCE_DIR}
+            CONFIGURE_COMMAND ${CMAKE_COMMAND}
+            -DMI_BUILD_SHARED=OFF
+            -DMI_BUILD_STATIC=ON
+            -DMI_BUILD_OBJECT=OFF
+            -DMI_BUILD_TESTS=OFF
+            ${MIMALLOC_SOURCE_DIR}
+            BUILD_COMMAND ${CMAKE_COMMAND} --build .
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
+            BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/mimalloc/src/mimalloc_external-build/libmimalloc.a
+    )
+    add_library(mimalloc INTERFACE)
+    add_dependencies(mimalloc mimalloc_external)
+    target_link_libraries(mimalloc
+            INTERFACE ${CMAKE_BINARY_DIR}/mimalloc/src/mimalloc_external-build/libmimalloc.a
+    )
 endif()
-
-
-add_custom_target(build_libraries
-        DEPENDS mimalloc meshoptimizer
-        COMMENT "Building Library1 and Library2"
-)
 
 
 #    --------------------------------------------------------------------
@@ -229,8 +240,8 @@ if (FAITHFUL_EMBED_EXTERNAL OR NOT OPENAL_FOUND)
     add_subdirectory(openal-soft EXCLUDE_FROM_ALL)
 
     if (UNIX AND NOT APPLE)
-        if (NOT ALSA_FOUND)
-            add_dependencies(OpenAL alsa EXCLUDE_FROM_ALL)
+        if (NOT AUDIO_BACKEND_FOUND)
+            add_dependencies(OpenAL alsa)
         endif ()
     endif ()
 endif()

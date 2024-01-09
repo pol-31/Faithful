@@ -18,6 +18,12 @@
 #include "Span.h"
 #include "Buffer.h"
 
+
+//FAITHFUL_LOGGER_BUFFERING TODO:__________________________________
+//FAITHFUL_LOGGER_SEVERITY_ALL
+//FAITHFUL_LOGGER_SEVERITY_NO_INFO
+//FAITHFUL_LOGGER_SEVERITY_ONLY_FATAL
+
 namespace faithful {
 
 template <typename T>

@@ -1,0 +1,12 @@
+faithful_assets.zip
+https://drive.google.com/uc?export=download&id=108CTO5shaJLb9pW1GO84q9gFigahziKU
+1
+1
+1
+================
+Information given in the next order:
+.zip file name
+Google Drive link
+audio count
+models count
+textures count

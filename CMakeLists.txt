@@ -33,17 +33,14 @@ option(FAITHFUL_FREEZE_BUILD
         (further build/compiling depends solely on Faithful code)" ON
 )
 
+
+# TODO: LICENSES, ALSA
+
 option(FAITHFUL_BUILD_ASSET_PROCESSOR "Build Faithful::AssetProcessor" ON)
 option(FAITHFUL_DOWNLOAD_ASSETS "Faithful download assets from GoogleDrive" ON)
 option(FAITHFUL_BUILD_EXTERNAL "Build Faithful external libs if missing (they won't be installed)" ON)
 option(FAITHFUL_EMBED_EXTERNAL "Build all(!) Faithful external libs in-place" ON)
 option(FAITHFUL_BUILD_TESTS "If enabled, compile Faithful tests" OFF)
-
-option(FAITHFUL_LOGGER_BUFFERING "Faithful logger buffering" OFF)
-# by default FAITHFUL_LOGGER_SEVERITY_ALL always ON
-option(FAITHFUL_LOGGER_SEVERITY_NO_INFO "Faithful logger severity: no info (only warnings & errors)" OFF)
-option(FAITHFUL_LOGGER_SEVERITY_ONLY_FATAL "Faithful logger severity: only fatal errors" OFF)
-
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)

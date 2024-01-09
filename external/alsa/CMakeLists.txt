@@ -4,18 +4,21 @@ message(STATUS "alsa building")
 
 include(ExternalProject)
 
-set(ALSA_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/alsa)
-set(ALSA_BINARY_DIR ${CMAKE_BINARY_DIR}/alsa-build CACHE INTERNAL "alsa binary directory" FORCE)
+set(ALSA_SOURCE_DIR ${CMAKE_BINARY_DIR}/alsa)
+#set(ALSA_BINARY_DIR ${CMAKE_BINARY_DIR}/alsa-build CACHE INTERNAL "alsa binary directory" FORCE)
 
 set(ALSA_URL https://github.com/alsa-project/alsa-lib.git)
 set(ALSA_REVISION master)
 
 ExternalProject_Add(
         alsa_external
-        PREFIX ${CMAKE_BINARY_DIR}/alsa
+        SOURCE_DIR ${ALSA_SOURCE_DIR}
+        BINARY_DIR ${CMAKE_BINARY_DIR}/external/alsa
+        STAMP_DIR ${ALSA_SOURCE_DIR}/tmp
+        PREFIX ${ALSA_SOURCE_DIR}
         GIT_REPOSITORY ${ALSA_URL}
         GIT_TAG ${ALSA_REVISION}
-        CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/alsa/src/alsa/gitcompile
+        CONFIGURE_COMMAND gitcompile
         BUILD_COMMAND make -j8
         INSTALL_COMMAND cmake -E echo "Skipping install step"
         UPDATE_DISCONNECTED 1

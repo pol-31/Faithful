@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.26)
 
 project(faithful-core)
 
-file(GLOB_RECURSE FAITHFUL_MAIN_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+#file(GLOB_RECURSE FAITHFUL_MAIN_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
-add_executable(faithful-core ${FAITHFUL_MAIN_SOURCES})
+add_executable(faithful-core main.cpp ${FAITHFUL_MAIN_SOURCES})
 
 #add_executable(Faithful src/main.cpp
 #        src/io/Window.cpp
@@ -13,16 +13,20 @@ add_executable(faithful-core ${FAITHFUL_MAIN_SOURCES})
 #)
 
 
+if (UNIX AND NOT APPLE)
+    if (NOT AUDIO_BACKEND_FOUND)
+        target_link_libraries(faithful-core PUBLIC alsa)
+    endif ()
+endif ()
 target_link_libraries(faithful-core
         PUBLIC mimalloc
         PUBLIC stb
-        PUBLIC alsa
         PUBLIC glad
         PUBLIC glfw
         PUBLIC glm
         PUBLIC libogg
-        PUBLIC openal-soft
-        PUBLIC rapidjson
+        PUBLIC OpenAL
+        PUBLIC RapidJSON
         PUBLIC tinygltf
         PUBLIC vorbis
 )
@@ -31,7 +35,9 @@ if (NOT FAITHFUL_GL_SUPPORTS_ASTC)
 endif()
 
 if (UNIX AND NOT APPLE)
-    target_include_directories(faithful-core PUBLIC ALSA_INCLUDE_DIR)
+    if (NOT AUDIO_BACKEND_FOUND)
+        target_include_directories(faithful-core PUBLIC ALSA_INCLUDE_DIR)
+    endif ()
 endif ()
 
 target_include_directories(faithful-core
@@ -50,3 +56,6 @@ target_include_directories(faithful-core
 if (FAITHFUL_GL_SUPPORTS_ASTC)
     target_include_directories(faithful-core PUBLIC ${CMAKE_SOURCE_DIR}/external)
 endif()
+
+message(STATUS ${OPENAL_INCLUDE_DIR})
+message(STATUS ${OPENAL_LIBRARY})

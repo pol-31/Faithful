@@ -30,3 +30,6 @@ instead of
 ${CMAKE_SOURCE_DIR}/external/astc-encoder/Source
 We could also simply delete them from astc-enc/Source/,
 but this directory may still contain other headers, causing ambiguity.
+
+_____________________________
+audio backend: alsa

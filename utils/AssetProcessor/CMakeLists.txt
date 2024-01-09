@@ -15,8 +15,6 @@ add_executable(AssetProcessor main.cpp
         AudioProcessor.cpp
 )
 
-add_dependencies(AssetProcessor build_libraries)
-
 target_link_libraries(AssetProcessor
         PUBLIC mimalloc
         PUBLIC stb
@@ -25,23 +23,23 @@ target_link_libraries(AssetProcessor
         PUBLIC vorbis
         PUBLIC libogg
         PUBLIC tinygltf
-        PUBLIC meshoptimizer
 )
 if (FAITHFUL_BUILD_ASSET_PROCESSOR)
     target_link_libraries(AssetProcessor PUBLIC astc-encoder)
 endif()
 
+add_dependencies(AssetProcessor meshoptimizer)
+
 target_include_directories(AssetProcessor
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
         PUBLIC ${CMAKE_SOURCE_DIR}/external/stb
         PUBLIC ${CMAKE_SOURCE_DIR}/external/dr_libs
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
         PUBLIC ${CMAKE_SOURCE_DIR}/external/rapidjson/include
         PUBLIC ${CMAKE_SOURCE_DIR}/external/rapidjson/include/rapidjson
         PUBLIC ${CMAKE_SOURCE_DIR}/external/tinygltf
         PUBLIC ${CMAKE_SOURCE_DIR}/external/vorbis/include
         PUBLIC ${CMAKE_SOURCE_DIR}/external/libogg/include
-        PUBLIC ${CMAKE_SOURCE_DIR}/external
-        PUBLIC ${meshoptimizer_INCLUDE_DIRS}
+#        PUBLIC ${CMAKE_SOURCE_DIR}/external
 )
 
 

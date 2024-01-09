@@ -8,11 +8,13 @@ set(CMAKE_CXX_STANDARD 17)
 add_executable(AssetDownloader main.cpp)
 
 target_link_libraries(AssetDownloader
+        PUBLIC mimalloc
         PUBLIC miniz
         PUBLIC curl
 )
 
 target_include_directories(AssetDownloader
+#        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
         PUBLIC ${CMAKE_SOURCE_DIR}/external/miniz
 )
 if (CURL_FOUND)

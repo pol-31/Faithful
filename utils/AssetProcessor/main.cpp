@@ -28,7 +28,6 @@
 #include "../../config/Paths.h"
 #include "../Logger.h"
 
-
 #include "AssetProcessor.h"
 #include "AssetLoadingThreadPool.h"
 
@@ -54,6 +53,11 @@ void LogProcessingResult(const std::string& path, bool encoded);
 // TODO: add README.md with naming convention: __ _nmap.astc __
 
 int main(int argc, char** argv) {
+  const char* command =
+      "/home/pavlo/CLionProjects/Faithful/cmake-build-debug/meshoptimizer-build/gltfpack -noq -i /home/pavlo/Downloads/DamagedHelmet.glb  -o /home/pavlo/Desktop/omg.gltf";
+  if (std::system(command) == 0) {
+    std::cout << "Optimized" << std::endl;
+  }
   std::cout << "AssetProcessor: assets were processed successfully" << std::endl;
   return 0;
 
