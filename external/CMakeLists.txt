@@ -10,42 +10,44 @@ include(CheckCXXSourceRuns)
 
 #    --------------------------------------------------------------------
 #    ALSA (Linux only; Windows, MacOS doesn't need it
-#if (UNIX AND NOT APPLE)
-#    if (FAITHFUL_EMBED_EXTERNAL OR NOT AUDIO_BACKEND_FOUND)
-#        add_subdirectory(alsa EXCLUDE_FROM_ALL)
-#    endif ()
-#endif ()
-add_subdirectory(alsa EXCLUDE_FROM_ALL)
+if (UNIX AND NOT APPLE)
+    if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+          (FAITHFUL_BUILD_EXTERNAL AND NOT AUDIO_BACKEND_FOUND))
+        add_subdirectory(alsa EXCLUDE_FROM_ALL)
+    endif ()
+endif ()
 
 # glad should be built/compiled first to find out FAITHFUL_GL_SUPPORTS_ASTC
 
 #    --------------------------------------------------------------------
 #    glad (Faithful: OpenGL specification)
-message(STATUS "glad building")
-set(GLAD_BINARY_DIR ${CMAKE_BINARY_DIR}/glad-build CACHE INTERNAL "glad binary directory" FORCE)
-set(GLAD_OUT_DIR "${GLAD_BINARY_DIR}" CACHE STRING "Output directory" FORCE)
-set(GLAD_INSTALL OFF CACHE BOOL "Generate installation target" FORCE)
-set(GLAD_GENERATOR "c" CACHE STRING "Language to generate the binding for" FORCE)
+if (FAITHFUL_BUILD_EXTERNAL_ALL OR FAITHFUL_BUILD_EXTERNAL)
+    message(STATUS "glad building")
+    set(GLAD_BINARY_DIR ${CMAKE_BINARY_DIR}/glad-build CACHE INTERNAL "glad binary directory" FORCE)
+    set(GLAD_OUT_DIR "${GLAD_BINARY_DIR}" CACHE STRING "Output directory" FORCE)
+    set(GLAD_INSTALL OFF CACHE BOOL "Generate installation target" FORCE)
+    set(GLAD_GENERATOR "c" CACHE STRING "Language to generate the binding for" FORCE)
 
-file(READ "${CMAKE_SOURCE_DIR}/config/opengl.txt" CONFIG_CONTENT)
-string(REGEX REPLACE "\n" ";" CONFIG_LINES "${CONFIG_CONTENT}")
+    file(READ "${CMAKE_SOURCE_DIR}/config/opengl.txt" CONFIG_CONTENT)
+    string(REGEX REPLACE "\n" ";" CONFIG_LINES "${CONFIG_CONTENT}")
 
-foreach(line ${CONFIG_LINES})
-    string(REGEX MATCH "^([^,]+),([^,]+),([^,]+)$" _match ${line})
-    set(key ${CMAKE_MATCH_1})
-    set(type ${CMAKE_MATCH_2})
-    set(value ${CMAKE_MATCH_3})
-    if(type STREQUAL "STRING")
-        set(${key} "${value}" CACHE STRING "Glad/OpenGL properties (see Faithful/config/opengl.txt)" FORCE)
-    elseif(type STREQUAL "BOOL")
-        set(${key} ${value} CACHE BOOL "" FORCE)
-    endif()
-endforeach()
+    foreach(line ${CONFIG_LINES})
+        string(REGEX MATCH "^([^,]+),([^,]+),([^,]+)$" _match ${line})
+        set(key ${CMAKE_MATCH_1})
+        set(type ${CMAKE_MATCH_2})
+        set(value ${CMAKE_MATCH_3})
+        if(type STREQUAL "STRING")
+            set(${key} "${value}" CACHE STRING "Glad/OpenGL properties (see Faithful/config/opengl.txt)" FORCE)
+        elseif(type STREQUAL "BOOL")
+            set(${key} ${value} CACHE BOOL "" FORCE)
+        endif()
+    endforeach()
 
-message("GLAD_API: ${GLAD_API}")
-message("GLAD_PROFILE: ${GLAD_PROFILE}")
-message("GLAD_ALL_EXTENSIONS: ${GLAD_ALL_EXTENSIONS}")
-add_subdirectory(glad EXCLUDE_FROM_ALL)
+    message("GLAD_API: ${GLAD_API}")
+    message("GLAD_PROFILE: ${GLAD_PROFILE}")
+    message("GLAD_ALL_EXTENSIONS: ${GLAD_ALL_EXTENSIONS}")
+    add_subdirectory(glad EXCLUDE_FROM_ALL)
+endif ()
 
 # if FAITHFUL_GL_SUPPORTS_ASTC, OpenGL has embedded support of astc textures,
 # so we don't need astc-decoder (astc-encoder depends on AssetProcessor)
@@ -71,50 +73,54 @@ endif ()
 
 unset(CMAKE_REQUIRED_INCLUDES)
 
+
 #    --------------------------------------------------------------------
 #    Astc-encoder: Faithful (runtime decoding only
 #      - all textures already compressed to .astc)
 #    AssetProcessor - texture conversion to .astc (+encode, +decode)
-if (FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
-    # here we don't need to build any variant of astc-encoder
-else ()
-    if (NOT FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
-        set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR ON)
+if (FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL)
+    if (FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
+        # here we don't need to build any variant of astc-encoder
     else ()
-        set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR OFF)
+        if (NOT FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
+            set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR ON)
+        else ()
+            set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR OFF)
+        endif ()
+        message(STATUS "astc-encoder building")
+        set(ASTC_ENCODER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/astc-encoder CACHE INTERNAL "astc-encoder source directory" FORCE)
+        set(ASTC_ENCODER_BINARY_DIR ${CMAKE_BINARY_DIR}/astc-encoder-build CACHE INTERNAL "astc-encoder binary directory" FORCE)
+
+        ExternalProject_Add(
+                astcencoder_external
+                PREFIX ${CMAKE_BINARY_DIR}
+                SOURCE_DIR ${ASTC_ENCODER_SOURCE_DIR}
+                CONFIGURE_COMMAND ${CMAKE_COMMAND}
+                -DASTCENC_ISA_NATIVE=ON
+                -DASTCENC_DECOMPRESSOR=${FAITHFUL_ASTC_ENCODER_DECOMPRESSOR}
+                -DASTCENC_SHAREDLIB=OFF
+                -DASTCENC_DIAGNOSTICS=OFF
+                -DASTCENC_ASAN=OFF
+                -DASTCENC_UNITTEST=OFF
+                -DASTCENC_INVARIANCE=OFF
+                -DASTCENC_CLI=OFF
+                -DASTCENC_BLOCK_MAX_TEXELS=64 # max 8x8x1 compression)
+                ${ASTC_ENCODER_SOURCE_DIR}
+                BUILD_COMMAND ${CMAKE_COMMAND} --build .
+                INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
+                BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
+                DEPENDS glad
+        )
+
+        add_library(astc-encoder INTERFACE)
+        add_dependencies(astc-encoder astcencoder_external)
+        target_link_libraries(astc-encoder
+                INTERFACE ${CMAKE_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
+        )
+        target_include_directories(astc-encoder INTERFACE ${ASTC_ENCODER_SOURCE_DIR}/Source)
     endif ()
-    message(STATUS "astc-encoder building")
-    set(ASTC_ENCODER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/astc-encoder CACHE INTERNAL "astc-encoder source directory" FORCE)
-    set(ASTC_ENCODER_BINARY_DIR ${CMAKE_BINARY_DIR}/astc-encoder-build CACHE INTERNAL "astc-encoder binary directory" FORCE)
-
-    ExternalProject_Add(
-            astcencoder_external
-            PREFIX ${CMAKE_BINARY_DIR}
-            SOURCE_DIR ${ASTC_ENCODER_SOURCE_DIR}
-            CONFIGURE_COMMAND ${CMAKE_COMMAND}
-            -DASTCENC_ISA_NATIVE=ON
-            -DASTCENC_DECOMPRESSOR=${FAITHFUL_ASTC_ENCODER_DECOMPRESSOR}
-            -DASTCENC_SHAREDLIB=OFF
-            -DASTCENC_DIAGNOSTICS=OFF
-            -DASTCENC_ASAN=OFF
-            -DASTCENC_UNITTEST=OFF
-            -DASTCENC_INVARIANCE=OFF
-            -DASTCENC_CLI=OFF
-            -DASTCENC_BLOCK_MAX_TEXELS=64 # max 8x8x1 compression)
-            ${ASTC_ENCODER_SOURCE_DIR}
-            BUILD_COMMAND ${CMAKE_COMMAND} --build .
-            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
-            DEPENDS glad
-    )
-
-    add_library(astc-encoder INTERFACE)
-    add_dependencies(astc-encoder astcencoder_external)
-    target_link_libraries(astc-encoder
-            INTERFACE ${CMAKE_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
-    )
-    target_include_directories(astc-encoder INTERFACE ${ASTC_ENCODER_SOURCE_DIR}/Source)
 endif ()
+
 
 #    --------------------------------------------------------------------
 #    dr_libs (AssetProcessor only: decompress mp3, flac, wav into PCM
@@ -127,9 +133,11 @@ add_library(dr_libs dr_wav.cpp dr_flac.cpp dr_mp3.cpp)
 target_compile_definitions(dr_libs PRIVATE DR_WAV_IMPLEMENTATION DR_FLAC_IMPLEMENTATION DR_MP3_IMPLEMENTATION)
 target_include_directories(dr_libs PRIVATE ${CMAKE_SOURCE_DIR}/external/dr_libs)
 
+
 #    --------------------------------------------------------------------
 #    glfw (Faithful: Window/context creation)
-if (FAITHFUL_EMBED_EXTERNAL OR NOT GLFW_FOUND)
+if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+      (FAITHFUL_BUILD_EXTERNAL AND NOT GLFW_FOUND))
     message(STATUS "glfw building")
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build glfw shared libraries" FORCE)
     set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Build glfw example programs" FORCE)
@@ -139,29 +147,35 @@ if (FAITHFUL_EMBED_EXTERNAL OR NOT GLFW_FOUND)
     add_subdirectory(glfw EXCLUDE_FROM_ALL)
 endif()
 
+
 #    --------------------------------------------------------------------
-#    glm (Faithful: GLMath)
-if (FAITHFUL_EMBED_EXTERNAL OR NOT GLM_FOUND)
+#    glm (Faithful: math)
+if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+      (FAITHFUL_BUILD_EXTERNAL AND NOT GLM_FOUND))
     message(STATUS "glm building")
     add_subdirectory(glm EXCLUDE_FROM_ALL)
 endif()
 
+
 #    --------------------------------------------------------------------
 #    googletest (all: testing)
 if (FAITHFUL_BUILD_TESTS)
-    if (FAITHFUL_EMBED_EXTERNAL OR NOT GTEST_FOUND)
+    if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+          (FAITHFUL_BUILD_EXTERNAL AND NOT GTEST_FOUND))
         message(STATUS "googletest building")
         set(BUILD_GMOCK OFF CACHE BOOL "Build GoogleTest GMock" FORCE)
         set(INSTALL_GTEST OFF CACHE BOOL "Install GoogleTest" FORCE)
         set(GTEST_BINARY_DIR ${CMAKE_BINARY_DIR}/googletest-build CACHE INTERNAL "googletest binary directory" FORCE)
         add_subdirectory(googletest EXCLUDE_FROM_ALL)
-    endif()
+    endif ()
 endif ()
+
 
 #    --------------------------------------------------------------------
 #    libogg (Faithful: audio streaming to OpenAL-Soft;
 #            AssetProcessor: compression, transrating)
-if (FAITHFUL_EMBED_EXTERNAL OR NOT LIBOGG_FOUND)
+if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+      (FAITHFUL_BUILD_EXTERNAL AND NOT LIBOGG_FOUND))
     message(STATUS "libogg building")
     set(LIBOGG_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/libogg)
     set(LIBOGG_BINARY_DIR ${CMAKE_BINARY_DIR}/libogg-build CACHE INTERNAL "libogg binary directory" FORCE)
@@ -191,9 +205,11 @@ if (FAITHFUL_EMBED_EXTERNAL OR NOT LIBOGG_FOUND)
     set(LIBOGG_LIBRARY "${CMAKE_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
 endif()
 
+
 #    --------------------------------------------------------------------
 #    mimalloc (all: general-purpose allocator - overrides malloc/new/etc...)
-if (FAITHFUL_EMBED_EXTERNAL OR NOT MIMALLOC_FOUND)
+if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+      (FAITHFUL_BUILD_EXTERNAL AND NOT MIMALLOC_FOUND))
     message(STATUS "mimalloc building")
     set(MIMALLOC_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/mimalloc)
 #    set(MIMALLOC_BINARY_DIR ${CMAKE_BINARY_DIR}/mimalloc-build CACHE INTERNAL "mimalloc binary directory" FORCE)
@@ -222,7 +238,8 @@ endif()
 
 #    --------------------------------------------------------------------
 #    OpenAL-Soft (Faithful: spatial audio streaming)
-if (FAITHFUL_EMBED_EXTERNAL OR NOT OPENAL_FOUND)
+if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+      (FAITHFUL_BUILD_EXTERNAL AND NOT OPENAL_FOUND))
     message(STATUS "openal-soft building")
     set(ALSOFT_DLOPEN OFF CACHE BOOL "Check for the dlopen API for loading optional libs"  FORCE)
     set(ALSOFT_UTILS OFF CACHE BOOL "Build utility programs"  FORCE)
@@ -246,11 +263,14 @@ if (FAITHFUL_EMBED_EXTERNAL OR NOT OPENAL_FOUND)
     endif ()
 endif()
 
+
 #    --------------------------------------------------------------------
 #    rapidjson (Faithful: json-parser for tinygltf
 #               AssetProcessor: safely extract embedded textures for further
 #                               .astc copmression)
-if (FAITHFUL_EMBED_EXTERNAL OR NOT RAPIDJSON_FOUND)
+
+if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+      (FAITHFUL_BUILD_EXTERNAL AND NOT RAPIDJSON_FOUND))
     message(STATUS "rapidjson building")
     set(RAPIDJSON_BUILD_DOC OFF CACHE BOOL "Build rapidjson documentation." FORCE)
     set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "Build rapidjson examples." FORCE)
@@ -265,6 +285,7 @@ if (FAITHFUL_EMBED_EXTERNAL OR NOT RAPIDJSON_FOUND)
     add_subdirectory(rapidjson EXCLUDE_FROM_ALL)
 endif()
 
+
 #    --------------------------------------------------------------------
 #    stb_image, stb_image_write (Faithful: texture loading for further
 #                                          compression into .astc)
@@ -277,6 +298,7 @@ target_compile_definitions(stb PRIVATE
         STB_IMAGE_WRITE_IMPLEMENTATION
 )
 target_include_directories(stb PRIVATE ${CMAKE_SOURCE_DIR}/external/stb)
+
 
 #    --------------------------------------------------------------------
 #    tinygltf (Faithful: process/draw .gltf model)
@@ -296,10 +318,13 @@ target_compile_definitions(tinygltf PUBLIC
 target_include_directories(tinygltf PRIVATE ${CMAKE_SOURCE_DIR}/external/rapidjson/include/rapidjson)
 target_include_directories(tinygltf PRIVATE ${CMAKE_SOURCE_DIR}/external/tinygltf)
 
+
 #    --------------------------------------------------------------------
 #    vorbis (Faithful: audio streaming to OpenAL-Soft;
 #            AssetProcessor: compression, transrating)
-if (FAITHFUL_EMBED_EXTERNAL OR NOT VORBIS_FOUND)
+
+if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+      (FAITHFUL_BUILD_EXTERNAL AND NOT VORBIS_FOUND))
     message(STATUS "vorbis building")
     set(VORBIS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/vorbis CACHE INTERNAL "vorbis source directory" FORCE)
     set(VORBIS_BINARY_DIR ${CMAKE_BINARY_DIR}/vorbis-build CACHE INTERNAL "vorbis binary directory" FORCE)
@@ -346,10 +371,9 @@ endif ()
 #    ====================================================================
 #    FAITHFUL_ASSET_DOWNLOADER-specific
 
-if (FAITHFUL_DOWNLOAD_ASSETS)
+if (FAITHFUL_BUILD_ASSET_DOWNLOADER OR FAITHFUL_BUILD_ASSET_PACK)
     #    --------------------------------------------------------------------
-    #    miniz (AssetDownloader: unzip downloaded by curl single file
-    #                            from Google Drive)
+    #    miniz (AssetDownloader, AssetPack: unzip downloaded by curl single file)
     message(STATUS "miniz building")
     add_library(miniz ${CMAKE_SOURCE_DIR}/external/miniz/miniz.c)
     target_compile_definitions(miniz PUBLIC
@@ -361,8 +385,10 @@ if (FAITHFUL_DOWNLOAD_ASSETS)
     target_include_directories(miniz PRIVATE ${CMAKE_SOURCE_DIR}/external/miniz)
 
     #    --------------------------------------------------------------------
-    #    CURL (AssetDownloader only: single http request to Google Drive)
-    if (FAITHFUL_EMBED_EXTERNAL OR NOT CURL_FOUND)
-        add_subdirectory(curl EXCLUDE_FROM_ALL)
-    endif ()
+    #    CURL (AssetDownloader only: single http request to download assets)
+    #    see utils/AssetDownloader/CMakeLists.txt
+
+    #    --------------------------------------------------------------------
+    #    PicoSHA2 (AssetDownloader, AssetPack: validate assets downloaded by curl)
+    #    only one header, so included directly
 endif ()

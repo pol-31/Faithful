@@ -1,5 +1,5 @@
 faithful_assets.zip
-https://drive.google.com/uc?export=download&id=108CTO5shaJLb9pW1GO84q9gFigahziKU
+https://drive.usercontent.google.com/download?id=108CTO5shaJLb9pW1GO84q9gFigahziKU&export=download&authuser=0&confirm=t&uuid=6ceb5ba7-c0ca-49c6-a66a-cfc741746e60&at=APZUnTU1jQoTnu4e17W1nudsfFTx:1704888438298
 1
 1
 1
@@ -7,6 +7,8 @@ https://drive.google.com/uc?export=download&id=108CTO5shaJLb9pW1GO84q9gFigahziKU
 Information given in the next order:
 .zip file name
 Google Drive link
+sha256 hash
+link redirection count
 audio count
 models count
 textures count

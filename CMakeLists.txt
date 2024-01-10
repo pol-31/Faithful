@@ -33,14 +33,19 @@ option(FAITHFUL_FREEZE_BUILD
         (further build/compiling depends solely on Faithful code)" ON
 )
 
-
-# TODO: LICENSES, ALSA
-
 option(FAITHFUL_BUILD_ASSET_PROCESSOR "Build Faithful::AssetProcessor" ON)
-option(FAITHFUL_DOWNLOAD_ASSETS "Faithful download assets from GoogleDrive" ON)
-option(FAITHFUL_BUILD_EXTERNAL "Build Faithful external libs if missing (they won't be installed)" ON)
-option(FAITHFUL_EMBED_EXTERNAL "Build all(!) Faithful external libs in-place" ON)
+option(FAITHFUL_BUILD_ASSET_DOWNLOADER "Faithful download/update assets" ON)
+
+# all externals won't be installed
+option(FAITHFUL_BUILD_EXTERNAL "Build Faithful external libs if missing" ON)
+option(FAITHFUL_BUILD_EXTERNAL_ALL "Build all(!) Faithful external libs" OFF)
 option(FAITHFUL_BUILD_TESTS "If enabled, compile Faithful tests" OFF)
+
+# Only for assets designer, used for generating asset_info.txt with validate info
+# including amount of assets and its hash for further
+# uploading to (e.g.) Google Drive and replacing of asset_info.txt in
+# official Faithful github repository.
+option(FAITHFUL_BUILD_ASSET_PACK "Build Faithful::AssetPack" ON)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -85,7 +90,7 @@ print_compiler_info()
 
 print_dir_info()
 
-#print_build_options() # TODO: ___
+print_build_options()
 
 include(${CMAKE_SOURCE_DIR}/cmake/FaithfulFunctions.cmake)
 include(cmake/FindDeps.cmake)

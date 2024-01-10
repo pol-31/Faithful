@@ -7,5 +7,14 @@ file(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 add_library(faithful-utils ${SOURCE_FILES} ${HEADER_FILES})
 
-add_subdirectory(AssetProcessor)
-add_subdirectory(AssetDownloader)
+if (FAITHFUL_BUILD_ASSET_DOWNLOADER)
+    add_subdirectory(AssetDownloader)
+endif()
+
+if (FAITHFUL_BUILD_ASSET_PACK)
+    add_subdirectory(AssetPack)
+endif()
+
+if (FAITHFUL_BUILD_ASSET_PROCESSOR)
+    add_subdirectory(AssetProcessor)
+endif()

@@ -7,8 +7,10 @@
 #define _LARGEFILE64_SOURCE 1
 #endif
 #endif
-//#include "mimalloc.h"
-//#include "mimalloc-new-delete.h" // overriding of global new/delete
+
+// TODO:
+//  #include "mimalloc.h"
+//  #include "mimalloc-new-delete.h" // overriding of global new/delete
 
 #include <filesystem>
 #include <fstream>
@@ -18,17 +20,25 @@
 
 #include "curl/curl.h"
 #include "miniz.h"
+#include "picosha2.h"
 
 #include "../../config/Paths.h"
 #include "../../config/AssetFormats.h"
 
+#if defined(FAITHFUL_ASSET_PROCESSOR_CURL_CLI) || \
+    defined(FAITHFUL_ASSET_PROCESSOR_WGET) || \
+    defined(FAITHFUL_ASSET_PROCESSOR_INVOKE_WEB_REQUEST)
+#include <cstdlib>
+#endif
+
 struct AssetsInfo {
   std::string url;
-  std::string zip_filename;
+  std::string zip_name;
+  std::string hash; // sha256
+  int redirection_count;
   int audio_count;
   int models_count;
   int textures_count;
-  // TODO: may have sense to add hash check
 };
 
 enum AssetDownloaderError {
@@ -43,22 +53,39 @@ size_t CurlWriteCallback(void* ptr, size_t size, size_t nmemb, void* stream) {
   return fwrite(ptr, size, nmemb, (FILE*)stream);
 }
 
+std::vector<unsigned char> GenerateSha256(const std::string& file_path);
+
+bool ValidateHash(
+    const std::string& hash_extracted,
+    const std::vector<unsigned char>& hash_generated);
+
 bool ValidateAssets(const std::filesystem::path& assets_directory,
+                    const std::string& zip_file_path,
                     const AssetsInfo& assets_info);
 
 bool InstallAssets(const std::filesystem::path& in_dir,
                    const std::filesystem::path& out_dir);
 
 bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
-                      const std::string& out_assets_path,
+                      const std::filesystem::path& out_assets_path,
                       const AssetsInfo& assets_info);
 
 bool DownloadFile(const std::string& file_url, const std::string& out_file,
-                  bool follow_location = false);
+                  int redirection_count = 0);
 
 AssetsInfo RetainAssetsInfo(const std::string& file_path);
 
 int main(int argc, char** argv) {
+  if ((sizeof(unsigned char) + sizeof(char)) != 2) {
+    std::cerr << "The program currently is not supported by your OS:\n"
+              << "size incompatibilities of char / unsigned char\n"
+              << "provided: sizeof(char) = " << sizeof(char) << "\n"
+              << "\tsizeof(unsigned char) = " << sizeof(unsigned char) << "\n"
+              << "requires: sizeof(char) = " << 1 << "\n"
+              << "\tsizeof(unsigned char) = " << 1 << "\n"
+              << std::endl;
+    return -1;
+  }
   std::string out_assets_path_default(FAITHFUL_ASSET_PATH);
   std::string out_assets_path;
 
@@ -79,8 +106,9 @@ int main(int argc, char** argv) {
     out_assets_path = out_assets_path_default;
   }
 
+#ifdef FAITHFUL_ASSET_PROCESSOR_CURL_LIB
   curl_global_init(CURL_GLOBAL_DEFAULT);
-
+#endif
 
   if (!DownloadFile(assets_info_url, assets_info_file, true)) {
     std::cerr << "Can't download info file" << std::endl;
@@ -96,38 +124,76 @@ int main(int argc, char** argv) {
     return AssetDownloaderError::kAssetsInfoProcessFailure;
   }
 
-  if (!DownloadFile(assets_info.url, assets_info.zip_filename, true)) {
+  if (!DownloadFile(assets_info.url, assets_info.zip_name, true)) {
     return AssetDownloaderError::kAssetsDownloadFailure;
   } else {
     std::cout << "Successfully downloaded: "
-              << assets_info.zip_filename << std::endl;
+              << assets_info.zip_name
+              << std::endl;
   }
 
-  if (!ProcessAssetsZip(assets_info.zip_filename, out_assets_path,
+  if (!ProcessAssetsZip(assets_info.zip_name, out_assets_path,
                         assets_info)) {
     std::cerr << "Extraction failed\n" << std::endl;
     return AssetDownloaderError::kAssetsUnzipFailure;
   }
 
+#ifdef FAITHFUL_ASSET_PROCESSOR_CURL_LIB
   curl_global_cleanup();
+#endif
   return 0;
 }
 
+std::vector<unsigned char> GenerateSha256(const std::string& file_path) {
+  std::ifstream f(file_path, std::ios::binary);
+  std::vector<unsigned char> hash(picosha2::k_digest_size);
+  picosha2::hash256(f, hash.begin(), hash.end());
+  return std::move(hash);
+}
+
+bool ValidateHash(
+    const std::string& hash_extracted,
+    const std::vector<unsigned char>& hash_generated) {
+  std::vector<unsigned char> result;
+  if (hash_extracted.size() != 32 ||
+      hash_generated.size() != 32) {
+    std::cerr << "Error: ValidateHash() - provided invalid hashes (length): "
+              << "\nhash_extracted: " << hash_extracted.size()
+              << "\nhash_generated: " << hash_generated.size()
+              << std::endl;
+    return false;
+  }
+  for (int i = 0; i < hash_extracted.size(); ++i) {
+    if (hash_generated[i] != static_cast<unsigned char>(hash_extracted[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool ValidateAssets(const std::filesystem::path& assets_directory,
+                    const std::filesystem::path& zip_file_path,
                     const AssetsInfo& assets_info) {
   namespace fs = std::filesystem;
   fs::path audio_dir = assets_directory / "audio";
   fs::path models_dir = assets_directory / "models";
   fs::path textures_dir = assets_directory / "textures";
-  return !(assets_info.audio_count != static_cast<int>(std::distance(
-                                     fs::directory_iterator(audio_dir),
-                                     fs::directory_iterator{})) ||
-          assets_info.models_count != static_cast<int>(std::distance(
-                                     fs::directory_iterator(models_dir),
-                                     fs::directory_iterator{})) ||
-          assets_info.textures_count != static_cast<int>(std::distance(
-                                     fs::directory_iterator(textures_dir),
-                                     fs::directory_iterator{})));
+  bool status = true;
+  status &=
+      !(assets_info.audio_count !=
+            static_cast<int>(std::distance(
+                fs::directory_iterator(audio_dir),
+                fs::directory_iterator{})) ||
+        assets_info.models_count !=
+            static_cast<int>(std::distance(
+                fs::directory_iterator(models_dir),
+                fs::directory_iterator{})) ||
+        assets_info.textures_count !=
+            static_cast<int>(std::distance(
+                fs::directory_iterator(textures_dir),
+                fs::directory_iterator{})));
+  status &= ValidateHash(assets_info.hash, GenerateSha256(zip_file_path));
+  return status;
 }
 
 /// Downloaded dir already has needed hierarchy:
@@ -158,7 +224,7 @@ bool InstallAssets(const std::filesystem::path& in_dir,
 }
 
 bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
-                      const std::string& out_assets_path,
+                      const std::filesystem::path& out_assets_path,
                       const AssetsInfo& assets_info) {
   namespace fs = std::filesystem;
   mz_zip_archive zip_archive;
@@ -205,7 +271,7 @@ bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
   mz_zip_reader_end(&zip_archive);
   temp_dir /= assets_zip_file.stem();
 
-  if (!ValidateAssets(temp_dir, assets_info)) {
+  if (!ValidateAssets(temp_dir, assets_zip_file, assets_info)) {
     std::cerr
         << "Error: invalid assets (assets info doesn't matches with downloaded files)"
         << std::endl;
@@ -216,9 +282,12 @@ bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
   return InstallAssets(temp_dir, out_assets_path);
 }
 
-// downloading file with reference to a single .zip file on Google Drive
 bool DownloadFile(const std::string& file_url, const std::string& out_file,
-                  bool follow_location) {
+                  int redirection_count) {
+#if defined(FAITHFUL_ASSET_PROCESSOR_CURL_CLI)
+#elif defined(FAITHFUL_ASSET_PROCESSOR_WGET)
+#elif defined(FAITHFUL_ASSET_PROCESSOR_INVOKE_WEB_REQUEST)
+#else // defined(FAITHFUL_ASSET_PROCESSOR_CURL_LIB)
   CURL* curl = curl_easy_init();
   if (!curl) {
     std::cerr << "Error: can't initialize libcurl" << std::endl;
@@ -233,8 +302,8 @@ bool DownloadFile(const std::string& file_url, const std::string& out_file,
   }
 
   curl_easy_setopt(curl, CURLOPT_URL, file_url.c_str());
-  if (follow_location) {
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+  if (redirection_count > 0) {
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, redirection_count);
   }
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
@@ -249,10 +318,11 @@ bool DownloadFile(const std::string& file_url, const std::string& out_file,
   }
   fclose(file);
   curl_easy_cleanup(curl);
-  return true;
+#endif
+    return true;
 }
 
-AssetsInfo RetainAssetsInfo(const std::string& file_path) {
+AssetsInfo RetainAssetsInfo(const std::string& file_path) { // TODO: rename ________
   AssetsInfo assets_info;
   std::ifstream info_file(file_path);
 
@@ -265,9 +335,14 @@ AssetsInfo RetainAssetsInfo(const std::string& file_path) {
   }
   std::string line;
   std::getline(info_file, line); // zip filename
-  assets_info.zip_filename = std::move(line);
+  assets_info.zip_name = std::move(line);
   std::getline(info_file, line); // url
+/* TODO: (currently not implemented (see Faithful/utils/AssetPack))
   assets_info.url = std::move(line);
+  std::getline(info_file, line); // hash
+  assets_info.hash = std::move(line);
+  std::getline(info_file, line); // redirection count*/
+  assets_info.redirection_count = std::stoi(line);
   std::getline(info_file, line); // audio count
   assets_info.audio_count = std::stoi(line);
   std::getline(info_file, line); // models count

@@ -10,9 +10,14 @@ namespace faithful {
 namespace config {
 
 /// _____AssetDownloader_____
-
 inline constexpr char asset_info_url[] =
     "https://raw.githubusercontent.com/pol-31/Faithful/main/config/asset_info.txt";
+
+/// _____AssetDownloader_____
+inline constexpr char default_zip_name[] = "faithful_assets.zip";
+inline constexpr char default_url[] =
+    "https://drive.usercontent.google.com/download?id=108CTO5shaJLb9pW1GO84q9gFigahziKU&export=download&authuser=0&confirm=t&uuid=6ceb5ba7-c0ca-49c6-a66a-cfc741746e60&at=APZUnTU1jQoTnu4e17W1nudsfFTx:1704888438298";
+inline constexpr int default_url_redirections_count = 0;
 
 /// _____AssetProcessor_____
 
