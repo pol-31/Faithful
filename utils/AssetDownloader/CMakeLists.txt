@@ -9,7 +9,7 @@ add_executable(AssetDownloader main.cpp)
 
 if (FAITHFUL_BUILD_EXTERNAL_ALL)
     add_subdirectory(${CMAKE_SOURCE_DIR}/external/curl
-            ${CMAKE_CURRENT_BINARY_DIR} EXCLUDE_FROM_ALL)
+            ${CMAKE_CURRENT_BINARY_DIR}/curl EXCLUDE_FROM_ALL)
     set(FAITHFUL_ASSET_DOWNLOADER_DOWNLOAD_BACKEND
             "FAITHFUL_ASSET_PROCESSOR_CURL_LIB" CACHE STRING "" FORCE)
 endif ()
@@ -54,7 +54,7 @@ else ()
     if (FAITHFUL_BUILD_EXTERNAL)
         message(STATUS "AssetDownloader: there is no download backend found, installing cURL")
         add_subdirectory(${CMAKE_SOURCE_DIR}/external/curl
-                ${CMAKE_CURRENT_BINARY_DIR} EXCLUDE_FROM_ALL)
+                ${CMAKE_CURRENT_BINARY_DIR}/curl EXCLUDE_FROM_ALL)
         set(FAITHFUL_ASSET_DOWNLOADER_DOWNLOAD_BACKEND
                 "FAITHFUL_ASSET_PROCESSOR_CURL_LIB" CACHE STRING "" FORCE)
     else ()

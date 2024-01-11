@@ -377,8 +377,6 @@ if (FAITHFUL_BUILD_ASSET_DOWNLOADER OR FAITHFUL_BUILD_ASSET_PACK)
     message(STATUS "miniz building")
     add_library(miniz ${CMAKE_SOURCE_DIR}/external/miniz/miniz.c)
     target_compile_definitions(miniz PUBLIC
-            MINIZ_NO_DEFLATE_APIS
-            MINIZ_NO_ARCHIVE_WRITING_APIS
             MINIZ_NO_ZLIB_APIS
             MINIZ_NO_TIME
     )

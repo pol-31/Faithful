@@ -34,7 +34,7 @@
 struct AssetsInfo {
   std::string url;
   std::string zip_name;
-  std::string hash; // sha256
+  std::vector<unsigned char> hash; // sha256
   int redirection_count;
   int audio_count;
   int models_count;
@@ -56,7 +56,7 @@ size_t CurlWriteCallback(void* ptr, size_t size, size_t nmemb, void* stream) {
 std::vector<unsigned char> GenerateSha256(const std::string& file_path);
 
 bool ValidateHash(
-    const std::string& hash_extracted,
+    const std::vector<unsigned char>& hash_extracted,
     const std::vector<unsigned char>& hash_generated);
 
 bool ValidateAssets(const std::filesystem::path& assets_directory,
@@ -86,10 +86,13 @@ int main(int argc, char** argv) {
               << std::endl;
     return -1;
   }
-  std::string out_assets_path_default(FAITHFUL_ASSET_PATH);
+//  std::string out_assets_path_default(FAITHFUL_ASSET_PATH);
+  std::string out_assets_path_default("/home/pavlo/Desktop/tempor");
   std::string out_assets_path;
 
-  std::string assets_info_file("asset_info.txt");
+//  std::string assets_info_file("faithful_assets_info.txt");
+  std::string assets_info_file("/home/pavlo/CLionProjects/Faithful/config/faithful_assets_info.txt");
+//  std::string assets_info_file("asset_info.txt");
   std::string assets_info_url(faithful::config::asset_info_url);
 
   if (argc > 2) {
@@ -109,6 +112,7 @@ int main(int argc, char** argv) {
 #ifdef FAITHFUL_ASSET_PROCESSOR_CURL_LIB
   curl_global_init(CURL_GLOBAL_DEFAULT);
 #endif
+/*
 
   if (!DownloadFile(assets_info_url, assets_info_file, true)) {
     std::cerr << "Can't download info file" << std::endl;
@@ -116,7 +120,9 @@ int main(int argc, char** argv) {
   } else {
     std::cout << "Successfully downloaded: " << assets_info_file << std::endl;
   }
+*/
 
+//  auto assets_info = RetainAssetsInfo("/home/pavlo/CLionProjects/Faithful/cmake-build-debug/utils/AssetPack/faithful_assets_info.txt");
   auto assets_info = RetainAssetsInfo(assets_info_file);
   if (assets_info.audio_count == -1 &&
       assets_info.models_count == -1 &&
@@ -145,6 +151,7 @@ int main(int argc, char** argv) {
 }
 
 std::vector<unsigned char> GenerateSha256(const std::string& file_path) {
+  std::cout << "Hash computation..." << std::endl;
   std::ifstream f(file_path, std::ios::binary);
   std::vector<unsigned char> hash(picosha2::k_digest_size);
   picosha2::hash256(f, hash.begin(), hash.end());
@@ -152,9 +159,8 @@ std::vector<unsigned char> GenerateSha256(const std::string& file_path) {
 }
 
 bool ValidateHash(
-    const std::string& hash_extracted,
+    const std::vector<unsigned char>& hash_extracted,
     const std::vector<unsigned char>& hash_generated) {
-  std::vector<unsigned char> result;
   if (hash_extracted.size() != 32 ||
       hash_generated.size() != 32) {
     std::cerr << "Error: ValidateHash() - provided invalid hashes (length): "
@@ -182,16 +188,16 @@ bool ValidateAssets(const std::filesystem::path& assets_directory,
   status &=
       !(assets_info.audio_count !=
             static_cast<int>(std::distance(
-                fs::directory_iterator(audio_dir),
-                fs::directory_iterator{})) ||
+                fs::recursive_directory_iterator(audio_dir),
+                fs::recursive_directory_iterator{})) ||
         assets_info.models_count !=
             static_cast<int>(std::distance(
-                fs::directory_iterator(models_dir),
-                fs::directory_iterator{})) ||
+                fs::recursive_directory_iterator(models_dir),
+                fs::recursive_directory_iterator{})) ||
         assets_info.textures_count !=
             static_cast<int>(std::distance(
-                fs::directory_iterator(textures_dir),
-                fs::directory_iterator{})));
+                fs::recursive_directory_iterator(textures_dir),
+                fs::recursive_directory_iterator{})));
   status &= ValidateHash(assets_info.hash, GenerateSha256(zip_file_path));
   return status;
 }
@@ -205,6 +211,9 @@ bool InstallAssets(const std::filesystem::path& in_dir,
                    const std::filesystem::path& out_dir) {
   namespace fs = std::filesystem;
   if (!fs::exists(out_dir)) {
+    fs::create_directory(out_dir);
+  } else {
+    fs::remove_all(out_dir);
     fs::create_directory(out_dir);
   }
   for (const auto& entry : fs::recursive_directory_iterator(in_dir)) {
@@ -244,6 +253,7 @@ bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
       return false;
     }
     fs::path target_path = fs::path(temp_dir) / file_stat.m_filename;
+    std::cout << "Processing of " << target_path << std::endl;
     if (file_stat.m_is_directory) {
       fs::create_directories(target_path);
     } else {
@@ -255,6 +265,9 @@ bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
         std::cerr << "Error: can't extract file " << target_path << "\n";
         mz_zip_reader_end(&zip_archive);
         return false;
+      }
+      if (!exists(target_path.parent_path())) {
+        fs::create_directories(target_path.parent_path());
       }
       std::ofstream output(target_path, std::ios::binary);
       if (!output.is_open()) {
@@ -269,12 +282,11 @@ bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
     }
   }
   mz_zip_reader_end(&zip_archive);
-  temp_dir /= assets_zip_file.stem();
-
   if (!ValidateAssets(temp_dir, assets_zip_file, assets_info)) {
     std::cerr
         << "Error: invalid assets (assets info doesn't matches with downloaded files)"
         << std::endl;
+    fs::remove_all(temp_dir);
     return false;
   } else {
     std::cout << "Successfully validated" << std::endl;
@@ -337,11 +349,17 @@ AssetsInfo RetainAssetsInfo(const std::string& file_path) { // TODO: rename ____
   std::getline(info_file, line); // zip filename
   assets_info.zip_name = std::move(line);
   std::getline(info_file, line); // url
-/* TODO: (currently not implemented (see Faithful/utils/AssetPack))
   assets_info.url = std::move(line);
-  std::getline(info_file, line); // hash
-  assets_info.hash = std::move(line);
-  std::getline(info_file, line); // redirection count*/
+  std::cout << assets_info.url << std::endl;
+  assets_info.hash.resize(picosha2::k_digest_size); // hash
+  for (int i = 0; i < 32; ++i)
+    std::cout << info_file.get() << std::endl;
+//  info_file.read(reinterpret_cast<char*>(assets_info.hash.data()),
+//                 picosha2::k_digest_size);
+  std::getline(info_file, line);
+  std::cout << line << std::endl;
+  std::getline(info_file, line); // redirection count
+  std::cout << line << std::endl;
   assets_info.redirection_count = std::stoi(line);
   std::getline(info_file, line); // audio count
   assets_info.audio_count = std::stoi(line);

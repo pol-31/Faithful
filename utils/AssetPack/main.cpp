@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include "miniz.h"
@@ -12,19 +13,12 @@
 struct AssetsInfo {
   std::string url;
   std::string zip_name;
-  std::string hash; // sha256
+  std::vector<unsigned char> hash; // sha256
   int redirection_count;
   int audio_count;
   int models_count;
   int textures_count;
 };
-
-std::vector<unsigned char> GenerateSha256(const std::string& file_path) {
-  std::ifstream f(file_path, std::ios::binary);
-  std::vector<unsigned char> s(picosha2::k_digest_size);
-  picosha2::hash256(f, s.begin(), s.end());
-  return std::move(s);
-}
 
 void CountAssets(const std::filesystem::path& assets_directory,
                     AssetsInfo& assets_info) {
@@ -33,78 +27,69 @@ void CountAssets(const std::filesystem::path& assets_directory,
   fs::path models_dir = assets_directory / "models";
   fs::path textures_dir = assets_directory / "textures";
   assets_info.audio_count = static_cast<int>(
-      std::distance(fs::directory_iterator(audio_dir),
-                    fs::directory_iterator{}));
+      std::distance(fs::recursive_directory_iterator(audio_dir),
+                    fs::recursive_directory_iterator{}));
   assets_info.models_count = static_cast<int>(
-      std::distance(fs::directory_iterator(models_dir),
-                    fs::directory_iterator{}));
+      std::distance(fs::recursive_directory_iterator(models_dir),
+                    fs::recursive_directory_iterator{}));
   assets_info.textures_count = static_cast<int>(
-      std::distance(fs::directory_iterator(textures_dir),
-                    fs::directory_iterator{}));
+      std::distance(fs::recursive_directory_iterator(textures_dir),
+                    fs::recursive_directory_iterator{}));
 }
 
-void WriteSha256ToFile(const std::vector<unsigned char>& sha256Hash, const std::string& filePath) {
-  std::ofstream outputFile(filePath, std::ios::binary);
-  if (!outputFile.is_open()) {
-    std::cerr << "Error opening file: " << filePath << std::endl;
-    return;
-  }
-  outputFile.write(reinterpret_cast<const char*>(sha256Hash.data()), sha256Hash.size());
-}
-
+// TODO: add precaution if file too big (should be streamed)
 bool GenerateZip(const std::filesystem::path& assets_path,
                  AssetsInfo& assets_info) {
   namespace fs = std::filesystem;
-  // TODO: this is borrowed code (AssetDownloader) for decompression,
-  //  BUT need compression
-  /*mz_zip_archive zip_archive;
-  memset(&zip_archive, 0, sizeof(zip_archive));
-
-  if (!mz_zip_reader_init_file(&zip_archive, assets_info.zip_name.c_str(), 0)) {
-    std::cerr << "Error: can't initialize miniz zip archive reader\n";
-    return false;
-  }
-  std::filesystem::path temp_dir("temp");
-
-  for (mz_uint i = 0; i < mz_zip_reader_get_num_files(&zip_archive); i++) {
-    mz_zip_archive_file_stat file_stat;
-    if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat)) {
-      std::cerr << "Error: can't get file stat for entry " << i << "\n";
-      mz_zip_reader_end(&zip_archive);
-      return false;
-    }
-    fs::path target_path = fs::path(temp_dir) / file_stat.m_filename;
-    if (file_stat.m_is_directory) {
-      fs::create_directories(target_path);
-    } else {
-      mz_uint uncompressed_size = static_cast<mz_uint>(file_stat.m_uncomp_size);
-      std::vector<char> file_data(uncompressed_size);
-
-      if (!mz_zip_reader_extract_to_mem(&zip_archive, i, file_data.data(),
-                                        uncompressed_size, 0)) {
-        std::cerr << "Error: can't extract file " << target_path << "\n";
-        mz_zip_reader_end(&zip_archive);
-        return false;
-      }
-      std::ofstream output(target_path, std::ios::binary);
-      if (!output.is_open()) {
-        std::cerr << "Error: can't open file to write asset" << std::endl;
-        return false;
-      }
-      if (!output.write(file_data.data(), uncompressed_size)) {
-        std::cerr << "Error: can't write asset" << std::endl;
-        mz_zip_reader_end(&zip_archive);
+  fs::remove(assets_info.zip_name);
+  mz_bool status;
+  for (const auto& entry : fs::recursive_directory_iterator(assets_path)) {
+    if (fs::is_regular_file(entry)) {
+      std::ifstream asset_file(entry.path(), std::ios::binary);
+      std::stringstream asset_data_stream;
+      asset_data_stream << asset_file.rdbuf();
+      std::string asset_data = asset_data_stream.str();
+      std::cout << entry.path().lexically_relative(assets_path).c_str() << std::endl;
+      status = mz_zip_add_mem_to_archive_file_in_place(
+          assets_info.zip_name.c_str(), entry.path().lexically_relative(assets_path).c_str(),
+          asset_data.c_str(), asset_data.size(), nullptr, 0, MZ_BEST_COMPRESSION);
+      if (!status) {
+        std::cerr << "Error: file zipping failure for: "
+                  << entry.path().lexically_relative(assets_path).c_str()
+                  << std::endl;
         return false;
       }
     }
   }
-  mz_zip_reader_end(&zip_archive);*/
+  return true;
 }
 
 void CalculateHash(AssetsInfo& assets_info) {
-  // TODO generate hash + write to assets_info.hash
-//  std::vector<unsigned char> s = GenerateSha256("/home/pavlo/Desktop/test.zip");
-//  WriteSha256ToFile(s, "result_hash.bin");
+  std::cout << "Hash computation..." << std::endl;
+  std::ifstream f(assets_info.zip_name, std::ios::binary);
+  assets_info.hash.resize(picosha2::k_digest_size);
+  picosha2::hash256(f, assets_info.hash.begin(), assets_info.hash.end());
+}
+
+
+bool GenerateInfoFile(const AssetsInfo& assets_info) {
+  std::ofstream assets_info_file("faithful_assets_info.txt");
+  if (!assets_info_file.is_open()) {
+    std::cerr << "Error: can't open file to write assets info" << std::endl;
+    return false;
+  }
+  assets_info_file
+      << assets_info.zip_name << '\n'
+      << assets_info.url << '\n';
+  for (auto c : assets_info.hash) {
+    assets_info_file << c;
+  }
+  assets_info_file << '\n'
+      << assets_info.redirection_count << '\n'
+      << assets_info.audio_count << '\n'
+      << assets_info.models_count << '\n'
+      << assets_info.textures_count;
+  return true;
 }
 
 int main(int argc, char** argv) {
@@ -141,9 +126,15 @@ int main(int argc, char** argv) {
   assets_info.url = faithful::config::default_url;
   assets_info.zip_name = faithful::config::default_zip_name;
 
-  GenerateZip(assets_dir, assets_info);
+  if (!GenerateZip(assets_dir, assets_info)) {
+    return -1;
+  }
   CalculateHash(assets_info);
-
+  if (!GenerateInfoFile(assets_info)) {
+    return -1;
+  }
+  std::cout << "\nSuccess: see faithful_assets_info.txt and "
+            << assets_info.zip_name << std::endl;
   std::cout << "CAUTION: link to assets & redirection count should be set "
             << "manually after uploading " << faithful::config::default_zip_name
             << " to Google Drive (or other location)\n" << "You also should use "
