@@ -11,12 +11,18 @@ namespace config {
 
 /// _____AssetDownloader_____
 inline constexpr char asset_info_url[] =
-    "https://raw.githubusercontent.com/pol-31/Faithful/main/config/asset_info.txt";
+    "https://raw.githubusercontent.com/pol-31/Faithful/main/config/faithful_assets_info.txt";
 
 /// _____AssetDownloader_____
 inline constexpr char default_zip_name[] = "faithful_assets.zip";
+inline constexpr char default_info_name[] = "faithful_assets_info.txt";
+inline constexpr char default_temp_dir_name[] = "AssetPack_temp";
+inline constexpr char default_curl_cli_command[] = "curl -o";
+inline constexpr char default_wget_command[] = "wget -O";
+inline constexpr char default_invoke_webrequest_command[] =
+    "powershell.exe -Command Invoke-WebRequest";
 inline constexpr char default_url[] =
-    "https://drive.usercontent.google.com/download?id=108CTO5shaJLb9pW1GO84q9gFigahziKU&export=download&authuser=0&confirm=t&uuid=6ceb5ba7-c0ca-49c6-a66a-cfc741746e60&at=APZUnTU1jQoTnu4e17W1nudsfFTx:1704888438298";
+    "https://drive.usercontent.google.com/download?id=1zFzeoB8Su-4yt9bqMOgJ7uCRbKMlP2DT&export=download&authuser=0&confirm=t&uuid=9bc19c5b-d6af-4ea1-87f4-a0c26a6701fd&at=APZUnTWJGjDQQGFN2pYOQosBzPL3:1705005036841";
 inline constexpr int default_url_redirections_count = 0;
 
 /// _____AssetProcessor_____

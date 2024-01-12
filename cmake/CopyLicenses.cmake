@@ -7,24 +7,23 @@ function(faithful_copy_license sourcePath targetName)
 endfunction(faithful_copy_license)
 
 function(faithful_copy_licenses)
-    faithful_copy_license("${faithful_licenses_dir}/../external/assimp/assimp/LICENSE" "assimp")
-    faithful_copy_license("${faithful_licenses_dir}/../external/astc-encoder/astc-encoder/LICENSE.txt" "astc-encoder")
-    faithful_copy_license("${faithful_licenses_dir}/../external/cgltf/cgltf/LICENSE" "cgltf")
-    faithful_copy_license("${faithful_licenses_dir}/../external/curl/curl/LICENSES/BSD-3-Clause.txt" "curl")
-    faithful_copy_license("${faithful_licenses_dir}/../external/curl/curl/LICENSES/BSD-4-Clause-UC.txt" "curl")
-    faithful_copy_license("${faithful_licenses_dir}/../external/curl/curl/LICENSES/curl.txt" "curl")
-    faithful_copy_license("${faithful_licenses_dir}/../external/curl/curl/LICENSES/ISC.txt" "curl")
-    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/LICENSE.TXT" "freetype")
-    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/docs/FTL.TXT" "freetype_ftl")
-    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/src/bdf/README" "freetype_bdf")
-    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/src/pcf/README" "freetype_pcf")
-    faithful_copy_license("${faithful_licenses_dir}/../external/freetype/freetype/src/gzip/zlib.h" "freetype_gzip")
-    faithful_copy_license("${faithful_licenses_dir}/../external/glad/glad/LICENSE" "glad")
-    faithful_copy_license("${faithful_licenses_dir}/../external/glfw/glfw/LICENSE.md" "glfw")
-    faithful_copy_license("${faithful_licenses_dir}/../external/glm/glm/manual.md" "glm")
-    faithful_copy_license("${faithful_licenses_dir}/../external/googletest/googletest/LICENSE" "googletest")
-    faithful_copy_license("${faithful_licenses_dir}/../external/libvpx/libvpx/LICENSE" "libvpx")
-    faithful_copy_license("${faithful_licenses_dir}/../external/openal-soft/openal-soft/LICENSE-pffft" "openal-soft")
-    faithful_copy_license("${faithful_licenses_dir}/../external/vorbis/vorbis/COPYING" "vorbis")
+    faithful_copy_license("${ALSA_SOURCE_DIR}/COPYING" "alsa")
+    faithful_copy_license("${CMAKE_SOURCE_DIR}/external/astc-encoder/LICENSE.txt" "astc-encoder")
+#    faithful_copy_license("${CURL_SOURCE_DIR}/../external/curl/curl/LICENSES/BSD-3-Clause.txt" "curl") # TODO: cond, more licenses
+#    faithful_copy_license("${CMAKE_SOURCE_DIR}/external/dr_libs/LICENSE" "dr_libs") # TODO: cond
+    faithful_copy_license("${CMAKE_SOURCE_DIR}/external/glad/LICENSE" "glad")
+    faithful_copy_license("${CMAKE_SOURCE_DIR}/external/glfw/LICENSE.md" "glfw")
+    faithful_copy_license("${CMAKE_SOURCE_DIR}/external/glm/manual.md" "glm")
+#    faithful_copy_license("${CMAKE_SOURCE_DIR}/external/googletest/googletest/LICENSE" "googletest") # TODO: cond
+    faithful_copy_license("${CMAKE_SOURCE_DIR}/external/libogg/COPYING" "libogg")
+    # TODO: meshoptimizer
+    # TODO: mimalloc
+    # TODO: miniz
+    faithful_copy_license("${CMAKE_SOURCE_DIR}/external/openal-soft/LICENSE-pffft" "openal-soft")
+    # TODO: picosha2
+    # TODO: rapidjson
+    # TODO: stb
+    # TODO: tinygltf
+    faithful_copy_license("${CMAKE_SOURCE_DIR}/external/vorbis/COPYING" "vorbis")
     # TODO: add "/../LICENSE" "faithful"
 endfunction(faithful_copy_licenses)

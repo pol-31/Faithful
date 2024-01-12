@@ -145,7 +145,7 @@ void AssetsAnalyzer::AddEntry(AssetInfo&& new_asset) {
     if (AreAssetsEqual(
             new_asset,
             old_asset)) {  // TODO: need to process either one or another
-      if (ReplaceIORequest(new_asset)) {
+      if (ReplaceAssetIORequest(new_asset)) {
         SubmitTask(std::move(new_asset));
         std::cout << "Processed: " << new_asset.source_path << std::endl;
         return;
@@ -169,7 +169,7 @@ void AssetsAnalyzer::AddEntry(AssetInfo&& new_asset) {
   std::cout << "Processed: " << new_asset.source_path << std::endl;
 }
 
-bool AssetsAnalyzer::ReplaceIORequest(const AssetInfo& new_asset) {
+bool AssetsAnalyzer::ReplaceAssetIORequest(const AssetInfo& new_asset) {
   if (force_)
     return true;
   if (all_keep_) {

@@ -41,7 +41,7 @@ class AssetsAnalyzer {
 
   bool AreAssetsEqual(const AssetInfo& new_asset, const AssetInfo& old_asset);
 
-  bool ReplaceIORequest(const AssetInfo& new_asset);
+  bool ReplaceAssetIORequest(const AssetInfo& new_asset);
 
   void SubmitTask(AssetInfo&& new_asset);
 
