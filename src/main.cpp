@@ -1,3 +1,4 @@
+/*
 
 /// currently a little bit changed example provided by syoyo: tinygltf
 
@@ -21,8 +22,18 @@
 #include "io/Window.h"
 #include "loader/ShaderProgram.h"
 
+
+bool TinygltfLoadImageCallback(tinygltf::Image *, const int, std::string *,
+                               std::string *, int, int,
+                               const unsigned char *, int,
+                               void *user_pointer) {
+  std::cout << "+1 loaded image" << std::endl;
+  return true;
+}
+
 bool LoadModel(tinygltf::Model &model, const char *filename) {
   tinygltf::TinyGLTF loader;
+  loader.SetImageLoader(TinygltfLoadImageCallback, nullptr);
   std::string err;
   std::string warn;
 
@@ -131,8 +142,8 @@ void BindMesh(std::map<int, GLuint> &vbos,
           // ???
         }
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0,
-                     format, type, &image.image.at(0));
+//        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0,
+//                     format, type, &image.image.at(0));
       }
     }
   }
@@ -321,5 +332,112 @@ int main() {
   RunRenderLoop(window, filename);
 
   glfwTerminate();
+  return 0;
+}*/
+
+#include <stdlib.h>
+#include <mimalloc-override.h>
+/// We don't need to #include "mimalloc-new-delete.h"
+/// as it has already been overridden by libmimalloc.a
+
+#define AL_LIBTYPE_STATIC
+//#include "config.h"
+
+#include "AL/al.h"
+#include "AL/alc.h"
+#include <sndfile.h>
+#include <iostream>
+#include "alsa/asoundlib.h"
+
+// Function to check for OpenAL errors
+void checkALError(const char* message) {
+  ALenum error = alGetError();
+  if (error != AL_NO_ERROR) {
+    std::cerr << "OpenAL Error (" << message << "): " << alGetString(error) << std::endl;
+  }
+}
+
+int main() {
+  const char *pcm_name = "default";
+  snd_pcm_t *pcm_handle;
+
+  // Open the PCM playback device
+  int rc = snd_pcm_open(&pcm_handle, pcm_name, SND_PCM_STREAM_PLAYBACK, 0);
+  if (rc < 0) {
+    std::cerr << "Error: Unable to open PCM device '" << pcm_name << "': " << snd_strerror(rc) << std::endl;
+    return 1;
+  }
+
+  // Display the PCM device information
+  std::cout << "PCM Name: " << snd_pcm_name(pcm_handle) << std::endl;
+  std::cout << "PCM State: " << snd_pcm_state_name(snd_pcm_state(pcm_handle)) << std::endl;
+
+  // Close the PCM handle
+  snd_pcm_close(pcm_handle);
+//  return 0;
+
+  // Initialize OpenAL context
+  ALCdevice* device = alcOpenDevice(nullptr);
+  if (!device) {
+    std::cerr << "Failed to open OpenAL device." << std::endl;
+    return 1;
+  }
+
+  ALCcontext* context = alcCreateContext(device, nullptr);
+  if (!context) {
+    std::cerr << "Failed to create OpenAL context." << std::endl;
+    alcCloseDevice(device);
+    return 1;
+  }
+
+  alcMakeContextCurrent(context);
+
+  // Load audio file using libsndfile
+  const char* audioFile = "/home/pavlo/Desktop/sample2_.wav";  // Replace with your audio file path
+
+  SF_INFO sfInfo;
+  SNDFILE* sndFile = sf_open(audioFile, SFM_READ, &sfInfo);
+  if (!sndFile) {
+    std::cerr << "Failed to open audio file." << std::endl;
+    alcMakeContextCurrent(nullptr);
+    alcDestroyContext(context);
+    alcCloseDevice(device);
+    return 1;
+  }
+
+  ALsizei size = static_cast<ALsizei>(sfInfo.frames) * sfInfo.channels * sizeof(short);
+  short* bufferData = new short[size];
+  sf_readf_short(sndFile, bufferData, sfInfo.frames);
+  sf_close(sndFile);
+
+  // Set up OpenAL buffer
+  ALuint buffer;
+  alGenBuffers(1, &buffer);
+  alBufferData(buffer, (sfInfo.channels == 2) ? AL_FORMAT_STEREO16 : AL_FORMAT_MONO16, bufferData, size, sfInfo.samplerate);
+
+  // Set up source
+  ALuint source;
+  alGenSources(1, &source);
+  alSourcei(source, AL_BUFFER, buffer);
+
+  // Play the sound
+  alSourcePlay(source);
+
+  // Wait for the sound to finish playing (you can add more sophisticated logic)
+  ALint sourceState;
+  do {
+    alGetSourcei(source, AL_SOURCE_STATE, &sourceState);
+  } while (sourceState == AL_PLAYING);
+
+  // Clean up
+  alDeleteSources(1, &source);
+  alDeleteBuffers(1, &buffer);
+  delete[] bufferData;
+
+  // Close OpenAL context and device
+  alcMakeContextCurrent(nullptr);
+  alcDestroyContext(context);
+  alcCloseDevice(device);
+
   return 0;
 }

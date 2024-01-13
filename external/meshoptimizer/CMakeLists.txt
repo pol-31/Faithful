@@ -4,8 +4,8 @@ message(STATUS "meshoptimizer building")
 
 include(ExternalProject)
 
-set(MESHOPTIMIZER_SOURCE_DIR ${CMAKE_BINARY_DIR}/meshoptimizer)
-set(MESHOPTIMIZER_BINARY_DIR ${CMAKE_BINARY_DIR}/meshoptimizer-build
+set(MESHOPTIMIZER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/meshoptimizer/meshoptimizer_source)
+set(MESHOPTIMIZER_BINARY_DIR ${CMAKE_BINARY_DIR}/external/meshoptimizer
         CACHE INTERNAL "meshoptimizer binary directory" FORCE)
 
 set(MESHOPTIMIZER_URL https://github.com/zeux/meshoptimizer.git)

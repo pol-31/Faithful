@@ -10,9 +10,10 @@
 #endif
 #endif
 
-// TODO:
-//  #include "mimalloc.h"
-//  #include "mimalloc-new-delete.h" // overriding of global new/delete
+#include <stdlib.h>
+#include "mimalloc-override.h"
+/// We don't need to #include "mimalloc-new-delete.h"
+/// as it has already been overridden by libmimalloc.a
 
 #include <cstdlib>
 #include <cstring>
@@ -278,10 +279,14 @@ bool DownloadFile(const std::string& file_url, const std::string& out_file,
 
   curl_easy_setopt(curl, CURLOPT_URL, file_url.c_str());
   if (redirection_count > 0) {
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, redirection_count);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, redirection_count);
   }
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+
+  curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+
   CURLcode res = curl_easy_perform(curl);
 
   if (res != CURLE_OK) {

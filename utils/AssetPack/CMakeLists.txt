@@ -13,7 +13,7 @@ target_link_libraries(AssetPack
 )
 
 target_include_directories(AssetPack
-        #        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
         PUBLIC ${CMAKE_SOURCE_DIR}/external/miniz
         PUBLIC ${CMAKE_SOURCE_DIR}/external/picosha2
 )

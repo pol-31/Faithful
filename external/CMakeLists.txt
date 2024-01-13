@@ -13,6 +13,7 @@ include(CheckCXXSourceRuns)
 if (UNIX AND NOT APPLE)
     if (FAITHFUL_BUILD_EXTERNAL_ALL OR
           (FAITHFUL_BUILD_EXTERNAL AND NOT AUDIO_BACKEND_FOUND))
+        set(FAITHFUL_ALSOFT_ALSA_ONLY ON CACHE BOOL "" FORCE)
         add_subdirectory(alsa EXCLUDE_FROM_ALL)
     endif ()
 endif ()
@@ -23,8 +24,9 @@ endif ()
 #    glad (Faithful: OpenGL specification)
 if (FAITHFUL_BUILD_EXTERNAL_ALL OR FAITHFUL_BUILD_EXTERNAL)
     message(STATUS "glad building")
-    set(GLAD_BINARY_DIR ${CMAKE_BINARY_DIR}/glad-build CACHE INTERNAL "glad binary directory" FORCE)
-    set(GLAD_OUT_DIR "${GLAD_BINARY_DIR}" CACHE STRING "Output directory" FORCE)
+    set(GLAD_BINARY_DIR ${CMAKE_BINARY_DIR}/external/glad CACHE INTERNAL "glad binary directory" FORCE)
+#    file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/external/glad_out)
+    set(GLAD_OUT_DIR "${CMAKE_BINARY_DIR}/external/glad_out" CACHE STRING "Output directory" FORCE)
     set(GLAD_INSTALL OFF CACHE BOOL "Generate installation target" FORCE)
     set(GLAD_GENERATOR "c" CACHE STRING "Language to generate the binding for" FORCE)
 
@@ -78,47 +80,48 @@ unset(CMAKE_REQUIRED_INCLUDES)
 #    Astc-encoder: Faithful (runtime decoding only
 #      - all textures already compressed to .astc)
 #    AssetProcessor - texture conversion to .astc (+encode, +decode)
+
 if (FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL)
-    if (FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
-        # here we don't need to build any variant of astc-encoder
-    else ()
-        if (NOT FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
-            set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR ON)
-        else ()
-            set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR OFF)
-        endif ()
-        message(STATUS "astc-encoder building")
-        set(ASTC_ENCODER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/astc-encoder CACHE INTERNAL "astc-encoder source directory" FORCE)
-        set(ASTC_ENCODER_BINARY_DIR ${CMAKE_BINARY_DIR}/astc-encoder-build CACHE INTERNAL "astc-encoder binary directory" FORCE)
-
-        ExternalProject_Add(
-                astcencoder_external
-                PREFIX ${CMAKE_BINARY_DIR}
-                SOURCE_DIR ${ASTC_ENCODER_SOURCE_DIR}
-                CONFIGURE_COMMAND ${CMAKE_COMMAND}
-                -DASTCENC_ISA_NATIVE=ON
-                -DASTCENC_DECOMPRESSOR=${FAITHFUL_ASTC_ENCODER_DECOMPRESSOR}
-                -DASTCENC_SHAREDLIB=OFF
-                -DASTCENC_DIAGNOSTICS=OFF
-                -DASTCENC_ASAN=OFF
-                -DASTCENC_UNITTEST=OFF
-                -DASTCENC_INVARIANCE=OFF
-                -DASTCENC_CLI=OFF
-                -DASTCENC_BLOCK_MAX_TEXELS=64 # max 8x8x1 compression)
-                ${ASTC_ENCODER_SOURCE_DIR}
-                BUILD_COMMAND ${CMAKE_COMMAND} --build .
-                INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-                BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
-                DEPENDS glad
-        )
-
-        add_library(astc-encoder INTERFACE)
-        add_dependencies(astc-encoder astcencoder_external)
-        target_link_libraries(astc-encoder
-                INTERFACE ${CMAKE_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
-        )
-        target_include_directories(astc-encoder INTERFACE ${ASTC_ENCODER_SOURCE_DIR}/Source)
+    if (FAITHFUL_BUILD_ASSET_PROCESSOR OR NOT FAITHFUL_GL_SUPPORTS_ASTC)
+        set(FAITHFUL_BUILD_ASTC_ENCODER ON CACHE BOOL "" FORCE)
     endif ()
+endif ()
+if (FAITHFUL_BUILD_ASTC_ENCODER)
+    if (NOT FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
+        set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR ON)
+    else ()
+        set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR OFF)
+    endif ()
+    message(STATUS "astc-encoder building")
+    set(ASTC_ENCODER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/astc-encoder CACHE INTERNAL "astc-encoder source directory" FORCE)
+    set(ASTC_ENCODER_BINARY_DIR ${CMAKE_BINARY_DIR}/external/astc-encoder CACHE INTERNAL "astc-encoder binary directory" FORCE)
+
+    ExternalProject_Add(
+            astcencoder_external
+            PREFIX ${ASTC_ENCODER_BINARY_DIR}
+            SOURCE_DIR ${ASTC_ENCODER_SOURCE_DIR}
+            CONFIGURE_COMMAND ${CMAKE_COMMAND}
+            -DASTCENC_ISA_NATIVE=ON
+            -DASTCENC_DECOMPRESSOR=${FAITHFUL_ASTC_ENCODER_DECOMPRESSOR}
+            -DASTCENC_SHAREDLIB=OFF
+            -DASTCENC_DIAGNOSTICS=OFF
+            -DASTCENC_ASAN=OFF
+            -DASTCENC_UNITTEST=OFF
+            -DASTCENC_INVARIANCE=OFF
+            -DASTCENC_CLI=OFF
+            -DASTCENC_BLOCK_MAX_TEXELS=64 # max 8x8x1 compression)
+            ${ASTC_ENCODER_SOURCE_DIR}
+            BUILD_COMMAND ${CMAKE_COMMAND} --build .
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
+            BUILD_BYPRODUCTS ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
+    )
+
+    add_library(astc-encoder INTERFACE)
+    add_dependencies(astc-encoder astcencoder_external)
+    target_link_libraries(astc-encoder
+            INTERFACE ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
+    )
+    target_include_directories(astc-encoder INTERFACE ${ASTC_ENCODER_SOURCE_DIR}/Source)
 endif ()
 
 
@@ -165,7 +168,7 @@ if (FAITHFUL_BUILD_TESTS)
         message(STATUS "googletest building")
         set(BUILD_GMOCK OFF CACHE BOOL "Build GoogleTest GMock" FORCE)
         set(INSTALL_GTEST OFF CACHE BOOL "Install GoogleTest" FORCE)
-        set(GTEST_BINARY_DIR ${CMAKE_BINARY_DIR}/googletest-build CACHE INTERNAL "googletest binary directory" FORCE)
+        set(GTEST_BINARY_DIR ${CMAKE_BINARY_DIR}/external/googletest CACHE INTERNAL "googletest binary directory" FORCE)
         add_subdirectory(googletest EXCLUDE_FROM_ALL)
     endif ()
 endif ()
@@ -177,32 +180,32 @@ endif ()
 if (FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT LIBOGG_FOUND))
     message(STATUS "libogg building")
-    set(LIBOGG_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/libogg)
-    set(LIBOGG_BINARY_DIR ${CMAKE_BINARY_DIR}/libogg-build CACHE INTERNAL "libogg binary directory" FORCE)
+    set(LIBOGG_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/libogg CACHE INTERNAL "libogg binary directory" FORCE)
+    set(LIBOGG_BINARY_DIR ${CMAKE_BINARY_DIR}/external/libogg CACHE INTERNAL "libogg binary directory" FORCE)
 
     ExternalProject_Add(
             libogg_external
-            PREFIX ${CMAKE_BINARY_DIR}
+            PREFIX ${LIBOGG_BINARY_DIR}
             SOURCE_DIR ${LIBOGG_SOURCE_DIR}
             CONFIGURE_COMMAND ${LIBOGG_SOURCE_DIR}/autogen.sh
             BUILD_COMMAND make -j8
             INSTALL_COMMAND cmake -E echo "Skipping install step"
             BUILD_BYPRODUCTS
-            ${CMAKE_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a
+            ${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a
     )
 
     add_library(libogg INTERFACE)
     add_dependencies(libogg libogg_external)
 
-    target_link_libraries(libogg INTERFACE ${CMAKE_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a)
+    target_link_libraries(libogg INTERFACE ${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a)
     target_include_directories(libogg INTERFACE ${LIBOGG_SOURCE_DIR}/include)
 
     set(Ogg_INCLUDE_DIRS "${LIBOGG_SOURCE_DIR}/include" CACHE PATH "" FORCE)
-    set(Ogg_LIBRARIES "${CMAKE_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
+    set(Ogg_LIBRARIES "${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
     set(OGG_INCLUDE_DIR "${LIBOGG_SOURCE_DIR}/include" CACHE PATH "" FORCE)
-    set(OGG_LIBRARY "${CMAKE_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
+    set(OGG_LIBRARY "${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
     set(LIBOGG_INCLUDE_DIR "${LIBOGG_SOURCE_DIR}/include" CACHE PATH "" FORCE)
-    set(LIBOGG_LIBRARY "${CMAKE_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
+    set(LIBOGG_LIBRARY "${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
 endif()
 
 
@@ -212,26 +215,27 @@ if (FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT MIMALLOC_FOUND))
     message(STATUS "mimalloc building")
     set(MIMALLOC_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/mimalloc)
-#    set(MIMALLOC_BINARY_DIR ${CMAKE_BINARY_DIR}/mimalloc-build CACHE INTERNAL "mimalloc binary directory" FORCE)
+    set(MIMALLOC_BINARY_DIR ${CMAKE_BINARY_DIR}/external/mimalloc CACHE INTERNAL "mimalloc binary directory" FORCE)
 
     ExternalProject_Add(
             mimalloc_external
-            PREFIX ${CMAKE_BINARY_DIR}/mimalloc
+            PREFIX ${MIMALLOC_BINARY_DIR}
             SOURCE_DIR ${MIMALLOC_SOURCE_DIR}
             CONFIGURE_COMMAND ${CMAKE_COMMAND}
             -DMI_BUILD_SHARED=OFF
             -DMI_BUILD_STATIC=ON
             -DMI_BUILD_OBJECT=OFF
             -DMI_BUILD_TESTS=OFF
+            -DMI_USE_CXX=ON
             ${MIMALLOC_SOURCE_DIR}
             BUILD_COMMAND ${CMAKE_COMMAND} --build .
             INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/mimalloc/src/mimalloc_external-build/libmimalloc.a
+            BUILD_BYPRODUCTS ${MIMALLOC_BINARY_DIR}/src/mimalloc_external-build/libmimalloc.a
     )
     add_library(mimalloc INTERFACE)
     add_dependencies(mimalloc mimalloc_external)
     target_link_libraries(mimalloc
-            INTERFACE ${CMAKE_BINARY_DIR}/mimalloc/src/mimalloc_external-build/libmimalloc.a
+            INTERFACE ${MIMALLOC_BINARY_DIR}/src/mimalloc_external-build/libmimalloc.a
     )
 endif()
 
@@ -241,25 +245,61 @@ endif()
 if (FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT OPENAL_FOUND))
     message(STATUS "openal-soft building")
-    set(ALSOFT_DLOPEN OFF CACHE BOOL "Check for the dlopen API for loading optional libs"  FORCE)
-    set(ALSOFT_UTILS OFF CACHE BOOL "Build utility programs"  FORCE)
-    set(ALSOFT_EXAMPLES OFF CACHE BOOL "Build example programs"  FORCE)
-    set(ALSOFT_TESTS OFF CACHE BOOL "Build test programs"  FORCE)
+    set(OPENALSOFT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/openal-soft)
+    set(OPENALSOFT_BINARY_DIR ${CMAKE_BINARY_DIR}/external/openal-soft CACHE INTERNAL "openal-soft binary directory" FORCE)
 
-    set(ALSOFT_INSTALL OFF CACHE BOOL "Install main library" FORCE)
-    set(ALSOFT_INSTALL_CONFIG OFF CACHE BOOL "Install alsoft.conf sample configuration file" FORCE)
-    set(ALSOFT_INSTALL_HRTF_DATA OFF CACHE BOOL "Install HRTF data files" FORCE)
-    set(ALSOFT_INSTALL_AMBDEC_PRESETS OFF CACHE BOOL "Install AmbDec preset files" FORCE)
-    set(ALSOFT_INSTALL_EXAMPLES OFF CACHE BOOL "Install example programs (alplay, alstream, ...)" FORCE)
-    set(ALSOFT_INSTALL_UTILS OFF CACHE BOOL "Install utility programs (openal-info, alsoft-config, ...)" FORCE)
-    set(ALSOFT_UPDATE_BUILD_VERSION OFF CACHE BOOL "Update git build version info" FORCE)
+    if (FAITHFUL_ALSOFT_ALSA_ONLY)
+        set(ALSOFT_OPTIONS
+                "-DALSOFT_REQUIRE_ALSA=ON "
+                "-DALSOFT_BACKEND_ALSA=ON "
+                "-DALSOFT_BACKEND_OSS=OFF "
+                "-DALSOFT_BACKEND_SOLARIS=OFF "
+                "-DALSOFT_BACKEND_SNDIO=OFF "
+                "-DALSOFT_BACKEND_QSA=OFF "
+                "-DALSOFT_BACKEND_PORTAUDIO=OFF "
+                "-DALSOFT_BACKEND_PULSEAUDIO=OFF "
+                "-DALSOFT_BACKEND_JACK=OFF "
+                "-DALSOFT_BACKEND_COREAUDIO=OFF "
+                "-DALSOFT_BACKEND_WAVE=OFF "
+                "-DALSOFT_RTKIT=OFF"
+                CACHE INTERNAL "ALSOFT options"
+        )
+    else ()
+        set(ALSOFT_OPTIONS "" CACHE INTERNAL "ALSOFT options")
+    endif ()
 
-    add_subdirectory(openal-soft EXCLUDE_FROM_ALL)
+    ExternalProject_Add(
+            openal-soft_external
+            PREFIX ${OPENALSOFT_BINARY_DIR}
+            SOURCE_DIR ${OPENALSOFT_SOURCE_DIR}
+            CONFIGURE_COMMAND ${CMAKE_COMMAND}
+            -DLIBTYPE=STATIC
+            -DALSOFT_DLOPEN=OFF
+            -DALSOFT_UTILS=OFF
+            -DALSOFT_EXAMPLES=OFF
+            -DALSOFT_TESTS=OFF
 
-    if (UNIX AND NOT APPLE)
-        if (NOT AUDIO_BACKEND_FOUND)
-            add_dependencies(OpenAL alsa)
-        endif ()
+            -DALSOFT_INSTALL=OFF
+            -DALSOFT_INSTALL_CONFIG=OFF
+            -DALSOFT_INSTALL_HRTF_DATA=OFF
+            -DALSOFT_INSTALL_AMBDEC_PRESETS=OFF
+            -DALSOFT_INSTALL_EXAMPLES=OFF
+            -DALSOFT_INSTALL_UTILS=OFF
+            -DALSOFT_UPDATE_BUILD_VERSION=OFF
+            ${ALSOFT_OPTIONS}
+
+            ${OPENALSOFT_SOURCE_DIR}
+            BUILD_COMMAND ${CMAKE_COMMAND} --build .
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
+            BUILD_BYPRODUCTS ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/libopenal.a
+#            BUILD_BYPRODUCTS ${OPENALSOFT_BINARY_DIR}/src/mimalloc_external-build/libmimalloc.a
+    )
+    add_library(openal-soft INTERFACE)
+    add_dependencies(openal-soft openal-soft_external)
+    target_link_libraries(openal-soft INTERFACE ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/libopenal.a)
+
+    if (FAITHFUL_ALSOFT_ALSA_ONLY)
+        add_dependencies(openal-soft alsa)
     endif ()
 endif()
 
@@ -315,9 +355,10 @@ target_compile_definitions(tinygltf PUBLIC
         TINYGLTF_USE_RAPIDJSON
         TINYGLTF_USE_CPP14
 )
-target_include_directories(tinygltf PRIVATE ${CMAKE_SOURCE_DIR}/external/rapidjson/include/rapidjson)
-target_include_directories(tinygltf PRIVATE ${CMAKE_SOURCE_DIR}/external/tinygltf)
-
+target_include_directories(tinygltf
+        PRIVATE ${CMAKE_SOURCE_DIR}/external/rapidjson/include/rapidjson
+        tinygltf PRIVATE ${CMAKE_SOURCE_DIR}/external/tinygltf
+)
 
 #    --------------------------------------------------------------------
 #    vorbis (Faithful: audio streaming to OpenAL-Soft;
@@ -327,22 +368,21 @@ if (FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT VORBIS_FOUND))
     message(STATUS "vorbis building")
     set(VORBIS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/vorbis CACHE INTERNAL "vorbis source directory" FORCE)
-    set(VORBIS_BINARY_DIR ${CMAKE_BINARY_DIR}/vorbis-build CACHE INTERNAL "vorbis binary directory" FORCE)
+    set(VORBIS_BINARY_DIR ${CMAKE_BINARY_DIR}/external/vorbis CACHE INTERNAL "vorbis binary directory" FORCE)
 
     ExternalProject_Add(
             vorbis_external
-            PREFIX ${CMAKE_BINARY_DIR}
+            PREFIX ${VORBIS_BINARY_DIR}
             SOURCE_DIR ${VORBIS_SOURCE_DIR}
             CONFIGURE_COMMAND ${CMAKE_COMMAND}
             -DBUILD_SHARED_LIBS=OFF
             ${VORBIS_SOURCE_DIR}
             BUILD_COMMAND ${CMAKE_COMMAND} --build .
             INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_ALWAYS 1
             BUILD_BYPRODUCTS
-            ${CMAKE_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisenc.a
-            ${CMAKE_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisfile.a
-            ${CMAKE_BINARY_DIR}/src/vorbis_external-build/lib/libvorbis.a
+            ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisenc.a
+            ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisfile.a
+            ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbis.a
             DEPENDS libogg
     )
 
@@ -350,9 +390,9 @@ if (FAITHFUL_BUILD_EXTERNAL_ALL OR
     add_dependencies(vorbis vorbis_external)
 
     target_link_libraries(vorbis
-            INTERFACE ${CMAKE_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisenc.a
-            INTERFACE ${CMAKE_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisfile.a
-            INTERFACE ${CMAKE_BINARY_DIR}/src/vorbis_external-build/lib/libvorbis.a
+            INTERFACE ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisenc.a
+            INTERFACE ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisfile.a
+            INTERFACE ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbis.a
     )
     target_include_directories(vorbis INTERFACE ${VORBIS_SOURCE_DIR}/include)
 endif ()

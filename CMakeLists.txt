@@ -107,11 +107,9 @@ endif()
 if(FAITHFUL_DEPS_FOUND)
     add_subdirectory(src)
     target_link_libraries(Faithful INTERFACE src)
-#    add_dependencies(src external)
 
     add_subdirectory(utils)
     target_link_libraries(Faithful INTERFACE utils)
-#    add_dependencies(utils external)
 
     message(STATUS "+> Building of Faithful is completed")
     message("")
@@ -126,6 +124,10 @@ if(FAITHFUL_DEPS_FOUND)
         # include(${CMAKE_SOURCE_DIR}/cmake/CopyLicenses.cmake)
         message(STATUS "+> Faithful has been installed")
     endif()
+
+    include(${CMAKE_SOURCE_DIR}/cmake/CopyLicenses.cmake)
+    faithful_copy_licenses()
+
 else()
     message(STATUS "+> Building of Faithful has failed: some externals missing") # TODO: need certain listing of them
     message("")

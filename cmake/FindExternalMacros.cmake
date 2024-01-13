@@ -10,8 +10,6 @@ macro(find_audio_backend)
         set(AUDIO_BACKEND_LIB ${ALSA_LIBRARY} CACHE PATH "" FORCE)
         set(AUDIO_BACKEND_INCLUDE_DIR ${ALSA_INCLUDE_DIR} CACHE PATH "" FORCE)
         message(STATUS "OpenAL-soft audio backend: ${ALSA_LIBRARY}")
-    else()
-        message(FATAL_ERROR "FATAL ERROR")
     endif()
 
     if (NOT AUDIO_BACKEND_FOUND)

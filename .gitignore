@@ -6,3 +6,5 @@ cmake-build-*
 /utils/AssetProcessor/cmake-build-*/
 /utils/AssetProcessor/.idea/
 
+/external/alsa/alsa_source/
+/external/meshoptimizer/meshoptimizer_source/

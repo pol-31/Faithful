@@ -17,7 +17,7 @@ inline constexpr char asset_info_url[] =
 inline constexpr char default_zip_name[] = "faithful_assets.zip";
 inline constexpr char default_info_name[] = "faithful_assets_info.txt";
 inline constexpr char default_temp_dir_name[] = "AssetPack_temp";
-inline constexpr char default_curl_cli_command[] = "curl -o";
+inline constexpr char default_curl_cli_command[] = "curl -f -o";
 inline constexpr char default_wget_command[] = "wget -O";
 inline constexpr char default_invoke_webrequest_command[] =
     "powershell.exe -Command Invoke-WebRequest";

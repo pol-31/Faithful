@@ -1,3 +1,8 @@
+#include <stdlib.h>
+#include "mimalloc-override.h"
+/// We don't need to #include "mimalloc-new-delete.h"
+/// as it has already been overridden by libmimalloc.a
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>

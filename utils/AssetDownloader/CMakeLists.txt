@@ -9,7 +9,7 @@ add_executable(AssetDownloader main.cpp)
 
 if (FAITHFUL_BUILD_EXTERNAL_ALL)
     add_subdirectory(${CMAKE_SOURCE_DIR}/external/curl
-            ${CMAKE_CURRENT_BINARY_DIR}/curl EXCLUDE_FROM_ALL)
+            ${CMAKE_BINARY_DIR}/external/curl EXCLUDE_FROM_ALL)
     set(FAITHFUL_ASSET_DOWNLOADER_DOWNLOAD_BACKEND
             "FAITHFUL_ASSET_PROCESSOR_CURL_LIB" CACHE STRING "" FORCE)
 endif ()
@@ -54,7 +54,7 @@ else ()
     if (FAITHFUL_BUILD_EXTERNAL)
         message(STATUS "AssetDownloader: there is no download backend found, installing cURL")
         add_subdirectory(${CMAKE_SOURCE_DIR}/external/curl
-                ${CMAKE_CURRENT_BINARY_DIR}/curl EXCLUDE_FROM_ALL)
+                ${CMAKE_BINARY_DIR}/external/curl EXCLUDE_FROM_ALL)
         set(FAITHFUL_ASSET_DOWNLOADER_DOWNLOAD_BACKEND
                 "FAITHFUL_ASSET_PROCESSOR_CURL_LIB" CACHE STRING "" FORCE)
     else ()
@@ -65,7 +65,7 @@ else ()
 endif ()
 
 target_compile_definitions(AssetDownloader
-        PRIVATE ${FAITHFUL_ASSET_DOWNLOADER_DOWNLOAD_BACKED}
+        PRIVATE ${FAITHFUL_ASSET_DOWNLOADER_DOWNLOAD_BACKEND}
 )
 
 target_link_libraries(AssetDownloader
@@ -75,7 +75,7 @@ target_link_libraries(AssetDownloader
 )
 
 target_include_directories(AssetDownloader
-#        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
         PUBLIC ${CMAKE_SOURCE_DIR}/external/miniz
         PUBLIC ${CMAKE_SOURCE_DIR}/external/picosha2
 )
