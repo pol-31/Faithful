@@ -9,7 +9,7 @@ include(CheckCXXSourceRuns)
 #    FAITHFUL-specific
 
 #    --------------------------------------------------------------------
-#    ALSA (Linux only; Windows, MacOS doesn't need it
+#    ALSA (Linux only. Windows, MacOS doesn't need it)
 if (UNIX AND NOT APPLE)
     if (FAITHFUL_BUILD_EXTERNAL_ALL OR
           (FAITHFUL_BUILD_EXTERNAL AND NOT AUDIO_BACKEND_FOUND))
@@ -18,43 +18,16 @@ if (UNIX AND NOT APPLE)
     endif ()
 endif ()
 
-# glad should be built/compiled first to find out FAITHFUL_GL_SUPPORTS_ASTC
-
 #    --------------------------------------------------------------------
 #    glad (Faithful: OpenGL specification)
-if (FAITHFUL_BUILD_EXTERNAL_ALL OR FAITHFUL_BUILD_EXTERNAL)
     message(STATUS "glad building")
-    set(GLAD_BINARY_DIR ${CMAKE_BINARY_DIR}/external/glad CACHE INTERNAL "glad binary directory" FORCE)
-#    file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/external/glad_out)
-    set(GLAD_OUT_DIR "${CMAKE_BINARY_DIR}/external/glad_out" CACHE STRING "Output directory" FORCE)
-    set(GLAD_INSTALL OFF CACHE BOOL "Generate installation target" FORCE)
-    set(GLAD_GENERATOR "c" CACHE STRING "Language to generate the binding for" FORCE)
-
-    file(READ "${CMAKE_SOURCE_DIR}/config/opengl.txt" CONFIG_CONTENT)
-    string(REGEX REPLACE "\n" ";" CONFIG_LINES "${CONFIG_CONTENT}")
-
-    foreach(line ${CONFIG_LINES})
-        string(REGEX MATCH "^([^,]+),([^,]+),([^,]+)$" _match ${line})
-        set(key ${CMAKE_MATCH_1})
-        set(type ${CMAKE_MATCH_2})
-        set(value ${CMAKE_MATCH_3})
-        if(type STREQUAL "STRING")
-            set(${key} "${value}" CACHE STRING "Glad/OpenGL properties (see Faithful/config/opengl.txt)" FORCE)
-        elseif(type STREQUAL "BOOL")
-            set(${key} ${value} CACHE BOOL "" FORCE)
-        endif()
-    endforeach()
-
-    message("GLAD_API: ${GLAD_API}")
-    message("GLAD_PROFILE: ${GLAD_PROFILE}")
-    message("GLAD_ALL_EXTENSIONS: ${GLAD_ALL_EXTENSIONS}")
-    add_subdirectory(glad EXCLUDE_FROM_ALL)
-endif ()
+    add_library(glad ${CMAKE_SOURCE_DIR}/external/glad/src/glad.c)
+    target_include_directories(glad PRIVATE ${CMAKE_SOURCE_DIR}/external/glad/include)
 
 # if FAITHFUL_GL_SUPPORTS_ASTC, OpenGL has embedded support of astc textures,
 # so we don't need astc-decoder (astc-encoder depends on AssetProcessor)
 
-set(CMAKE_REQUIRED_INCLUDES "${GLAD_OUT_DIR}/include")
+set(CMAKE_REQUIRED_INCLUDES ${GLAD_INCLUDE_DIR})
 
 check_cxx_source_runs("
     #include \"glad/glad.h\"
@@ -92,6 +65,7 @@ if (FAITHFUL_BUILD_ASTC_ENCODER)
     else ()
         set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR OFF)
     endif ()
+
     message(STATUS "astc-encoder building")
     set(ASTC_ENCODER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/astc-encoder CACHE INTERNAL "astc-encoder source directory" FORCE)
     set(ASTC_ENCODER_BINARY_DIR ${CMAKE_BINARY_DIR}/external/astc-encoder CACHE INTERNAL "astc-encoder binary directory" FORCE)
@@ -113,13 +87,16 @@ if (FAITHFUL_BUILD_ASTC_ENCODER)
             ${ASTC_ENCODER_SOURCE_DIR}
             BUILD_COMMAND ${CMAKE_COMMAND} --build .
             INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_BYPRODUCTS ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
+            BUILD_BYPRODUCTS ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/Debug/astcenc-native-static${CMAKE_STATIC_LIBRARY_SUFFIX}
+            #BUILD_BYPRODUCTS ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static${CMAKE_STATIC_LIBRARY_SUFFIX} <------ TODO: its for UNIX
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
     )
 
     add_library(astc-encoder INTERFACE)
     add_dependencies(astc-encoder astcencoder_external)
     target_link_libraries(astc-encoder
-            INTERFACE ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static.a
+            INTERFACE ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/Debug/astcenc-native-static${CMAKE_STATIC_LIBRARY_SUFFIX}
     )
     target_include_directories(astc-encoder INTERFACE ${ASTC_ENCODER_SOURCE_DIR}/Source)
 endif ()
@@ -180,34 +157,13 @@ endif ()
 if (FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT LIBOGG_FOUND))
     message(STATUS "libogg building")
-    set(LIBOGG_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/libogg CACHE INTERNAL "libogg binary directory" FORCE)
-    set(LIBOGG_BINARY_DIR ${CMAKE_BINARY_DIR}/external/libogg CACHE INTERNAL "libogg binary directory" FORCE)
-
-    ExternalProject_Add(
-            libogg_external
-            PREFIX ${LIBOGG_BINARY_DIR}
-            SOURCE_DIR ${LIBOGG_SOURCE_DIR}
-            CONFIGURE_COMMAND ${LIBOGG_SOURCE_DIR}/autogen.sh
-            BUILD_COMMAND make -j8
-            INSTALL_COMMAND cmake -E echo "Skipping install step"
-            BUILD_BYPRODUCTS
-            ${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a
-    )
-
-    add_library(libogg INTERFACE)
-    add_dependencies(libogg libogg_external)
-
-    target_link_libraries(libogg INTERFACE ${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a)
-    target_include_directories(libogg INTERFACE ${LIBOGG_SOURCE_DIR}/include)
-
-    set(Ogg_INCLUDE_DIRS "${LIBOGG_SOURCE_DIR}/include" CACHE PATH "" FORCE)
-    set(Ogg_LIBRARIES "${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
-    set(OGG_INCLUDE_DIR "${LIBOGG_SOURCE_DIR}/include" CACHE PATH "" FORCE)
-    set(OGG_LIBRARY "${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
-    set(LIBOGG_INCLUDE_DIR "${LIBOGG_SOURCE_DIR}/include" CACHE PATH "" FORCE)
-    set(LIBOGG_LIBRARY "${LIBOGG_BINARY_DIR}/src/libogg_external-build/src/.libs/libogg.a" CACHE PATH "" FORCE)
-endif()
-
+    
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libogg shared library" FORCE)
+    set(INSTALL_DOCS OFF CACHE BOOL "Install libogg documentation" FORCE)
+    set(INSTALL_PKG_CONFIG_MODULE OFF CACHE BOOL "Install libogg ogg.pc file" FORCE)
+    set(INSTALL_CMAKE_PACKAGE_MODULE OFF CACHE BOOL "Install libogg CMake package configuration module" FORCE)
+    add_subdirectory(ogg EXCLUDE_FROM_ALL)
+endif ()
 
 #    --------------------------------------------------------------------
 #    mimalloc (all: general-purpose allocator - overrides malloc/new/etc...)
@@ -217,25 +173,28 @@ if (FAITHFUL_BUILD_EXTERNAL_ALL OR
     set(MIMALLOC_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/mimalloc)
     set(MIMALLOC_BINARY_DIR ${CMAKE_BINARY_DIR}/external/mimalloc CACHE INTERNAL "mimalloc binary directory" FORCE)
 
+    set(FAITHFUL_MIMALLOC_FLAGS "-DMI_BUILD_SHARED=OFF" "-DMI_BUILD_STATIC=ON" "-DMI_BUILD_OBJECT=OFF" "-DMI_BUILD_TESTS=OFF" "-DMI_USE_CXX=ON" CACHE STRING "" FORCE)
+    if (WIN32)
+        set(FAITHFUL_MIMALLOC_FLAGS "${FAITHFUL_MIMALLOC_FLAGS} -DMI_BUILD_SHARED=OFF" CACHE STRING "" FORCE)
+    endif()
+
     ExternalProject_Add(
             mimalloc_external
             PREFIX ${MIMALLOC_BINARY_DIR}
             SOURCE_DIR ${MIMALLOC_SOURCE_DIR}
             CONFIGURE_COMMAND ${CMAKE_COMMAND}
-            -DMI_BUILD_SHARED=OFF
-            -DMI_BUILD_STATIC=ON
-            -DMI_BUILD_OBJECT=OFF
-            -DMI_BUILD_TESTS=OFF
-            -DMI_USE_CXX=ON
+            ${FAITHFUL_MIMALLOC_FLAGS}
             ${MIMALLOC_SOURCE_DIR}
             BUILD_COMMAND ${CMAKE_COMMAND} --build .
             INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_BYPRODUCTS ${MIMALLOC_BINARY_DIR}/src/mimalloc_external-build/libmimalloc.a
+            BUILD_BYPRODUCTS ${MIMALLOC_BINARY_DIR}/src/mimalloc_external-build/Debug/mimalloc-static${CMAKE_STATIC_LIBRARY_SUFFIX} # TODO: + /Debug dir on WIN32
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
     )
     add_library(mimalloc INTERFACE)
     add_dependencies(mimalloc mimalloc_external)
     target_link_libraries(mimalloc
-            INTERFACE ${MIMALLOC_BINARY_DIR}/src/mimalloc_external-build/libmimalloc.a
+            INTERFACE ${MIMALLOC_BINARY_DIR}/src/mimalloc_external-build/Debug/mimalloc-static${CMAKE_STATIC_LIBRARY_SUFFIX}
     )
 endif()
 
@@ -291,12 +250,14 @@ if (FAITHFUL_BUILD_EXTERNAL_ALL OR
             ${OPENALSOFT_SOURCE_DIR}
             BUILD_COMMAND ${CMAKE_COMMAND} --build .
             INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_BYPRODUCTS ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/libopenal.a
-#            BUILD_BYPRODUCTS ${OPENALSOFT_BINARY_DIR}/src/mimalloc_external-build/libmimalloc.a
+            BUILD_BYPRODUCTS ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/Debug/OpenAL32${CMAKE_STATIC_LIBRARY_SUFFIX}
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
+            #BUILD_BYPRODUCTS ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/libopenal${CMAKE_STATIC_LIBRARY_SUFFIX} <---------------- TODO: it's for Unix
     )
     add_library(openal-soft INTERFACE)
     add_dependencies(openal-soft openal-soft_external)
-    target_link_libraries(openal-soft INTERFACE ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/libopenal.a)
+    target_link_libraries(openal-soft INTERFACE ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/Debug/OpenAL32${CMAKE_STATIC_LIBRARY_SUFFIX})
 
     if (FAITHFUL_ALSOFT_ALSA_ONLY)
         add_dependencies(openal-soft alsa)
@@ -367,34 +328,9 @@ target_include_directories(tinygltf
 if (FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT VORBIS_FOUND))
     message(STATUS "vorbis building")
-    set(VORBIS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/vorbis CACHE INTERNAL "vorbis source directory" FORCE)
-    set(VORBIS_BINARY_DIR ${CMAKE_BINARY_DIR}/external/vorbis CACHE INTERNAL "vorbis binary directory" FORCE)
-
-    ExternalProject_Add(
-            vorbis_external
-            PREFIX ${VORBIS_BINARY_DIR}
-            SOURCE_DIR ${VORBIS_SOURCE_DIR}
-            CONFIGURE_COMMAND ${CMAKE_COMMAND}
-            -DBUILD_SHARED_LIBS=OFF
-            ${VORBIS_SOURCE_DIR}
-            BUILD_COMMAND ${CMAKE_COMMAND} --build .
-            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_BYPRODUCTS
-            ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisenc.a
-            ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisfile.a
-            ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbis.a
-            DEPENDS libogg
-    )
-
-    add_library(vorbis INTERFACE)
-    add_dependencies(vorbis vorbis_external)
-
-    target_link_libraries(vorbis
-            INTERFACE ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisenc.a
-            INTERFACE ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbisfile.a
-            INTERFACE ${VORBIS_BINARY_DIR}/src/vorbis_external-build/lib/libvorbis.a
-    )
-    target_include_directories(vorbis INTERFACE ${VORBIS_SOURCE_DIR}/include)
+    set(BUILD_SHARED_LIB OFF CACHE BOOL "Build shared library" FORCE)
+    set(INSTALL_CMAKE_PACKAGE_MODULE OFF CACHE BOOL "Install CMake package configuration module" FORCE)
+    add_subdirectory(vorbis EXCLUDE_FROM_ALL)
 endif ()
 
 

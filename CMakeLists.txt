@@ -16,7 +16,7 @@ set(FAITHFUL_FREEZE_DIR "${CMAKE_SOURCE_DIR}/Faithful" CACHE STRING
 # TODO: build/source/runtime dirs
 
 set(CMAKE_MODULE_PATH
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
+        "${CMAKE_SOURCE_DIR}/cmake"
         ${CMAKE_MODULE_PATH}
 )
 
@@ -38,7 +38,7 @@ option(FAITHFUL_BUILD_ASSET_DOWNLOADER "Faithful download/update assets" ON)
 
 # all externals won't be installed
 option(FAITHFUL_BUILD_EXTERNAL "Build Faithful external libs if missing" ON)
-option(FAITHFUL_BUILD_EXTERNAL_ALL "Build all(!) Faithful external libs" OFF)
+option(FAITHFUL_BUILD_EXTERNAL_ALL "Build all(!) Faithful external libs" ON) # To avoid compatibility issues
 option(FAITHFUL_BUILD_TESTS "If enabled, compile Faithful tests" OFF)
 
 # Only for assets designer, used for generating asset_info.txt with validate info
@@ -78,7 +78,7 @@ configure_file(${CMAKE_SOURCE_DIR}/config/paths.h.in ${CMAKE_SOURCE_DIR}/config/
 
 
 # currently Clang is __REQUIRED__
-include(${CMAKE_SOURCE_DIR}/cmake/CompilerClang.cmake)
+#include(${CMAKE_SOURCE_DIR}/cmake/CompilerClang.cmake)
 
 #if(MSVC)
 #    include(${CMAKE_SOURCE_DIR}/cmake/CompilerMSVC.cmake)
@@ -104,7 +104,7 @@ if(FAITHFUL_BUILD_EXTERNAL)
 #     in that case if we can't find external lib - building fails.
 endif()
 
-if(FAITHFUL_DEPS_FOUND)
+if(FAITHFUL_DEPS_FOUND OR FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL)
     add_subdirectory(src)
     target_link_libraries(Faithful INTERFACE src)
 
@@ -126,7 +126,7 @@ if(FAITHFUL_DEPS_FOUND)
     endif()
 
     include(${CMAKE_SOURCE_DIR}/cmake/CopyLicenses.cmake)
-    faithful_copy_licenses()
+    #faithful_copy_licenses()
 
 else()
     message(STATUS "+> Building of Faithful has failed: some externals missing") # TODO: need certain listing of them

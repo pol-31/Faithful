@@ -6,10 +6,6 @@
 	path = external/glfw
 	url = https://github.com/glfw/glfw.git
 	branch = master
-[submodule "external/glad"]
-	path = external/glad
-	url = https://github.com/Dav1dde/glad.git
-	branch = master
 [submodule "external/astc-encoder"]
 	path = external/astc-encoder
 	url = https://github.com/ARM-software/astc-encoder.git
@@ -22,10 +18,6 @@
 	path = external/vorbis
 	url = https://github.com/xiph/vorbis.git
 	branch = master
-[submodule "external/libogg"]
-	path = external/libogg
-	url = https://github.com/gcp/libogg.git
-	branch = master
 [submodule "external/rapidjson"]
 	path = external/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
@@ -37,4 +29,8 @@
 [submodule "external/openal-soft"]
 	path = external/openal-soft
 	url = https://github.com/kcat/openal-soft.git
+	branch = master
+[submodule "external/ogg"]
+	path = external/ogg
+	url = https://github.com/xiph/ogg.git
 	branch = master
