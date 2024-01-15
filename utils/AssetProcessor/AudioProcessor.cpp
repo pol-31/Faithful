@@ -77,7 +77,7 @@ void AudioProcessor::EncodeMusic(const std::filesystem::path& model_path,
 
   if (model_path.extension() == ".mp3") {
     drmp3 drmp3_context;
-    if (!drmp3_init_file(&drmp3_context, model_path.c_str(),
+    if (!drmp3_init_file(&drmp3_context, model_path.string().c_str(),
                          nullptr)) {  // TODO: allocation
       std::cout << "Error: cannot open mp3 file: " << model_path << std::endl;
       return;
@@ -155,7 +155,7 @@ void AudioProcessor::DecompressMp3Chunk(drmp3& drmp3_context, int channels,
 void AudioProcessor::DecompressFlacChunk(
     const std::filesystem::path& model_path, float** pPCM, uint64_t* frames,
     int* channels, int* sampleRate) {
-  drflac* pFlac = drflac_open_file(model_path.c_str(), nullptr);
+  drflac* pFlac = drflac_open_file(model_path.string().c_str(), nullptr);
   if (pFlac == nullptr) {
     return;
   }
@@ -185,7 +185,7 @@ void AudioProcessor::DecompressWavChunk(const std::filesystem::path& model_path,
                                         float** pPCM, uint64_t* frames,
                                         int* channels, int* sampleRate) {
   drwav wav;
-  if (!drwav_init_file(&wav, model_path.c_str(), nullptr)) {
+  if (!drwav_init_file(&wav, model_path.string().c_str(), nullptr)) {
     return;
   }
 

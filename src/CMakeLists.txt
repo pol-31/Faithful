@@ -6,6 +6,8 @@ project(faithful-core)
 
 add_executable(faithful-core main.cpp)# io/Monitor.h io/Window.h io/Monitor.cpp io/Window.cpp ${FAITHFUL_MAIN_SOURCES}) # loader/ShaderProgram.h loader/ShaderProgram.cpp 
 
+#target_compile_options(faithful-core PRIVATE "/MTd")
+
 if (FAITHFUL_ALSOFT_ALSA_ONLY)
 #    target_link_libraries(faithful-core PUBLIC alsa)
 elseif (WIN32) # TODO: XAudio2
@@ -22,7 +24,8 @@ target_link_libraries(faithful-core
         PUBLIC openal-soft
         PUBLIC RapidJSON
         PUBLIC tinygltf
-        #PUBLIC astc-encoder
+        PUBLIC astcenc-native-static
+        
 )
 if (NOT FAITHFUL_GL_SUPPORTS_ASTC)
     #target_link_libraries(faithful-core PUBLIC astc-encoder)

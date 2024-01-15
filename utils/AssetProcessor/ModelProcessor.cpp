@@ -166,7 +166,8 @@ void ModelProcessor::ExtractBase64ImageData(
 
   outputFile.write(reinterpret_cast<const char*>(decodedData.data()),
                    decodedData.size());
-  assets_analyzer_->AddEntry({std::move(out_filename), path_suffix, category});
+  assets_analyzer_->AddEntry(
+      {std::move(out_filename.string()), path_suffix.string(), category});
 }
 
 // TODO: we can skip it for now, because it's not common case
@@ -187,7 +188,7 @@ void ModelProcessor::ExtractExternalImageData(
   auto image_absolute_path = std::filesystem::current_path() / uri;
   std::filesystem::path relativePath =
       std::filesystem::relative(image_absolute_path, user_asset_root_dir_);
-  if (!relativePath.empty() && relativePath.native().find("..") != 0) {
+  if (!relativePath.empty() && relativePath.string().find("..") != 0) {
     return;
   }
   if (!dir_created) {
@@ -196,8 +197,8 @@ void ModelProcessor::ExtractExternalImageData(
   auto image_copy_path = extracted_textures_dir_ / uri;
   std::filesystem::copy_file(image_absolute_path, image_copy_path);
   AssetCategory texture_category = DeduceAssetEncodeCategory(uri);
-  assets_analyzer_->AddEntry(
-      {std::move(image_copy_path), path_suffix, texture_category});
+  assets_analyzer_->AddEntry({std::move(image_copy_path.string()),
+                              path_suffix.string(), texture_category});
 }
 
 void ModelProcessor::EncodeGltfModelTextures(
@@ -207,7 +208,7 @@ void ModelProcessor::EncodeGltfModelTextures(
   bool dir_created = false;
   std::filesystem::path dir_absolute_path =
       (extracted_textures_dir_ / path_suffix).remove_filename();
-  std::string file_stem;
+  std::filesystem::path file_stem;
   for (rapidjson::Value::ValueIterator itr = images.Begin();
        ++i, itr != images.End(); ++itr) {
     rapidjson::Value& image = *itr;
@@ -257,14 +258,15 @@ void ModelProcessor::EncodeGltfModelTextures(
         std::filesystem::create_directories(dir_absolute_path);
       }
       int buffer_view_id = image["bufferView"].GetInt();
-      ExtractBufferImageData(buffer_view_id, outputFileName);
+      ExtractBufferImageData(buffer_view_id, outputFileName.string());
     } else {
       return;
     }
-    image["name"].SetString(outputFileName.stem().c_str(),
+    image["name"].SetString(outputFileName.stem().string().c_str(),
                             document.GetAllocator());
     image["mimeType"].SetString("image/astc", document.GetAllocator());
-    image["uri"].SetString(outputFileName.c_str(), document.GetAllocator());
+    image["uri"].SetString(outputFileName.string().c_str(),
+                           document.GetAllocator());
   }
 }
 

@@ -20,13 +20,13 @@
  * Currently there is no shader processing (no reason to do this)
  * */
 
+#include <fstream>
 #include <iostream>  // TODO: replace by Logger.h
 #include <cstring>
 #include <filesystem>
 #include <string>
 
 #include "../../config/Paths.h"
-#include "../Logger.h"
 
 #include "AssetProcessor.h"
 #include "AssetLoadingThreadPool.h"
@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     std::cout << "Optimized" << std::endl;
   }
   std::cout << "AssetProcessor: assets were processed successfully" << std::endl;
-  return 0;
+  //return 0;
 
   if (argc < 2) {
     std::cout << "Incorrect program's arguments" << std::endl;

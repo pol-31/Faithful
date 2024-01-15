@@ -176,7 +176,7 @@ bool TextureProcessor::Encode(const std::filesystem::path& path,
   int image_x, image_y, image_c;
   // force 4 component (astc codec requires it)
   auto image_data =
-      (uint8_t*)stbi_load(path.c_str(), &image_x, &image_y, &image_c, 4);
+      (uint8_t*)stbi_load(path.string().c_str(), &image_x, &image_y, &image_c, 4);
   if (!image_data) {
     std::cout << "Error: stb_image texture loading failed: " << path
               << std::endl;
@@ -229,7 +229,7 @@ bool TextureProcessor::Encode(const std::filesystem::path& path,
   }
   thread_pool_->UpdateContext();
 
-  if (!WriteEncodedData(out_filename, image_x, image_y, comp_len, comp_data)) {
+  if (!WriteEncodedData(out_filename.string(), image_x, image_y, comp_len, comp_data)) {
     stbi_image_free(image_data);  // TODO: allocations...
     delete[] comp_data;
     return false;
@@ -330,7 +330,7 @@ bool TextureProcessor::Decode(const std::filesystem::path& path,
 
   int image_x, image_y, comp_len;
   uint8_t* comp_data;
-  if (!ReadAstcFile(path, image_x, image_y, comp_len, comp_data)) {
+  if (!ReadAstcFile(path.string(), image_x, image_y, comp_len, comp_data)) {
     return false;
   }
   uint8_t* image_data = new uint8_t[image_x * image_y * 4];
@@ -372,7 +372,7 @@ bool TextureProcessor::Decode(const std::filesystem::path& path,
   std::filesystem::path out_texture_path =
       asset_destination_ / path_suffix / out_filename;
   if (category != AssetCategory::kTextureHdr) {
-    if (stbi_write_png(out_texture_path.c_str(), image_x, image_y, 4,
+    if (stbi_write_png(out_texture_path.string().c_str(), image_x, image_y, 4,
                        image_data, 4 * image_x)) {
       std::cout << "Error: stb_image_write failed to save texture" << std::endl;
       stbi_image_free(image_data);  // TODO: allocations...
@@ -380,7 +380,7 @@ bool TextureProcessor::Decode(const std::filesystem::path& path,
       return false;
     }
   } else {
-    if (stbi_write_hdr(out_texture_path.c_str(), image_x, image_y, 4,
+    if (stbi_write_hdr(out_texture_path.string().c_str(), image_x, image_y, 4,
                        reinterpret_cast<const float*>(image_data))) {
       std::cout << "Error: stb_image_write failed to save texture" << std::endl;
       stbi_image_free(image_data);  // TODO: allocations...

@@ -348,12 +348,10 @@ int main() {
 //#include <sndfile.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
-//#include "astc-encoder/Source/astcenc.h"
 //#include "alsa/asoundlib.h"
 
 int main() {
-  // Initialize OpenAL
-//astcenc_decompress_image(nullptr, nullptr, 5, nullptr, nullptr, 5);
+   //Initialize OpenAL
   ALCdevice* device = alcOpenDevice(nullptr);  // Use the default audio device
   if (!device) {
     std::cerr << "Failed to initialize OpenAL device" << std::endl;
