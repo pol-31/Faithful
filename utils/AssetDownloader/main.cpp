@@ -135,9 +135,13 @@ void InstallAssets(const std::filesystem::path& in_dir,
         fs::remove(destination_file);
       }
       fs::rename(source_file, destination_file);
-    } else if (fs::is_directory(source_file) &&
-               !fs::exists(destination_file)) {
-      fs::create_directory(destination_file);
+    } else if (fs::is_directory(source_file)) {
+        if (fs::exists(destination_file)) {
+            fs::remove_all(destination_file);
+            fs::create_directory(destination_file);
+        } else {
+            fs::create_directory(destination_file);
+        }
     }
   }
   std::cout << "Successfully installed" << std::endl;
@@ -207,8 +211,8 @@ bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
   } else {
     std::cout << "Successfully validated" << std::endl;
   }
-  fs::remove_all(temp_dir);
   InstallAssets(temp_dir, out_assets_path);
+  fs::remove_all(temp_dir);
   return true;
 }
 

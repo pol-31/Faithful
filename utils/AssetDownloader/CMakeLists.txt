@@ -19,7 +19,7 @@ target_include_directories(AssetDownloader
         PUBLIC ${CMAKE_SOURCE_DIR}/external/picosha2
 )
 
-
+#TODO: aria2 ?... idk
 
 
 if (WIN32)

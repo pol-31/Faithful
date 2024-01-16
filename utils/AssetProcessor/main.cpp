@@ -20,11 +20,11 @@
  * Currently there is no shader processing (no reason to do this)
  * */
 
-#include <fstream>
 #include <iostream>  // TODO: replace by Logger.h
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <fstream>
 
 #include "../../config/Paths.h"
 
@@ -52,6 +52,9 @@ void LogProcessingResult(const std::string& path, bool encoded);
 
 // TODO: add README.md with naming convention: __ _nmap.astc __
 
+#include "vorbis/vorbisfile.h"
+#include "ogg/ogg.h"
+
 int main(int argc, char** argv) {
   const char* command =
       "/home/pavlo/CLionProjects/Faithful/cmake-build-debug/meshoptimizer-build/gltfpack -noq -i /home/pavlo/Downloads/DamagedHelmet.glb  -o /home/pavlo/Desktop/omg.gltf";
@@ -59,13 +62,17 @@ int main(int argc, char** argv) {
     std::cout << "Optimized" << std::endl;
   }
   std::cout << "AssetProcessor: assets were processed successfully" << std::endl;
-  //return 0;
+  const char* vorbisVersion = vorbis_version_string();
+  std::cout << "Vorbis version: " << vorbisVersion << std::endl;
+
+  std::cout << "Vorbis and Ogg linked correctly!" << std::endl;
+  return 0;
 
   if (argc < 2) {
     std::cout << "Incorrect program's arguments" << std::endl;
-    return -1;
+    //return -1;
   }
-  std::cout << argv[1] << std::endl;
+  //std::cout << argv[1] << std::endl;
   std::filesystem::path user_path = "";
   AssetController asset_controller;
   bool asset_processing = true;
@@ -119,6 +126,7 @@ int main(int argc, char** argv) {
   if (!asset_processing)
     return 0;
   asset_controller.All(process_all);
+  user_path = "C:\\Users\\Pavlo\\Desktop\\test";
 
   if (user_path.empty()) {
     std::cout << "There's no provided path, working with current directory:\n"

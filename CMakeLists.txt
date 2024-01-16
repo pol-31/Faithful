@@ -56,7 +56,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(${CMAKE_SOURCE_DIR}/cmake/PrintInfo.cmake)
 print_system_and_cmake_info()
 
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DFAITHFUL_DEBUG_BUILD)
 endif()
 
@@ -77,14 +77,18 @@ configure_file(${CMAKE_SOURCE_DIR}/config/paths.h.in ${CMAKE_SOURCE_DIR}/config/
 # Such checks and accelerations implemented directly in source code
 
 
-# currently Clang is __REQUIRED__
-#include(${CMAKE_SOURCE_DIR}/cmake/CompilerClang.cmake)
+# we don't need to configure rpath of visibility, because its
+# not a library and we don't use shared libraries by now
 
-#if(MSVC)
-#    include(${CMAKE_SOURCE_DIR}/cmake/CompilerMSVC.cmake)
-#else()
-#    include(${CMAKE_SOURCE_DIR}/cmake/CompilerUNIX.cmake)
-#endif()
+if(MSVC)
+    include(${CMAKE_SOURCE_DIR}/cmake/CompilerMSVS.cmake)
+elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    include(${CMAKE_SOURCE_DIR}/cmake/CompilerClangOrGCC.cmake)
+else()
+    message(FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER_ID} is no supported")
+endif()
+
+# TODO: pring_info()
 
 print_compiler_info()
 

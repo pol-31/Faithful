@@ -1,11 +1,34 @@
+set(MSVS_MIN_VERSION 14.0)
 
-# TODO: provide MSVS compiler flags
-# added for symmetry and currently there's nothing
-#
-#
-#
-#
-#
-#
-#
-# (nothing)
+message(STATUS "Faithful project requires MSVS 14.0")
+if(MSVC_VERSION LESS MSVS_MIN_VERSION)
+    message(FATAL_ERROR
+            "Old version of Microsoft Visual Studio: MSVC ${MSVC_VERSION}, required MSVS ${MSVS_MIN_VERSION} (MSVS 2015) or newer."
+    )
+endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /WX /Wall /O2")
+
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Ox")
+
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /GL")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /LTCG")
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:8388608")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+
+# Option to use the multi-threaded runtime library
+option(USE_MT_RUNTIME "Use the multi-threaded runtime library" ON)
+
+if(USE_MT_RUNTIME)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MT")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+endif()
+
+if(ASAN)
+    set(SANITIZE_ADDRESS_FLAGS "/fsanitize=address /Zi /DEBUG:FULL")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZE_ADDRESS_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SANITIZE_ADDRESS_FLAGS}")
+endif()

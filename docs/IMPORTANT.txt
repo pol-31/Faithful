@@ -11,3 +11,5 @@ Total num of bones - 200 (including dummy-bone)
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 declare using of mimalloc in Faithful/README.md
 
+cmake rpath, visibility (CMP0063), Position-Independent Code (PIC) are "disabled"
+ ---> __currently__ we don't use shared libraries (will we use them in future?)
