@@ -1,14 +1,13 @@
 
 set(faithful_licenses_dir "${CMAKE_BINARY_DIR}/licenses" CACHE STRING "Licenses location")
 
+# TODO: run as a custom target/command (need to wait until all other will be processed)
+
 function(faithful_copy_license sourcePath targetDir targetName)
     configure_file("${sourcePath}" "${faithful_licenses_dir}/${targetDir}/${targetName}" COPYONLY)
 endfunction(faithful_copy_license)
 
 function(faithful_copy_licenses)
-    if (FAITHFUL_ALSOFT_ALSA_ONLY)
-        faithful_copy_license("${CMAKE_SOURCE_DIR}/external/alsa/alsa_source/COPYING" "alsa" "COPYING")
-    endif ()
 
     faithful_copy_license("${CMAKE_SOURCE_DIR}/external/glad/LICENSE" "glad" "LICENSE")
     faithful_copy_license("${CMAKE_SOURCE_DIR}/external/glfw/LICENSE.md" "glfw" "LICENSE.md")
@@ -27,14 +26,14 @@ function(faithful_copy_licenses)
     if (FAITHFUL_BUILD_ASSET_PROCESSOR)
         faithful_copy_license("${CMAKE_SOURCE_DIR}/external/dr_libs/LICENSE" "dr_libs" "LICENSE")
         faithful_copy_license("${CMAKE_SOURCE_DIR}/external/stb/LICENSE" "stb" "LICENSE")
-        faithful_copy_license("${CMAKE_SOURCE_DIR}/external/meshoptimizer/meshoptimizer_source/LICENSE.md" "meshoptimizer" "LICENSE.md")
+        faithful_copy_license("${CMAKE_SOURCE_DIR}/external/meshoptimizer/LICENSE.md" "meshoptimizer" "LICENSE.md")
     endif ()
 
     if (FAITHFUL_BUILD_ASSET_DOWNLOADER AND
     (${FAITHFUL_ASSET_DOWNLOADER_DOWNLOAD_BACKEND} STREQUAL "FAITHFUL_ASSET_PROCESSOR_CURL_LIB" OR
     ${FAITHFUL_ASSET_DOWNLOADER_DOWNLOAD_BACKEND} STREQUAL "FAITHFUL_ASSET_PROCESSOR_CURL_CLI"))
         faithful_copy_license("${CMAKE_SOURCE_DIR}/external/curl/LICENSES/BSD-3-Clause.txt" "curl" "BSD-3-Clause.txt")
-        faithful_copy_license("${CMAKE_SOURCE_DIR}/external/curl/LICENSES/BSD-4-Clause-UC" "curl" "BSD-4-Clause-UC")
+        faithful_copy_license("${CMAKE_SOURCE_DIR}/external/curl/LICENSES/BSD-4-Clause-UC.txt" "curl" "BSD-4-Clause-UC")
         faithful_copy_license("${CMAKE_SOURCE_DIR}/external/curl/LICENSES/curl.txt" "curl" "curl.txt")
         faithful_copy_license("${CMAKE_SOURCE_DIR}/external/curl/LICENSES/ISC.txt" "curl" "ISC.txt")
     endif ()

@@ -76,8 +76,9 @@ class ShaderProgram {
   ~ShaderProgram();
 
   void Use() const noexcept {
-    if (program_)
+    if (program_) {
       glUseProgram(program_);
+    }
   }
 
   GLuint Id() const noexcept {
@@ -172,7 +173,7 @@ class ShaderProgram {
  protected:
   friend class DefaultShaderProgram;
 
-  void set_program(GLuint program) {
+  void SetProgram(GLuint program) {
     program_ = program;
   }
 

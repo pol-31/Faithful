@@ -8,11 +8,9 @@ cmake_policy(SET CMP0069 NEW)  # LTO support
 cmake_policy(SET CMP0091 NEW)  # MSVC runtime support
 cmake_policy(SET CMP0075 NEW)  # honor to CMAKE_REQUIRED_LIBRARIES
 
-# TODO: clang-tidy, exclude external/
-
-
 set(FAITHFUL_FREEZE_DIR "${CMAKE_SOURCE_DIR}/Faithful" CACHE STRING
         "The subdirectory where to install")
+
 # TODO: build/source/runtime dirs
 
 set(CMAKE_MODULE_PATH
@@ -40,6 +38,7 @@ option(FAITHFUL_BUILD_ASSET_DOWNLOADER "Faithful download/update assets" ON)
 option(FAITHFUL_BUILD_EXTERNAL "Build Faithful external libs if missing" ON)
 option(FAITHFUL_BUILD_EXTERNAL_ALL "Build all(!) Faithful external libs" OFF)
 option(FAITHFUL_BUILD_TESTS "If enabled, compile Faithful tests" OFF)
+option(FAITHFUL_ENABLE_CLANG_TIDY "Enable Faithful clang-tidy check" OFF)
 
 # Only for assets designer, used for generating asset_info.txt with validate info
 # including amount of assets and its hash for further
@@ -95,7 +94,6 @@ print_build_options()
 include(${CMAKE_SOURCE_DIR}/cmake/FaithfulFunctions.cmake)
 include(cmake/FindDeps.cmake)
 
-
 set(FETCHCONTENT_FULLY_DISCONNECTED ON)
 
 if(FAITHFUL_BUILD_EXTERNAL)
@@ -118,11 +116,15 @@ if(FAITHFUL_DEPS_FOUND)
         add_subdirectory(test EXCLUDE_FROM_ALL)
     endif()
 
-    # TODO: not installing, but FREEZING
+    if (FAITHFUL_ENABLE_CLANG_TIDY)
+        include(${CMAKE_SOURCE_DIR}/cmake/ConfigClangTidy.cmake)
+    else ()
+        set(CMAKE_CXX_CLANG_TIDY "" CACHE INTERNAL "")
+    endif ()
+
     if(FAITHFUL_FREEZE_BUILD)
-        # TODO: (...)
-        # include(${CMAKE_SOURCE_DIR}/cmake/CopyLicenses.cmake)
-        message(STATUS "+> Faithful has been installed")
+        include (${CMAKE_SOURCE_DIR}/cmake/FreezeBuild.cmake)
+        message(STATUS "+> Faithful has been frozen")
     endif()
 
     include(${CMAKE_SOURCE_DIR}/cmake/CopyLicenses.cmake)

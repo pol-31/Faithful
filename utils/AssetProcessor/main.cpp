@@ -52,7 +52,11 @@ void LogProcessingResult(const std::string& path, bool encoded);
 
 // TODO: add README.md with naming convention: __ _nmap.astc __
 
+int foo() {
+  return 4;
+}
 int main(int argc, char** argv) {
+  std::cout << foo() << std::endl;
   const char* command =
       "/home/pavlo/CLionProjects/Faithful/cmake-build-debug/meshoptimizer-build/gltfpack -noq -i /home/pavlo/Downloads/DamagedHelmet.glb  -o /home/pavlo/Desktop/omg.gltf";
   if (std::system(command) == 0) {

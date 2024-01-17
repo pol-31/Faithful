@@ -11,3 +11,7 @@ Total num of bones - 200 (including dummy-bone)
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 declare using of mimalloc in Faithful/README.md
 
+
+ask user to install libasound (if not yet)
+
+specify rpath, visibility for libasound (ALSA) ((or other audio backend))

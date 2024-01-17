@@ -23,13 +23,15 @@ ShaderProgram::ShaderProgram(const char* vertex_shader_path,
                              const char* fragment_shader_path,
                              const char* geometry_shader_path) noexcept {
   buffer_ = new (std::nothrow) char[256];
-  if (!buffer_)
+  if (!buffer_) {
     return;
+  }
   buffer_size_ = 256;
 
   program_ = glCreateProgram();
-  if (!program_)
+  if (!program_) {
     return;
+  }
 
   AttachShader(vertex_shader_path, GL_VERTEX_SHADER);
   AttachShader(fragment_shader_path, GL_FRAGMENT_SHADER);
@@ -48,8 +50,9 @@ ShaderProgram::~ShaderProgram() {
 }
 
 bool ShaderProgram::IsValidShader(GLuint shader, GLenum shader_type) noexcept {
-  if (!shader)
+  if (!shader) {
     return false;
+  }
 
   std::string_view shader_name;
 
@@ -80,8 +83,9 @@ bool ShaderProgram::IsValidShader(GLuint shader, GLenum shader_type) noexcept {
 }
 
 bool ShaderProgram::IsValidProgram() noexcept {
-  if (!program_)
+  if (!program_) {
     return false;
+  }
 
   glGetProgramiv(program_, GL_LINK_STATUS, &success_);
 
@@ -132,8 +136,9 @@ bool ShaderProgram::ReadToBuffer(const char* path) noexcept {
   if (sizeof(buffer_) < (static_cast<int>(shader_file_size) + 1)) {
     delete[] buffer_;
     buffer_ = new (std::nothrow) char[static_cast<int>(shader_file_size) + 1];
-    if (!buffer_)
+    if (!buffer_) {
       return false;
+    }
     buffer_size_ = static_cast<int>(shader_file_size) + 1;
   }
 

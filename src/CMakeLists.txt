@@ -6,22 +6,6 @@ project(faithful-core)
 
 add_executable(faithful-core main.cpp io/Monitor.cpp io/Window.cpp loader/ShaderProgram.cpp ${FAITHFUL_MAIN_SOURCES})
 
-#add_executable(Faithful src/main.cpp
-#        src/io/Window.cpp
-#        src/io/Monitor.cpp
-#        src/loader/ShaderProgram.cpp
-#)
-
-
-if (FAITHFUL_ALSOFT_ALSA_ONLY)
-    target_link_libraries(faithful-core
-#            PUBLIC /usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_conf_pulse.so
-#            PUBLIC /home/pavlo/CLionProjects/Faithful/external/alsa/alsa_source/src/.libs/libasound.so
-#            PUBLIC alsa
-            PUBLIC /usr/lib/x86_64-linux-gnu/libasound.so
-#            PUBLIC /usr/lib/x86_64-linux-gnu/libdbus-1.so
-    )
-endif ()
 target_link_libraries(faithful-core
         PUBLIC mimalloc
         PUBLIC stb
@@ -30,21 +14,15 @@ target_link_libraries(faithful-core
         PUBLIC glm
         PUBLIC vorbis
         PUBLIC libogg
+        PUBLIC libasound.so
         PUBLIC openal-soft
         PUBLIC /usr/lib/x86_64-linux-gnu/libsndfile.so
-#        PUBLIC ${CMAKE_BINARY_DIR}/external/openal-soft/libcommon.a # do i need it?
         PUBLIC RapidJSON
         PUBLIC tinygltf
 )
 if (NOT FAITHFUL_GL_SUPPORTS_ASTC)
     target_link_libraries(faithful-core PUBLIC astc-encoder)
 endif()
-
-if (UNIX AND NOT APPLE)
-    if (NOT AUDIO_BACKEND_FOUND)
-        target_include_directories(faithful-core PUBLIC ALSA_INCLUDE_DIR)
-    endif ()
-endif ()
 
 target_include_directories(faithful-core
         PUBLIC /home/pavlo/CLionProjects/Faithful/cmake-build-debug/external/openal-soft

@@ -12,8 +12,9 @@ bool DetectEncodeTexHdr(const std::filesystem::path& filename) {
 bool DetectEncodeTexNormalMap(const std::filesystem::path& filename) {
   const std::string& stem_string(filename.stem().string());
   // len of "_nmap" + at least 1 char for actual name
-  if (stem_string.length() < 6)
+  if (stem_string.length() < 6) {
     return false;
+  }
   size_t suffixPos = stem_string.length() - 5;
   return stem_string.compare(suffixPos, std::string::npos, "_nmap") == 0;
 }
@@ -21,16 +22,18 @@ bool DetectEncodeTexNormalMap(const std::filesystem::path& filename) {
 bool DetectDecodeTexHdr(const std::filesystem::path& filename) {
   const std::string& stem_string(filename.stem().string());
   // len of "_hdr" + at least 1 char for actual name
-  if (stem_string.length() < 5)
+  if (stem_string.length() < 5) {
     return false;
+  }
   size_t suffixPos = stem_string.length() - 4;
   return stem_string.compare(suffixPos, std::string::npos, "_hdr") == 0;
 }
 bool DetectDecodeTexNormalMap(const std::filesystem::path& filename) {
   const std::string& stem_string(filename.stem().string());
   // len of "_nmap" + at least 1 char for actual name
-  if (stem_string.length() < 6)
+  if (stem_string.length() < 6) {
     return false;
+  }
   size_t suffixPos = stem_string.length() - 5;
   return stem_string.compare(suffixPos, std::string::npos, "_nmap") == 0;
 }

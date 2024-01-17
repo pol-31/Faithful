@@ -98,14 +98,16 @@ class Monitor {
   }
 
   std::optional<glm::vec2> Resolution() {
-    if (!connected_)
+    if (!connected_) {
       return {};
+    }
     return glm::vec2(mode_->width, mode_->height);
   }
 
   std::optional<glm::vec2> ContentScale() {
-    if (!connected_)
+    if (!connected_) {
       return {};
+    }
     float xscale, yscale;
     glfwGetMonitorContentScale(monitor_, &xscale, &yscale);
     return glm::vec2(xscale, yscale);
@@ -121,8 +123,9 @@ class Monitor {
   }
 
   std::optional<glm::vec2> PhysicalSize() {
-    if (!connected_)
+    if (!connected_) {
       return {};
+    }
     int width, height;
     glfwGetMonitorPhysicalSize(monitor_, &width, &height);
     return glm::vec2(width, height);
@@ -131,16 +134,18 @@ class Monitor {
   // for virtual position (where multiple screen are accessible)
   // useless function by now
   std::optional<glm::vec2> Position() {
-    if (!connected_)
+    if (!connected_) {
       return {};
+    }
     int xpos, ypos;
     glfwGetMonitorPos(monitor_, &xpos, &ypos);
     return glm::vec2(xpos, ypos);
   }
 
   std::optional<glm::vec4> Workarea() {
-    if (!connected_)
+    if (!connected_) {
       return {};
+    }
     int xpos, ypos, width, height;
     glfwGetMonitorWorkarea(monitor_, &xpos, &ypos, &width, &height);
     return glm::vec4(xpos, ypos, width, height);

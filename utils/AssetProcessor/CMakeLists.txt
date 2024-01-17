@@ -39,7 +39,7 @@ target_include_directories(AssetProcessor
         PUBLIC ${CMAKE_SOURCE_DIR}/external/tinygltf
         PUBLIC ${CMAKE_SOURCE_DIR}/external/vorbis/include
         PUBLIC ${CMAKE_SOURCE_DIR}/external/libogg/include
-#        PUBLIC ${CMAKE_SOURCE_DIR}/external
+        PUBLIC ${CMAKE_SOURCE_DIR}/external
 )
 
 

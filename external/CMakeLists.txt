@@ -8,16 +8,6 @@ include(CheckCXXSourceRuns)
 #    ====================================================================
 #    FAITHFUL-specific
 
-#    --------------------------------------------------------------------
-#    ALSA (Linux only; Windows, MacOS doesn't need it
-if (UNIX AND NOT APPLE)
-    if (FAITHFUL_BUILD_EXTERNAL_ALL OR
-          (FAITHFUL_BUILD_EXTERNAL AND NOT AUDIO_BACKEND_FOUND))
-        set(FAITHFUL_ALSOFT_ALSA_ONLY ON CACHE BOOL "" FORCE)
-        add_subdirectory(alsa EXCLUDE_FROM_ALL)
-    endif ()
-endif ()
-
 # glad should be built/compiled first to find out FAITHFUL_GL_SUPPORTS_ASTC
 
 #    --------------------------------------------------------------------
@@ -248,26 +238,6 @@ if (FAITHFUL_BUILD_EXTERNAL_ALL OR
     set(OPENALSOFT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/openal-soft)
     set(OPENALSOFT_BINARY_DIR ${CMAKE_BINARY_DIR}/external/openal-soft CACHE INTERNAL "openal-soft binary directory" FORCE)
 
-    if (FAITHFUL_ALSOFT_ALSA_ONLY)
-        set(ALSOFT_OPTIONS
-                "-DALSOFT_REQUIRE_ALSA=ON "
-                "-DALSOFT_BACKEND_ALSA=ON "
-                "-DALSOFT_BACKEND_OSS=OFF "
-                "-DALSOFT_BACKEND_SOLARIS=OFF "
-                "-DALSOFT_BACKEND_SNDIO=OFF "
-                "-DALSOFT_BACKEND_QSA=OFF "
-                "-DALSOFT_BACKEND_PORTAUDIO=OFF "
-                "-DALSOFT_BACKEND_PULSEAUDIO=OFF "
-                "-DALSOFT_BACKEND_JACK=OFF "
-                "-DALSOFT_BACKEND_COREAUDIO=OFF "
-                "-DALSOFT_BACKEND_WAVE=OFF "
-                "-DALSOFT_RTKIT=OFF"
-                CACHE INTERNAL "ALSOFT options"
-        )
-    else ()
-        set(ALSOFT_OPTIONS "" CACHE INTERNAL "ALSOFT options")
-    endif ()
-
     ExternalProject_Add(
             openal-soft_external
             PREFIX ${OPENALSOFT_BINARY_DIR}
@@ -278,7 +248,6 @@ if (FAITHFUL_BUILD_EXTERNAL_ALL OR
             -DALSOFT_UTILS=OFF
             -DALSOFT_EXAMPLES=OFF
             -DALSOFT_TESTS=OFF
-
             -DALSOFT_INSTALL=OFF
             -DALSOFT_INSTALL_CONFIG=OFF
             -DALSOFT_INSTALL_HRTF_DATA=OFF
@@ -286,8 +255,6 @@ if (FAITHFUL_BUILD_EXTERNAL_ALL OR
             -DALSOFT_INSTALL_EXAMPLES=OFF
             -DALSOFT_INSTALL_UTILS=OFF
             -DALSOFT_UPDATE_BUILD_VERSION=OFF
-            ${ALSOFT_OPTIONS}
-
             ${OPENALSOFT_SOURCE_DIR}
             BUILD_COMMAND ${CMAKE_COMMAND} --build .
             INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
@@ -297,10 +264,6 @@ if (FAITHFUL_BUILD_EXTERNAL_ALL OR
     add_library(openal-soft INTERFACE)
     add_dependencies(openal-soft openal-soft_external)
     target_link_libraries(openal-soft INTERFACE ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/libopenal.a)
-
-    if (FAITHFUL_ALSOFT_ALSA_ONLY)
-        add_dependencies(openal-soft alsa)
-    endif ()
 endif()
 
 

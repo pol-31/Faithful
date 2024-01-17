@@ -347,21 +347,19 @@ int main() {
 #include "AL/alc.h"
 #include <sndfile.h>
 #include <iostream>
-#include "alsa/asoundlib.h"
-
+//#include "alsa/asoundlib.h"
+#include "asoundlib.h"
 // Function to check for OpenAL errors
-void checkALError(const char* message) {
-  ALenum error = alGetError();
-  if (error != AL_NO_ERROR) {
-    std::cerr << "OpenAL Error (" << message << "): " << alGetString(error) << std::endl;
-  }
+void CheckALError(const char* message) {
+//  ALenum error = alGetError();
+//  if (error != AL_NO_ERROR) {
+//    std::cerr << "OpenAL Error (" << message << "): " << alGetString(error) << std::endl;
+//  }
 }
 
 int main() {
   const char *pcm_name = "default";
   snd_pcm_t *pcm_handle;
-
-  // Open the PCM playback device
   int rc = snd_pcm_open(&pcm_handle, pcm_name, SND_PCM_STREAM_PLAYBACK, 0);
   if (rc < 0) {
     std::cerr << "Error: Unable to open PCM device '" << pcm_name << "': " << snd_strerror(rc) << std::endl;
@@ -393,11 +391,11 @@ int main() {
   alcMakeContextCurrent(context);
 
   // Load audio file using libsndfile
-  const char* audioFile = "/home/pavlo/Desktop/sample2_.wav";  // Replace with your audio file path
+  const char* audio_file = "/home/pavlo/Desktop/sample2_.wav";  // Replace with your audio file path
 
-  SF_INFO sfInfo;
-  SNDFILE* sndFile = sf_open(audioFile, SFM_READ, &sfInfo);
-  if (!sndFile) {
+  SF_INFO sf_info;
+  SNDFILE* snd_file = sf_open(audio_file, SFM_READ, &sf_info);
+  if (!snd_file) {
     std::cerr << "Failed to open audio file." << std::endl;
     alcMakeContextCurrent(nullptr);
     alcDestroyContext(context);
@@ -405,15 +403,16 @@ int main() {
     return 1;
   }
 
-  ALsizei size = static_cast<ALsizei>(sfInfo.frames) * sfInfo.channels * sizeof(short);
-  short* bufferData = new short[size];
-  sf_readf_short(sndFile, bufferData, sfInfo.frames);
-  sf_close(sndFile);
+  ALsizei size = static_cast<ALsizei>(sf_info.frames) * sf_info.channels * sizeof(int16_t);
+  int16_t* buffer_data = new int16_t[size];
+  sf_readf_short(snd_file, buffer_data, sf_info.frames);
+  sf_close(snd_file);
 
   // Set up OpenAL buffer
   ALuint buffer;
   alGenBuffers(1, &buffer);
-  alBufferData(buffer, (sfInfo.channels == 2) ? AL_FORMAT_STEREO16 : AL_FORMAT_MONO16, bufferData, size, sfInfo.samplerate);
+  alBufferData(buffer, (sf_info.channels == 2) ? AL_FORMAT_STEREO16 : AL_FORMAT_MONO16,
+               buffer_data, size, sf_info.samplerate);
 
   // Set up source
   ALuint source;
@@ -424,20 +423,22 @@ int main() {
   alSourcePlay(source);
 
   // Wait for the sound to finish playing (you can add more sophisticated logic)
-  ALint sourceState;
+  ALint source_state;
   do {
-    alGetSourcei(source, AL_SOURCE_STATE, &sourceState);
-  } while (sourceState == AL_PLAYING);
+    alGetSourcei(source, AL_SOURCE_STATE, &source_state);
+  } while (source_state == AL_PLAYING);
 
   // Clean up
   alDeleteSources(1, &source);
   alDeleteBuffers(1, &buffer);
-  delete[] bufferData;
+  delete[] buffer_data;
 
   // Close OpenAL context and device
   alcMakeContextCurrent(nullptr);
   alcDestroyContext(context);
   alcCloseDevice(device);
+
+  CheckALError("msg");
 
   return 0;
 }

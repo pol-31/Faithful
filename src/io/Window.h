@@ -45,7 +45,7 @@ class Window {
     return window_;
   }
 
-  void set_icon(int count, const GLFWimage* images) {
+  void SetIcon(int count, const GLFWimage* images) {
     glfwSetWindowIcon(window_, count, images);
   }
 
