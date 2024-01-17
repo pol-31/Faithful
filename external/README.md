@@ -1,3 +1,4 @@
+TODO: add glad version
 REMARK #1: (NOT relevant)
 File:   tiny_gltf.h
 Lines:  1708 - 1714

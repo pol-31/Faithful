@@ -77,14 +77,14 @@ bool GenerateZip(const std::filesystem::path& assets_directory,
       }
       asset_data = asset_data_stream.str();
       std::cout << "Processing: "
-                << entry.path().lexically_relative(assets_directory).c_str()
+          << entry.path().lexically_relative(assets_directory).string().c_str()
                 << std::endl;
       status = mz_zip_add_mem_to_archive_file_in_place(
-          assets_info.zip_name.c_str(), entry.path().lexically_relative(assets_directory).c_str(),
+          assets_info.zip_name.c_str(), entry.path().lexically_relative(assets_directory).string().c_str(),
           asset_data.c_str(), asset_data.size(), nullptr, 0, MZ_BEST_COMPRESSION);
       if (!status) {
         std::cerr << "Error: file packing failure for: "
-                  << entry.path().lexically_relative(assets_directory).c_str()
+                  << entry.path().lexically_relative(assets_directory).string().c_str()
                   << std::endl;
         return false;
       }

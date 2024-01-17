@@ -1,3 +1,5 @@
+TODO: verbose info about "useless because of speed(wget 1-'threaded')"
+
 TODO: precaution "file ${filename} will be rewritten"
 
 struct AssetsInfo {

@@ -14,7 +14,7 @@ set(FAITHFUL_FREEZE_DIR "${CMAKE_SOURCE_DIR}/Faithful" CACHE STRING
 # TODO: build/source/runtime dirs
 
 set(CMAKE_MODULE_PATH
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
+        "${CMAKE_SOURCE_DIR}/cmake"
         ${CMAKE_MODULE_PATH}
 )
 
@@ -36,7 +36,7 @@ option(FAITHFUL_BUILD_ASSET_DOWNLOADER "Faithful download/update assets" ON)
 
 # all externals won't be installed
 option(FAITHFUL_BUILD_EXTERNAL "Build Faithful external libs if missing" ON)
-option(FAITHFUL_BUILD_EXTERNAL_ALL "Build all(!) Faithful external libs" OFF)
+option(FAITHFUL_BUILD_EXTERNAL_ALL "Build all(!) Faithful external libs" ON) # To avoid compatibility issues
 option(FAITHFUL_BUILD_TESTS "If enabled, compile Faithful tests" OFF)
 option(FAITHFUL_ENABLE_CLANG_TIDY "Enable Faithful clang-tidy check" OFF)
 
@@ -55,7 +55,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(${CMAKE_SOURCE_DIR}/cmake/PrintInfo.cmake)
 print_system_and_cmake_info()
 
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DFAITHFUL_DEBUG_BUILD)
 endif()
 
@@ -76,14 +76,18 @@ configure_file(${CMAKE_SOURCE_DIR}/config/paths.h.in ${CMAKE_SOURCE_DIR}/config/
 # Such checks and accelerations implemented directly in source code
 
 
-# currently Clang is __REQUIRED__
-include(${CMAKE_SOURCE_DIR}/cmake/CompilerClang.cmake)
+# we don't need to configure rpath of visibility, because its
+# not a library and we don't use shared libraries by now
 
-#if(MSVC)
-#    include(${CMAKE_SOURCE_DIR}/cmake/CompilerMSVC.cmake)
-#else()
-#    include(${CMAKE_SOURCE_DIR}/cmake/CompilerUNIX.cmake)
-#endif()
+if(MSVC)
+    include(${CMAKE_SOURCE_DIR}/cmake/CompilerMSVS.cmake)
+elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    include(${CMAKE_SOURCE_DIR}/cmake/CompilerClangOrGCC.cmake)
+else()
+    message(FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER_ID} is no supported")
+endif()
+
+# TODO: pring_info()
 
 print_compiler_info()
 
@@ -102,7 +106,7 @@ if(FAITHFUL_BUILD_EXTERNAL)
 #     in that case if we can't find external lib - building fails.
 endif()
 
-if(FAITHFUL_DEPS_FOUND)
+if(FAITHFUL_DEPS_FOUND OR FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL)
     add_subdirectory(src)
     target_link_libraries(Faithful INTERFACE src)
 
@@ -128,7 +132,7 @@ if(FAITHFUL_DEPS_FOUND)
     endif()
 
     include(${CMAKE_SOURCE_DIR}/cmake/CopyLicenses.cmake)
-    faithful_copy_licenses()
+    #faithful_copy_licenses()
 
 else()
     message(STATUS "+> Building of Faithful has failed: some externals missing") # TODO: need certain listing of them

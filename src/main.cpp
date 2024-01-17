@@ -377,63 +377,67 @@ int main() {
   // Initialize OpenAL context
   ALCdevice* device = alcOpenDevice(nullptr);
   if (!device) {
-    std::cerr << "Failed to open OpenAL device." << std::endl;
+    std::cerr << "Failed to initialize OpenAL device" << std::endl;
     return 1;
   }
 
   ALCcontext* context = alcCreateContext(device, nullptr);
   if (!context) {
-    std::cerr << "Failed to create OpenAL context." << std::endl;
+    std::cerr << "Failed to create OpenAL context" << std::endl;
     alcCloseDevice(device);
     return 1;
   }
 
   alcMakeContextCurrent(context);
 
-  // Load audio file using libsndfile
-  const char* audio_file = "/home/pavlo/Desktop/sample2_.wav";  // Replace with your audio file path
+  // Check OpenAL version
+  const ALCchar* al_version = alGetString(AL_VERSION);
+  const ALCchar* al_renderer = alGetString(AL_RENDERER);
 
-  SF_INFO sf_info;
-  SNDFILE* snd_file = sf_open(audio_file, SFM_READ, &sf_info);
-  if (!snd_file) {
-    std::cerr << "Failed to open audio file." << std::endl;
-    alcMakeContextCurrent(nullptr);
-    alcDestroyContext(context);
-    alcCloseDevice(device);
-    return 1;
+  std::cout << "OpenAL Version: " << al_version << std::endl;
+  std::cout << "OpenAL Renderer: " << al_renderer << std::endl;
+
+  // Play a sound (you can replace this with your own sound file)
+  ALuint source;
+  ALuint buffer;
+
+  alGenBuffers(1, &buffer);
+  alGenSources(1, &source);
+
+  // For simplicity, a short sine wave is used as a sample sound
+  const int frequency = 440;  // 440 Hz
+  const int duration = 2;     // 2 seconds
+  const int sample_rate = 44100;
+
+  const int num_samples = duration * sample_rate;
+  short* samples = new short[num_samples];
+
+  for (int i = 0; i < num_samples; ++i) {
+    samples[i] = static_cast<short>(
+        32767.0 * sin(2.0 * 3.14159 * frequency * i / sample_rate));
   }
 
-  ALsizei size = static_cast<ALsizei>(sf_info.frames) * sf_info.channels * sizeof(int16_t);
-  int16_t* buffer_data = new int16_t[size];
-  sf_readf_short(snd_file, buffer_data, sf_info.frames);
-  sf_close(snd_file);
-
-  // Set up OpenAL buffer
-  ALuint buffer;
-  alGenBuffers(1, &buffer);
-  alBufferData(buffer, (sf_info.channels == 2) ? AL_FORMAT_STEREO16 : AL_FORMAT_MONO16,
-               buffer_data, size, sf_info.samplerate);
-
-  // Set up source
-  ALuint source;
-  alGenSources(1, &source);
+  alBufferData(buffer, AL_FORMAT_MONO16, samples, num_samples * sizeof(short),
+               sample_rate);
   alSourcei(source, AL_BUFFER, buffer);
 
-  // Play the sound
   alSourcePlay(source);
+  std::cout << "Playing sound..." << std::endl;
 
-  // Wait for the sound to finish playing (you can add more sophisticated logic)
+  // Wait for the sound to finish playing
   ALint source_state;
   do {
     alGetSourcei(source, AL_SOURCE_STATE, &source_state);
   } while (source_state == AL_PLAYING);
 
+  std::cout << "Sound finished playing." << std::endl;
+
   // Clean up
+  delete[] samples;
+
   alDeleteSources(1, &source);
   alDeleteBuffers(1, &buffer);
-  delete[] buffer_data;
 
-  // Close OpenAL context and device
   alcMakeContextCurrent(nullptr);
   alcDestroyContext(context);
   alcCloseDevice(device);
@@ -442,3 +446,23 @@ int main() {
 
   return 0;
 }
+
+
+//  const char *pcm_name = "default";
+//  snd_pcm_t *pcm_handle;
+//
+//  // Open the PCM playback device
+//  int rc = snd_pcm_open(&pcm_handle, pcm_name, SND_PCM_STREAM_PLAYBACK, 0);
+//  if (rc < 0) {
+//    std::cerr << "Error: Unable to open PCM device '" << pcm_name << "': " <<
+//    snd_strerror(rc) << std::endl; return 1;
+//  }
+//
+//  // Display the PCM device information
+//  std::cout << "PCM Name: " << snd_pcm_name(pcm_handle) << std::endl;
+//  std::cout << "PCM State: " << snd_pcm_state_name(snd_pcm_state(pcm_handle))
+//  << std::endl;
+//
+//  // Close the PCM handle
+//  snd_pcm_close(pcm_handle);
+////  return 0;

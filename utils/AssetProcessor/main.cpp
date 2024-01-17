@@ -24,9 +24,9 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <fstream>
 
 #include "../../config/Paths.h"
-#include "../Logger.h"
 
 #include "AssetProcessor.h"
 #include "AssetLoadingThreadPool.h"
@@ -52,24 +52,27 @@ void LogProcessingResult(const std::string& path, bool encoded);
 
 // TODO: add README.md with naming convention: __ _nmap.astc __
 
-int foo() {
-  return 4;
-}
+#include "vorbis/vorbisfile.h"
+#include "ogg/ogg.h"
+
 int main(int argc, char** argv) {
-  std::cout << foo() << std::endl;
   const char* command =
       "/home/pavlo/CLionProjects/Faithful/cmake-build-debug/meshoptimizer-build/gltfpack -noq -i /home/pavlo/Downloads/DamagedHelmet.glb  -o /home/pavlo/Desktop/omg.gltf";
   if (std::system(command) == 0) {
     std::cout << "Optimized" << std::endl;
   }
   std::cout << "AssetProcessor: assets were processed successfully" << std::endl;
+  const char* vorbisVersion = vorbis_version_string();
+  std::cout << "Vorbis version: " << vorbisVersion << std::endl;
+
+  std::cout << "Vorbis and Ogg linked correctly!" << std::endl;
   return 0;
 
   if (argc < 2) {
     std::cout << "Incorrect program's arguments" << std::endl;
-    return -1;
+    //return -1;
   }
-  std::cout << argv[1] << std::endl;
+  //std::cout << argv[1] << std::endl;
   std::filesystem::path user_path = "";
   AssetController asset_controller;
   bool asset_processing = true;

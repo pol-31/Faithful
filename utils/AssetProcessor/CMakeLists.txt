@@ -21,12 +21,10 @@ target_link_libraries(AssetProcessor
         PUBLIC dr_libs
         PUBLIC RapidJSON
         PUBLIC vorbis
-        PUBLIC libogg
+        PUBLIC ogg
         PUBLIC tinygltf
+        PUBLIC astcenc-native-static
 )
-if (FAITHFUL_BUILD_ASSET_PROCESSOR)
-    target_link_libraries(AssetProcessor PUBLIC astc-encoder)
-endif()
 
 add_dependencies(AssetProcessor meshoptimizer)
 
@@ -38,8 +36,7 @@ target_include_directories(AssetProcessor
         PUBLIC ${CMAKE_SOURCE_DIR}/external/rapidjson/include/rapidjson
         PUBLIC ${CMAKE_SOURCE_DIR}/external/tinygltf
         PUBLIC ${CMAKE_SOURCE_DIR}/external/vorbis/include
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/libogg/include
+        PUBLIC ${CMAKE_SOURCE_DIR}/external/ogg/include
         PUBLIC ${CMAKE_SOURCE_DIR}/external
 )
-
 

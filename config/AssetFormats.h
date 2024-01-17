@@ -20,7 +20,7 @@ inline constexpr char default_temp_dir_name[] = "AssetPack_temp";
 inline constexpr char default_curl_cli_command[] = "curl -f -o";
 inline constexpr char default_wget_command[] = "wget -O";
 inline constexpr char default_invoke_webrequest_command[] =
-    "powershell.exe -Command Invoke-WebRequest";
+    "powershell.exe -Command \"Invoke-WebRequest";
 inline constexpr char default_url[] =
     "https://drive.usercontent.google.com/download?id=1zFzeoB8Su-4yt9bqMOgJ7uCRbKMlP2DT&export=download&authuser=0&confirm=t&uuid=9bc19c5b-d6af-4ea1-87f4-a0c26a6701fd&at=APZUnTWJGjDQQGFN2pYOQosBzPL3:1705005036841";
 inline constexpr int default_url_redirections_count = 0;
