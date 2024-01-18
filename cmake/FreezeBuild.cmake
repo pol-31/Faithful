@@ -1,12 +1,49 @@
 # ---   ---
 # TODO: git (worktree? attributes/config? - idk)
 
-# TODO: run as a custom target/command (need to wait until all other will be processed)
+# TODO: configure_file(Faithful/config/paths.h.in)
 
-set(SOURCE_DIR ${CMAKE_SOURCE_DIR})
-set(DESTINATION_DIR ${CMAKE_SOURCE_DIR}/Faithful)
+# TODO: Faithful/utils/*.(h|cpp)
+
+set(SOURCE_DIR ${FAITHFUL_SOURCE_DIR})
+set(DESTINATION_DIR ${FAITHFUL_SOURCE_DIR}/Faithful)
+
+
+# TODO:_________---__---__---____---_---__--_--__--__--__--_---_---_----
+# TODO:_________---__---__---____---_---__--_--__--__--__--_---_---_----
+# TODO:_________---__---__---____---_---__--_--__--__--__--_---_---_----
+#add_custom_target(copy_astcenc_license
+#        COMMAND ${CMAKE_COMMAND} -E copy
+#        "${FAITHFUL_SOURCE_DIR}/external/googletest/LICENSE"
+#        "${FAITHFUL_BINARY_DIR}/licenses/googletest/LICENSE"
+#        DEPENDS
+#)
+
+#file(GLOB ASTCENC_HEADER_FILES ${SOURCE_DIR}/external/dr_libs/*.h)
+#file(GLOB DR_LIBS_HEADER_FILES ${SOURCE_DIR}/external/dr_libs/*.h)
+
+# Copy the header files to the destination directory
+execute_process(
+        COMMAND ${CMAKE_COMMAND} -E copy ${HEADER_FILES} ${DESTINATION_DIR}/external/dr_libs
+)
 
 # --- Freezing of header files
+add_custom_target(install_headers
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${SOURCE_DIR}/external/astc-encoder/Source
+        ${DESTINATION_DIR}/external/astc-encoder
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${SOURCE_DIR}/external/dr_libs
+        ${DESTINATION_DIR}/external/dr_libs
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${SOURCE_DIR}/external/glad/include
+        ${DESTINATION_DIR}/external/glad
+        DEPENDS
+        ${FAITHFUL_BINARY_DIR}/external/astc-encoder/libastc.a
+        ${FAITHFUL_BINARY_DIR}/external/dr_libs/libdr_libs.a
+        ${FAITHFUL_BINARY_DIR}/external/glad/libglad.a
+)
+
 
 file(GLOB HEADER_FILES ${SOURCE_DIR}/external/astc-encoder/Source/*.h)
 install(FILES ${HEADER_FILES}
@@ -66,8 +103,8 @@ install(FILES ${HEADER_FILES}
 
 # --- Freezing of libraries
 
-set(SOURCE_DIR ${CMAKE_BINARY_DIR}/external)
-set(DESTINATION_DIR ${CMAKE_BINARY_DIR}/destination_directory)
+set(SOURCE_DIR ${FAITHFUL_BINARY_DIR}/external)
+set(DESTINATION_DIR ${FAITHFUL_BINARY_DIR}/destination_directory)
 
 file(GLOB_RECURSE LIB_FILES ${SOURCE_DIR}/*${CMAKE_STATIC_LIBRARY_SUFFIX})
 

@@ -16,27 +16,33 @@ add_executable(AssetProcessor main.cpp
 )
 
 target_link_libraries(AssetProcessor
-        PUBLIC mimalloc
+        PUBLIC mimalloc-static
         PUBLIC stb
         PUBLIC dr_libs
         PUBLIC RapidJSON
+        PUBLIC vorbisenc
+        PUBLIC vorbisfile
         PUBLIC vorbis
         PUBLIC ogg
         PUBLIC tinygltf
-        PUBLIC astcenc-native-static
 )
+
+if (FAITHFUL_BUILD_ASTC_ENCODER)
+    target_link_libraries(AssetProcessor PUBLIC astcenc-native-static)
+    target_include_directories(AssetProcessor PUBLIC ${FAITHFUL_SOURCE_DIR}/external)
+endif ()
+
 
 add_dependencies(AssetProcessor meshoptimizer)
 
 target_include_directories(AssetProcessor
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/stb
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/dr_libs
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/rapidjson/include
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/rapidjson/include/rapidjson
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/tinygltf
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/vorbis/include
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/ogg/include
-        PUBLIC ${CMAKE_SOURCE_DIR}/external
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/mimalloc/include
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/stb
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/dr_libs
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include/rapidjson
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/tinygltf
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/vorbis/include
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/ogg/include
 )
 

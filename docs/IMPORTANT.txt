@@ -17,3 +17,6 @@ cmake rpath, visibility (CMP0063), Position-Independent Code (PIC) are "disabled
 ask user to install libasound (if not yet)
 
 specify rpath, visibility for libasound (ALSA) ((or other audio backend))
+
+
+OpenAL usage: need to use al.h NOT <AL/al.h> <--- from CMake find_package(OpenAL)

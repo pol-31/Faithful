@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.26)
 
-project(faithful-core)
-
-#file(GLOB_RECURSE FAITHFUL_MAIN_SOURCES ${FAITHFUL_SOURCE_DIR}/src/*.cpp)
-
-add_executable(faithful-core main.cpp io/Monitor.cpp io/Window.cpp loader/ShaderProgram.cpp ${FAITHFUL_MAIN_SOURCES})
+add_executable(faithful-test-external
+        main.cpp
+)
 
 target_link_libraries(faithful-core
         PUBLIC mimalloc-static

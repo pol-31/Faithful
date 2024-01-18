@@ -340,15 +340,15 @@ int main() {
 /// We don't need to #include "mimalloc-new-delete.h"
 /// as it has already been overridden by libmimalloc.a
 
-#define AL_LIBTYPE_STATIC
+#define AL_LIBTYPE_STATIC // <--------------------- important (!!!)
 //#include "config.h"
+
+#include <cmath>
 
 #include "AL/al.h"
 #include "AL/alc.h"
-#include <sndfile.h>
 #include <iostream>
-//#include "alsa/asoundlib.h"
-#include "asoundlib.h"
+
 // Function to check for OpenAL errors
 void CheckALError(const char* message) {
 //  ALenum error = alGetError();
@@ -358,22 +358,6 @@ void CheckALError(const char* message) {
 }
 
 int main() {
-  const char *pcm_name = "default";
-  snd_pcm_t *pcm_handle;
-  int rc = snd_pcm_open(&pcm_handle, pcm_name, SND_PCM_STREAM_PLAYBACK, 0);
-  if (rc < 0) {
-    std::cerr << "Error: Unable to open PCM device '" << pcm_name << "': " << snd_strerror(rc) << std::endl;
-    return 1;
-  }
-
-  // Display the PCM device information
-  std::cout << "PCM Name: " << snd_pcm_name(pcm_handle) << std::endl;
-  std::cout << "PCM State: " << snd_pcm_state_name(snd_pcm_state(pcm_handle)) << std::endl;
-
-  // Close the PCM handle
-  snd_pcm_close(pcm_handle);
-//  return 0;
-
   // Initialize OpenAL context
   ALCdevice* device = alcOpenDevice(nullptr);
   if (!device) {

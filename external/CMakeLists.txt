@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.26)
 
 # TODO: if FREEZE_BUILD - RELEASE mode
 
-include(ExternalProject)
 include(CheckCXXSourceRuns)
 
 #    ====================================================================
@@ -13,8 +12,8 @@ include(CheckCXXSourceRuns)
 #    --------------------------------------------------------------------
 #    glad (Faithful: OpenGL specification)
 message(STATUS "glad building")
-add_library(glad ${CMAKE_SOURCE_DIR}/external/glad/src/glad.c)
-set(FAITHFUL_GLAD_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/external/glad/include CACHE INTERNAL "")
+add_library(glad ${FAITHFUL_SOURCE_DIR}/external/glad/src/glad.c)
+set(FAITHFUL_GLAD_INCLUDE_DIR ${FAITHFUL_SOURCE_DIR}/external/glad/include CACHE INTERNAL "")
 target_include_directories(glad PRIVATE ${FAITHFUL_GLAD_INCLUDE_DIR})
 
 # if FAITHFUL_GL_SUPPORTS_ASTC, OpenGL has embedded support of astc textures,
@@ -52,65 +51,20 @@ if (FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL)
         set(FAITHFUL_BUILD_ASTC_ENCODER ON CACHE BOOL "" FORCE)
     endif ()
 endif ()
-if (FAITHFUL_FALSE AND FAITHFUL_BUILD_ASTC_ENCODER)
-    if (NOT FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
-        set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR ON)
-    else ()
-        set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR OFF)
-    endif ()
-
-    message(STATUS "astc-encoder building")
-    set(ASTC_ENCODER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/astc-encoder CACHE INTERNAL "astc-encoder source directory" FORCE)
-    set(ASTC_ENCODER_BINARY_DIR ${CMAKE_BINARY_DIR}/external/astc-encoder CACHE INTERNAL "astc-encoder binary directory" FORCE)
-
-    ExternalProject_Add(
-            astcencoder_external
-            PREFIX ${ASTC_ENCODER_BINARY_DIR}
-            SOURCE_DIR ${ASTC_ENCODER_SOURCE_DIR}
-            CONFIGURE_COMMAND ${CMAKE_COMMAND}
-            -DASTCENC_ISA_NATIVE=ON
-            -DASTCENC_DECOMPRESSOR=${FAITHFUL_ASTC_ENCODER_DECOMPRESSOR}
-            -DASTCENC_SHAREDLIB=OFF
-            -DASTCENC_DIAGNOSTICS=OFF
-            -DASTCENC_ASAN=OFF
-            -DASTCENC_UNITTEST=OFF
-            -DASTCENC_INVARIANCE=OFF
-            -DASTCENC_CLI=OFF
-            -DASTCENC_BLOCK_MAX_TEXELS=64 # max 8x8x1 compression)
-            ${ASTC_ENCODER_SOURCE_DIR}
-            BUILD_COMMAND ${CMAKE_COMMAND} --build .
-            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_BYPRODUCTS ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/Debug/astcenc-native-static${CMAKE_STATIC_LIBRARY_SUFFIX}
-            #BUILD_BYPRODUCTS ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/libastcenc-native-static${CMAKE_STATIC_LIBRARY_SUFFIX} <------ TODO: its for UNIX
-            LOG_CONFIGURE ON
-            LOG_BUILD ON
-    )
-
-    add_library(astc-encoder INTERFACE)
-    add_dependencies(astc-encoder astcencoder_external)
-    target_link_libraries(astc-encoder
-            INTERFACE ${ASTC_ENCODER_BINARY_DIR}/src/astcencoder_external-build/Source/Debug/astcenc-native-static${CMAKE_STATIC_LIBRARY_SUFFIX}
-    )
-    target_include_directories(astc-encoder INTERFACE ${ASTC_ENCODER_SOURCE_DIR}/Source)
-endif ()
 if (FAITHFUL_BUILD_ASTC_ENCODER)
-    if (NOT FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
-        set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR ON)
-    else ()
-        set(FAITHFUL_ASTC_ENCODER_DECOMPRESSOR OFF)
-    endif ()
     message(STATUS "astc-encoder building")
-    set(ISA_NATIVE ON CACHE INTERNAL "")
-    set(DECOMPRESSOR ${FAITHFUL_ASTC_ENCODER_DECOMPRESSOR} CACHE INTERNAL "")
-    #set(ASTCENC_SHAREDLIB ON CACHE INTERNAL "")
-    set(DIAGNOSTICS OFF CACHE INTERNAL "")
+    set(ASTCENC_ISA_NATIVE ON CACHE INTERNAL "")
+    if (NOT FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
+        set(ASTCENC_DECOMPRESSOR ON CACHE INTERNAL "")
+    endif ()
+    set(ASTCENC_SHAREDLIB OFF CACHE INTERNAL "")
+    set(ASTCENC_DIAGNOSTICS OFF CACHE INTERNAL "")
     set(ASTCENC_ASAN OFF CACHE INTERNAL "")
-    set(UNITTEST OFF CACHE INTERNAL "")
+    set(ASTCENC_UNITTEST OFF CACHE INTERNAL "")
     set(ASTCENC_INVARIANCE OFF CACHE INTERNAL "")
-    set(CLI OFF CACHE INTERNAL "")
-   # set(ASTCENC_BLOCK_MAX_TEXELS 64 CACHE INTERNAL "")
-
-    add_subdirectory(astc-encoder EXCLUDE_FROM_ALL)
+    set(ASTCENC_CLI OFF CACHE INTERNAL "")
+    set(ASTCENC_BLOCK_MAX_TEXELS 64 CACHE INTERNAL "")
+    add_subdirectory(astc-encoder)
 endif ()
 
 #    --------------------------------------------------------------------
@@ -122,7 +76,7 @@ configure_file(dr_libs/dr_flac.h dr_flac.cpp COPYONLY)
 configure_file(dr_libs/dr_mp3.h dr_mp3.cpp COPYONLY)
 add_library(dr_libs dr_wav.cpp dr_flac.cpp dr_mp3.cpp)
 target_compile_definitions(dr_libs PRIVATE DR_WAV_IMPLEMENTATION DR_FLAC_IMPLEMENTATION DR_MP3_IMPLEMENTATION)
-target_include_directories(dr_libs PRIVATE ${CMAKE_SOURCE_DIR}/external/dr_libs)
+target_include_directories(dr_libs PRIVATE ${FAITHFUL_SOURCE_DIR}/external/dr_libs)
 
 
 #    --------------------------------------------------------------------
@@ -156,7 +110,7 @@ if (FAITHFUL_BUILD_TESTS)
         message(STATUS "googletest building")
         set(BUILD_GMOCK OFF CACHE BOOL "Build GoogleTest GMock" FORCE)
         set(INSTALL_GTEST OFF CACHE BOOL "Install GoogleTest" FORCE)
-        set(GTEST_BINARY_DIR ${CMAKE_BINARY_DIR}/external/googletest CACHE INTERNAL "googletest binary directory" FORCE)
+        set(GTEST_BINARY_DIR ${FAITHFUL_BINARY_DIR}/external/googletest CACHE INTERNAL "googletest binary directory" FORCE)
         add_subdirectory(googletest EXCLUDE_FROM_ALL)
     endif ()
 endif ()
@@ -181,32 +135,12 @@ endif ()
 if (FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT MIMALLOC_FOUND))
     message(STATUS "mimalloc building")
-    set(MIMALLOC_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/mimalloc)
-    set(MIMALLOC_BINARY_DIR ${CMAKE_BINARY_DIR}/external/mimalloc CACHE INTERNAL "mimalloc binary directory" FORCE)
-
-    set(FAITHFUL_MIMALLOC_FLAGS "-DMI_BUILD_SHARED=OFF" "-DMI_BUILD_STATIC=ON" "-DMI_BUILD_OBJECT=OFF" "-DMI_BUILD_TESTS=OFF" "-DMI_USE_CXX=ON" CACHE STRING "" FORCE)
-    if (WIN32)
-        set(FAITHFUL_MIMALLOC_FLAGS "${FAITHFUL_MIMALLOC_FLAGS} -DMI_BUILD_SHARED=OFF" CACHE STRING "" FORCE)
-    endif()
-
-    ExternalProject_Add(
-            mimalloc_external
-            PREFIX ${MIMALLOC_BINARY_DIR}
-            SOURCE_DIR ${MIMALLOC_SOURCE_DIR}
-            CONFIGURE_COMMAND ${CMAKE_COMMAND}
-            ${FAITHFUL_MIMALLOC_FLAGS}
-            ${MIMALLOC_SOURCE_DIR}
-            BUILD_COMMAND ${CMAKE_COMMAND} --build .
-            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_BYPRODUCTS ${MIMALLOC_BINARY_DIR}/src/mimalloc_external-build/Debug/mimalloc-static${CMAKE_STATIC_LIBRARY_SUFFIX} # TODO: + /Debug dir on WIN32
-            LOG_CONFIGURE ON
-            LOG_BUILD ON
-    )
-    add_library(mimalloc INTERFACE)
-    add_dependencies(mimalloc mimalloc_external)
-    target_link_libraries(mimalloc
-            INTERFACE ${MIMALLOC_BINARY_DIR}/src/mimalloc_external-build/Debug/mimalloc-static${CMAKE_STATIC_LIBRARY_SUFFIX}
-    )
+    set(MI_BUILD_SHARED OFF CACHE INTERNAL "")
+    set(MI_BUILD_STATIC ON CACHE INTERNAL "")
+    set(MI_BUILD_OBJECT OFF CACHE INTERNAL "")
+    set(MI_BUILD_TESTS OFF CACHE INTERNAL "")
+    set(MI_USE_CXX ON CACHE INTERNAL "")
+    add_subdirectory(mimalloc EXCLUDE_FROM_ALL)
 endif()
 
 
@@ -215,37 +149,21 @@ endif()
 if (FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT OPENAL_FOUND))
     message(STATUS "openal-soft building")
-    set(OPENALSOFT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/openal-soft)
-    set(OPENALSOFT_BINARY_DIR ${CMAKE_BINARY_DIR}/external/openal-soft CACHE INTERNAL "openal-soft binary directory" FORCE)
 
-    ExternalProject_Add(
-            openal-soft_external
-            PREFIX ${OPENALSOFT_BINARY_DIR}
-            SOURCE_DIR ${OPENALSOFT_SOURCE_DIR}
-            CONFIGURE_COMMAND ${CMAKE_COMMAND}
-            -DLIBTYPE=STATIC
-            -DALSOFT_DLOPEN=OFF
-            -DALSOFT_UTILS=OFF
-            -DALSOFT_EXAMPLES=OFF
-            -DALSOFT_TESTS=OFF
-            -DALSOFT_INSTALL=OFF
-            -DALSOFT_INSTALL_CONFIG=OFF
-            -DALSOFT_INSTALL_HRTF_DATA=OFF
-            -DALSOFT_INSTALL_AMBDEC_PRESETS=OFF
-            -DALSOFT_INSTALL_EXAMPLES=OFF
-            -DALSOFT_INSTALL_UTILS=OFF
-            -DALSOFT_UPDATE_BUILD_VERSION=OFF
-            ${OPENALSOFT_SOURCE_DIR}
-            BUILD_COMMAND ${CMAKE_COMMAND} --build .
-            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Skipping install step"
-            BUILD_BYPRODUCTS ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/Debug/OpenAL32${CMAKE_STATIC_LIBRARY_SUFFIX}
-            LOG_CONFIGURE ON
-            LOG_BUILD ON
-            #BUILD_BYPRODUCTS ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/libopenal${CMAKE_STATIC_LIBRARY_SUFFIX} <---------------- TODO: it's for Unix
-    )
-    add_library(openal-soft INTERFACE)
-    add_dependencies(openal-soft openal-soft_external)
-    target_link_libraries(openal-soft INTERFACE ${OPENALSOFT_BINARY_DIR}/src/openal-soft_external-build/libopenal.a)
+    set(LIBTYPE "STATIC" CACHE INTERNAL "")
+    set(ALSOFT_DLOPEN OFF CACHE INTERNAL "")
+    set(ALSOFT_UTILS OFF CACHE INTERNAL "")
+    set(ALSOFT_EXAMPLES OFF CACHE INTERNAL "")
+    set(ALSOFT_TESTS OFF CACHE INTERNAL "")
+    set(ALSOFT_INSTALL OFF CACHE INTERNAL "")
+    set(ALSOFT_INSTALL_CONFIG OFF CACHE INTERNAL "")
+    set(ALSOFT_INSTALL_HRTF_DATA OFF CACHE INTERNAL "")
+    set(ALSOFT_INSTALL_AMBDEC_PRESETS OFF CACHE INTERNAL "")
+    set(ALSOFT_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
+    set(ALSOFT_INSTALL_UTILS OFF CACHE INTERNAL "")
+    set(ALSOFT_UPDATE_BUILD_VERSION OFF CACHE INTERNAL "")
+
+    add_subdirectory(openal-soft EXCLUDE_FROM_ALL)
 endif()
 
 
@@ -282,7 +200,7 @@ target_compile_definitions(stb PRIVATE
         STB_IMAGE_IMPLEMENTATION
         STB_IMAGE_WRITE_IMPLEMENTATION
 )
-target_include_directories(stb PRIVATE ${CMAKE_SOURCE_DIR}/external/stb)
+target_include_directories(stb PRIVATE ${FAITHFUL_SOURCE_DIR}/external/stb)
 
 
 #    --------------------------------------------------------------------
@@ -301,8 +219,8 @@ target_compile_definitions(tinygltf PUBLIC
         TINYGLTF_USE_CPP14
 )
 target_include_directories(tinygltf
-        PRIVATE ${CMAKE_SOURCE_DIR}/external/rapidjson/include/rapidjson
-        tinygltf PRIVATE ${CMAKE_SOURCE_DIR}/external/tinygltf
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include/rapidjson
+        tinygltf PRIVATE ${FAITHFUL_SOURCE_DIR}/external/tinygltf
 )
 
 #    --------------------------------------------------------------------
@@ -323,30 +241,26 @@ endif ()
 
 if (FAITHFUL_BUILD_ASSET_PROCESSOR)
     #    --------------------------------------------------------------------
-    #    meshoptimizer (AssetProcessor: gltfpack - gltf optimizatio
+    #    meshoptimizer (AssetProcessor: gltfpack - gltf optimization
     add_subdirectory(meshoptimizer EXCLUDE_FROM_ALL)
 endif ()
 
 
 #    ====================================================================
-#    FAITHFUL_ASSET_DOWNLOADER-specific
+#    {FAITHFUL_ASSET_DOWNLOADER / FAITHFUL_ASSET_PACK} -specific
 
 if (FAITHFUL_BUILD_ASSET_DOWNLOADER OR FAITHFUL_BUILD_ASSET_PACK)
     #    --------------------------------------------------------------------
-    #    miniz (AssetDownloader, AssetPack: unzip downloaded by curl single file)
+    #    miniz (AssetDownloader, AssetPack: unzip downloaded assets archive)
     message(STATUS "miniz building")
-    add_library(miniz ${CMAKE_SOURCE_DIR}/external/miniz/miniz.c)
+    add_library(miniz ${FAITHFUL_SOURCE_DIR}/external/miniz/miniz.c)
     target_compile_definitions(miniz PUBLIC
             MINIZ_NO_ZLIB_APIS
             MINIZ_NO_TIME
     )
-    target_include_directories(miniz PRIVATE ${CMAKE_SOURCE_DIR}/external/miniz)
+    target_include_directories(miniz PRIVATE ${FAITHFUL_SOURCE_DIR}/external/miniz)
 
     #    --------------------------------------------------------------------
-    #    CURL (AssetDownloader only: single http request to download assets)
-    #    see utils/AssetDownloader/CMakeLists.txt
-
-    #    --------------------------------------------------------------------
-    #    PicoSHA2 (AssetDownloader, AssetPack: validate assets downloaded by curl)
+    #    PicoSHA2 (AssetDownloader, AssetPack: validate downloaded assets)
     #    only one header, so included directly
 endif ()

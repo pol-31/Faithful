@@ -20,13 +20,14 @@ if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS REQUIRED_COMPILER_VERSION)
     )
 endif()
 
-
+#set(FAITHFUL_COMPILE_OPTIONS -Werror -Wall -Wextra -Wpedantic -fno-omit-frame-pointer -flto CACHE INTERNAL "")
+set(FAITHFUL_COMPILE_OPTIONS "" CACHE INTERNAL "")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_options(-g)
+    set(FAITHFUL_COMPILE_OPTIONS -g ${FAITHFUL_COMPILE_OPTIONS} CACHE INTERNAL "")
 endif()
 
-add_compile_options(-Werror -Wall -Wextra -Wpedantic -fno-omit-frame-pointer -flto)
+add_compile_options(${FAITHFUL_COMPILE_OPTIONS})
 
 set(ASAN_COMPILE_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
 set(ASAN_LINK_FLAGS -fsanitize=address,undefined)

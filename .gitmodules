@@ -6,10 +6,6 @@
 	path = external/glfw
 	url = https://github.com/glfw/glfw.git
 	branch = master
-[submodule "external/astc-encoder"]
-	path = external/astc-encoder
-	url = https://github.com/ARM-software/astc-encoder.git
-	branch = 3.x
 [submodule "external/googletest"]
 	path = external/googletest
 	url = https://github.com/google/googletest.git
@@ -34,3 +30,11 @@
 	path = external/ogg
 	url = https://github.com/xiph/ogg.git
 	branch = master
+[submodule "external/meshoptimizer/meshoptimizer"]
+	path = external/meshoptimizer/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
+	branch = master
+[submodule "external/astc-encoder"]
+	path = external/astc-encoder
+	url = https://github.com/ARM-software/astc-encoder.git
+	branch = main

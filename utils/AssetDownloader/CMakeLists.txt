@@ -9,14 +9,14 @@ add_executable(AssetDownloader main.cpp)
 
 
 target_link_libraries(AssetDownloader
-        PUBLIC mimalloc
+        PUBLIC mimalloc-static
         PUBLIC miniz
 )
 
 target_include_directories(AssetDownloader
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/miniz
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/picosha2
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/mimalloc/include
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/miniz
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/picosha2
 )
 
 #TODO: aria2 ?... idk

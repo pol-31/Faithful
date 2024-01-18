@@ -8,12 +8,12 @@ set(CMAKE_CXX_STANDARD 17)
 add_executable(AssetPack main.cpp)
 
 target_link_libraries(AssetPack
-        PUBLIC mimalloc
+        PUBLIC mimalloc-static
         PUBLIC miniz
 )
 
 target_include_directories(AssetPack
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/mimalloc/include
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/miniz
-        PUBLIC ${CMAKE_SOURCE_DIR}/external/picosha2
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/mimalloc/include
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/miniz
+        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/picosha2
 )
