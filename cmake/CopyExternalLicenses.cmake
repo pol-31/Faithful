@@ -35,23 +35,23 @@ add_custom_target(copy_main_licenses
         "${FAITHFUL_BINARY_DIR}/licenses/vorbis/COPYING"
 )
 
-if (FAITHFUL_BUILD_ASTC_ENCODER)
+if(FAITHFUL_BUILD_ASTC_ENCODER)
     add_custom_target(copy_astcenc_license
             COMMAND ${CMAKE_COMMAND} -E copy
             "${FAITHFUL_SOURCE_DIR}/external/googletest/LICENSE"
             "${FAITHFUL_BINARY_DIR}/licenses/googletest/LICENSE"
     )
-endif ()
+endif()
 
-if (FAITHFUL_BUILD_TESTS)
+if(FAITHFUL_BUILD_TESTS)
     add_custom_target(copy_googletest_license
             COMMAND ${CMAKE_COMMAND} -E copy
             "${FAITHFUL_SOURCE_DIR}/external/astc-encoder/LICENSE.txt"
             "${FAITHFUL_BINARY_DIR}/licenses/astc-encoder/LICENSE.txt"
     )
-endif ()
+endif()
 
-if (FAITHFUL_BUILD_ASSET_PROCESSOR)
+if(FAITHFUL_BUILD_ASSET_PROCESSOR)
     add_custom_target(copy_asset_processor_licenses
             COMMAND ${CMAKE_COMMAND} -E copy
             "${FAITHFUL_SOURCE_DIR}/external/dr_libs/LICENSE"
@@ -63,9 +63,9 @@ if (FAITHFUL_BUILD_ASSET_PROCESSOR)
             "${FAITHFUL_SOURCE_DIR}/external/stb/LICENSE"
             "${FAITHFUL_BINARY_DIR}/licenses/stb/LICENSE"
     )
-endif ()
+endif()
 
-if (FAITHFUL_BUILD_ASSET_DOWNLOADER OR FAITHFUL_BUILD_ASSET_PACK)
+if(FAITHFUL_BUILD_ASSET_DOWNLOADER OR FAITHFUL_BUILD_ASSET_PACK)
     add_custom_target(copy_faithful_pack_faithful_download_licenses
             COMMAND ${CMAKE_COMMAND} -E copy
             "${FAITHFUL_SOURCE_DIR}/external/miniz/LICENSE"
@@ -74,4 +74,4 @@ if (FAITHFUL_BUILD_ASSET_DOWNLOADER OR FAITHFUL_BUILD_ASSET_PACK)
             "${FAITHFUL_SOURCE_DIR}/external/picosha2/LICENSE"
             "${FAITHFUL_BINARY_DIR}/licenses/picosha2/LICENSE"
     )
-endif ()
+endif()

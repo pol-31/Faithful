@@ -8,16 +8,24 @@ cmake_policy(SET CMP0069 NEW)  # LTO support
 cmake_policy(SET CMP0091 NEW)  # MSVC runtime support
 cmake_policy(SET CMP0075 NEW)  # honor to CMAKE_REQUIRED_LIBRARIES
 
+# to set() variables that are option() in subdirectories (Faithful/external/)
+cmake_policy(SET CMP0077 NEW)  # honors normal variables
+
+set(CMAKE_WARN_DEPRECATED OFF)
+
 set(FAITHFUL_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
 set(FAITHFUL_BINARY_DIR "${CMAKE_BINARY_DIR}")
 
-set(FAITHFUL_FREEZE_DIR "${FAITHFUL_SOURCE_DIR}/Faithful" CACHE STRING
-        "The subdirectory where to install")
+# Faithful/installed_libs must be empty - all libs should not be installed and
+# variable CMAKE_INSTALL_PREFIX was set to ensure nothing will be installed
+# to system dirs (we marked all as EXCLUDE_FROM_ALL but accordingly to CMake
+# official documentation it doesn't provide a 100% guarantee)
+set(CMAKE_INSTALL_PREFIX "${FAITHFUL_BINARY_DIR}/installed_libs")
 
-set(CMAKE_MODULE_PATH
-        "${FAITHFUL_SOURCE_DIR}/cmake"
-        ${CMAKE_MODULE_PATH}
-)
+set(FAITHFUL_FREEZE_DIR "${FAITHFUL_SOURCE_DIR}/Faithful" CACHE STRING
+        "The subdirectory where to FreezeBuild")
+
+set(CMAKE_MODULE_PATH "${FAITHFUL_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 # For FREEZE_BUILD there's 2 stages of compilation:
 # 1) Freeze - all external libs, compiling of AssetProcessor, AssetDownloader
@@ -32,14 +40,30 @@ option(FAITHFUL_FREEZE_BUILD
         (further build/compiling depends solely on Faithful code)" ON
 )
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(FAITHFUL_RELEASE OFF)
+else()
+    set(FAITHFUL_RELEASE ON)
+endif()
+
+if(FAITHFUL_FREEZE_BUILD)
+    set(FAITHFUL_RELEASE ON)
+endif()
+
 option(FAITHFUL_BUILD_ASSET_PROCESSOR "Build Faithful::AssetProcessor" ON)
 option(FAITHFUL_BUILD_ASSET_DOWNLOADER "Faithful download/update assets" ON)
 
 # all externals won't be installed to system lib/include paths
 option(FAITHFUL_BUILD_EXTERNAL "Build Faithful external libs if missing" ON)
-option(FAITHFUL_BUILD_EXTERNAL_ALL "Build all(!) Faithful external libs" ON) # To avoid compatibility issues
+
+# To avoid compatibility issues
+option(FAITHFUL_BUILD_EXTERNAL_ALL "Build all(!) Faithful external libs" ON)
+
 option(FAITHFUL_BUILD_TESTS "If enabled, compile Faithful tests" OFF)
 option(FAITHFUL_ENABLE_CLANG_TIDY "Enable Faithful clang-tidy check" OFF)
+
+option(FAITHFUL_ASAN "Run Faithful address sanitizer" OFF)
+option(FAITHFUL_TSAN "Run Faithful thread sanitizer" OFF)
 
 # Only for assets designer, used for generating asset_info.txt with validate info
 # including amount of assets and its hash for further
@@ -56,10 +80,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(${FAITHFUL_SOURCE_DIR}/cmake/PrintInfo.cmake)
 print_system_and_cmake_info()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_definitions(-DFAITHFUL_DEBUG_BUILD)
-endif()
-
 include(cmake/ConfigAssetsPaths.cmake)
 config_asset_paths()
 
@@ -67,14 +87,6 @@ configure_file(${FAITHFUL_SOURCE_DIR}/config/paths.h.in ${FAITHFUL_SOURCE_DIR}/c
 
 set(FAITHFUL_CONFIG_PATH "${FAITHFUL_SOURCE_DIR}/config")
 configure_file(${FAITHFUL_SOURCE_DIR}/config/paths.h.in ${FAITHFUL_SOURCE_DIR}/config/Paths.h)
-
-# There also could be such definitions:
-#   supporting specific OpenGL extensions (like KHR_texture_compression_astc_ldr);
-#   OpenGL OS-specific configs (CORE_PROFILE for MacOS, etc...);
-#   x86_64 / AMD64;
-#   SSE, AVX, PCLMUL.
-# But there are not benefits of it in CMakeLists.txt.
-# Such checks and accelerations implemented directly in source code
 
 # we don't need to configure rpath of visibility, because its
 # not a library and we don't use shared libraries by now
@@ -95,8 +107,6 @@ print_build_options()
 
 include(${FAITHFUL_SOURCE_DIR}/cmake/FaithfulFunctions.cmake)
 include(cmake/FindDeps.cmake)
-
-set(FETCHCONTENT_FULLY_DISCONNECTED ON)
 
 if(FAITHFUL_BUILD_EXTERNAL)
     add_subdirectory(external EXCLUDE_FROM_ALL)
@@ -120,8 +130,6 @@ if(FAITHFUL_DEPS_FOUND OR FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL
 
     if (FAITHFUL_ENABLE_CLANG_TIDY)
         include(${FAITHFUL_SOURCE_DIR}/cmake/ConfigClangTidy.cmake)
-    else ()
-        set(CMAKE_CXX_CLANG_TIDY "" CACHE INTERNAL "")
     endif ()
 
     if(FAITHFUL_FREEZE_BUILD)

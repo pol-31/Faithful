@@ -19,6 +19,6 @@
 #define FAITHFUL_ASSET_SHADER_INFO_FILE "/home/pavlo/CLionProjects/Faithful/assets/shaders/shaders_info.txt"
 #define FAITHFUL_ASSET_TEXTURE_INFO_FILE "/home/pavlo/CLionProjects/Faithful/assets/textures/textures_info.txt"
 
-#define FAITHFUL_GLTFPACK_PATH "/home/pavlo/CLionProjects/Faithful/cmake-build-debug/external/meshoptimizer/gltfpack"
+#define FAITHFUL_GLTFPACK_PATH ""
 
 #endif FAITHFUL_CONFIG_PATHS_H_IN

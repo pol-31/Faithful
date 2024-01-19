@@ -6,10 +6,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(REQUIRED_COMPILER_NAME "GCC")
     set(REQUIRED_COMPILER_VERSION 6.1)
-else()
-    message(FATAL_ERROR
-            "Unsupported compiler: ${CMAKE_CXX_COMPILER_ID}. Use Clang or GCC."
-    )
 endif()
 
 message(STATUS "Faithful project requires ${REQUIRED_COMPILER_NAME} ${REQUIRED_COMPILER_VERSION}")
@@ -20,29 +16,40 @@ if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS REQUIRED_COMPILER_VERSION)
     )
 endif()
 
-#set(FAITHFUL_COMPILE_OPTIONS -Werror -Wall -Wextra -Wpedantic -fno-omit-frame-pointer -flto CACHE INTERNAL "")
-set(FAITHFUL_COMPILE_OPTIONS "" CACHE INTERNAL "")
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(FAITHFUL_COMPILE_OPTIONS -g ${FAITHFUL_COMPILE_OPTIONS} CACHE INTERNAL "")
+set(FAITHFUL_COMPILE_OPTIONS ${CMAKE_CXX_FLAGS}
+        -Wall -Wextra
+        -Wpedantic -fno-omit-frame-pointer # TODO: -flto
+        CACHE STRING "Faithful compile options")
+set(FAITHFUL_EXE_LINK_OPTIONS ${CMAKE_EXE_LINKER_FLAGS}
+        CACHE STRING "Faithful link options")
+if(NOT FAITHFUL_RELEASE)
+    set(FAITHFUL_COMPILE_OPTIONS -g ${FAITHFUL_COMPILE_OPTIONS}
+            CACHE STRING "Faithful debug compile options (additionally)")
 endif()
 
-add_compile_options(${FAITHFUL_COMPILE_OPTIONS})
 
-set(ASAN_COMPILE_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
-set(ASAN_LINK_FLAGS -fsanitize=address,undefined)
+set(FAITHFUL_ASAN_COMPILE_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
+set(FAITHFUL_ASAN_LINK_FLAGS -fsanitize=address,undefined)
 
-set(TSAN_COMPILE_FLAGS -fsanitize=thread -fno-sanitize-recover=all)
-set(TSAN_LINK_FLAGS -fsanitize=thread)
+set(FAITHFUL_TSAN_COMPILE_FLAGS -fsanitize=thread -fno-sanitize-recover=all)
+set(FAITHFUL_TSAN_LINK_FLAGS -fsanitize=thread)
 
-if(ASAN)
+if(FAITHFUL_ASAN)
     message(STATUS "Sanitize with Address Sanitizer")
-    add_compile_options(${ASAN_COMPILE_FLAGS})
-    add_link_options(${ASAN_LINK_FLAGS})
+    set(FAITHFUL_COMPILE_OPTIONS
+            ${FAITHFUL_COMPILE_OPTIONS}
+            ${FAITHFUL_ASAN_COMPILE_FLAGS})
+    set(FAITHFUL_LINK_OPTIONS
+            ${FAITHFUL_EXE_LINK_OPTIONS}
+            ${FAITHFUL_ASAN_LINK_FLAGS})
 endif()
 
-if(TSAN)
+if(FAITHFUL_TSAN)
     message(STATUS "Sanitize with Thread Sanitizer")
-    add_compile_options(${TSAN_COMPILE_FLAGS})
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${TSAN_LINK_FLAGS}")
+    set(FAITHFUL_COMPILE_OPTIONS
+            ${FAITHFUL_COMPILE_OPTIONS}
+            ${FAITHFUL_TSAN_COMPILE_FLAGS})
+    set(FAITHFUL_LINK_OPTIONS
+            ${FAITHFUL_EXE_LINK_OPTIONS}
+            ${FAITHFUL_TSAN_LINK_FLAGS})
 endif()

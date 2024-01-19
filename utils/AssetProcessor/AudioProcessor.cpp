@@ -2,11 +2,9 @@
 
 #include <fstream>
 
-//#define DR_MP3_IMPLEMENTATION
-//#define DRMP3_IMPLEMENTATION
-#include "dr_mp3.h"
-#include "dr_flac.h"
-#include "dr_wav.h"
+#include <dr_mp3.h>
+#include <dr_flac.h>
+#include <dr_wav.h>
 
 // TODO: check dr_lib/vorbis macros
 
@@ -23,10 +21,10 @@
 AudioProcessor::AudioProcessor(bool encode,
                                const std::filesystem::path& asset_destination,
                                AssetLoadingThreadPool* thread_pool)
-    : encode_(encode),
-      asset_destination_(asset_destination),
+    : asset_destination_(asset_destination),
       thread_pool_(thread_pool),
-      worker_threads_count_(thread_pool->get_thread_count()) {
+      worker_threads_count_(thread_pool->get_thread_count()),
+      encode_(encode) {
 }
 
 AudioProcessor::~AudioProcessor() {  // TODO:
@@ -60,8 +58,9 @@ void AudioProcessor::ProcessSound(const std::filesystem::path& model_path,
   }
 }
 
-void AudioProcessor::EncodeMusic(const std::filesystem::path& model_path,
-                                 const std::filesystem::path& path_suffix) {
+void AudioProcessor::EncodeMusic(
+    const std::filesystem::path& model_path,
+    const std::filesystem::path& path_suffix __attribute__((unused))) {
   float* pPCM;
   uint64_t frames;
   int channels;
@@ -118,18 +117,21 @@ void AudioProcessor::EncodeMusic(const std::filesystem::path& model_path,
     } while (true);
   }
 }
-void AudioProcessor::DecodeMusic(const std::filesystem::path& model_path,
-                                 const std::filesystem::path& path_suffix) {
+void AudioProcessor::DecodeMusic(
+    const std::filesystem::path& model_path __attribute__((unused)),
+    const std::filesystem::path& path_suffix __attribute__((unused))) {
   std::cout << "Decoded music" << std::endl;
 }
 
-void AudioProcessor::EncodeSound(const std::filesystem::path& model_path,
-                                 const std::filesystem::path& path_suffix) {
+void AudioProcessor::EncodeSound(
+    const std::filesystem::path& model_path __attribute__((unused)),
+    const std::filesystem::path& path_suffix __attribute__((unused))) {
   // TODO: here only .wav format
   std::cout << "Encoded sound" << std::endl;
 }
-void AudioProcessor::DecodeSound(const std::filesystem::path& model_path,
-                                 const std::filesystem::path& path_suffix) {
+void AudioProcessor::DecodeSound(
+    const std::filesystem::path& model_path __attribute__((unused)),
+    const std::filesystem::path& path_suffix __attribute__((unused))) {
   // TODO: here only .wav format
   std::cout << "Decoded sound" << std::endl;
 }
@@ -210,15 +212,17 @@ void AudioProcessor::DecompressWavChunk(const std::filesystem::path& model_path,
   drwav_uninit(&wav);
 }
 
-void AudioProcessor::DecompressOggChunk(const std::filesystem::path& model_path,
-                                        float** pPCM, uint64_t* frames,
-                                        int* channels, int* sampleRate) {
+void AudioProcessor::DecompressOggChunk(
+    const std::filesystem::path& model_path __attribute__((unused)),
+    float** pPCM __attribute__((unused)), uint64_t* frames __attribute__((unused)),
+    int* channels __attribute__((unused)), int* sampleRate __attribute__((unused))) {
   // vorbisfile ?
 }
 
 void AudioProcessor::CompressChunk(
-    const std::filesystem::path& model_path, float* pPCM, uint64_t frames,
-    int channels, int sampleRate,
+    const std::filesystem::path& model_path __attribute__((unused)),
+    float* pPCM, uint64_t frames,
+    int channels, int sampleRate __attribute__((unused)),
     std::vector<std::pair<long int, char*>>& buffers) {
   std::cout << "disaster" << std::endl;
 
@@ -235,10 +239,9 @@ void AudioProcessor::CompressChunk(
     std::cout << "clearing of context" << std::endl;
   }
 
-  for (int k = 0; k < thread_data_->size() - 1; ++k) {
+  for (std::size_t k = 0; k < thread_data_->size() - 1; ++k) {
     thread_pool_->threads_tasks_[k].first =
-        std::move([&, k, qwerty, thread_offset]() {
-          return;
+        [&, k, qwerty, thread_offset]() {
           ThreadData& context = (*thread_data_)[k];
           int next_pos = k * thread_offset * channels;
           int cur_pos;
@@ -258,7 +261,7 @@ void AudioProcessor::CompressChunk(
             }
 
             for (int j = 0; j < channels; ++j) {
-              for (uint64_t i = 0; i < sentinel; ++i) {
+              for (long i = 0; i < sentinel; ++i) {
                 buffer[j][i] =
                     pPCM[cur_pos + i * channels +
                          j];  // TODO: thread distinct
@@ -292,7 +295,7 @@ void AudioProcessor::CompressChunk(
               break;
             }
           }
-        });
+        };
     thread_pool_->threads_tasks_[k].second = true;
   }
   thread_pool_->thread_tasks_mutex_.unlock();
@@ -316,7 +319,7 @@ void AudioProcessor::CompressChunk(
     }
 
     for (int j = 0; j < channels; ++j) {
-      for (uint64_t i = 0; i < sentinel; ++i) {
+      for (long i = 0; i < sentinel; ++i) {
         buffer[j][i] = pPCM[cur_pos + i * channels + j];
       }
     }
@@ -372,13 +375,13 @@ void AudioProcessor::CompressChunk(
 }
 
 void AudioProcessor::PrepareEncodingContext(
-    const std::filesystem::path& model_path, int channels, int sampleRate) {
+    const std::filesystem::path& model_path __attribute__((unused)),
+    int channels, int sampleRate) {
   if (!initialized_) {
     thread_data_ = new std::vector<ThreadData>(worker_threads_count_ + 1);
   }
 
   bool data_written = false;
-  int t = 0;
   for (auto& data : *thread_data_) {
     data.Init(channels, sampleRate);
 
@@ -395,7 +398,6 @@ void AudioProcessor::PrepareEncodingContext(
       while (ogg_stream_flush(&data.os, &data.og)) {
       }
     }
-    ++t;
     // TODO:
     //      vorbis_comment_clear(&vc_);
     //      vorbis_info_clear(&vi_);

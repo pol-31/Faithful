@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <string>
 
-#include "rapidjson/document.h"
+#include <rapidjson/document.h>
 
 #include "../../config/Paths.h"
 
@@ -21,11 +21,11 @@ class ModelProcessor {
       const std::filesystem::path& user_asset_root_dir,
       const std::filesystem::path& asset_destination,
       const std::filesystem::path& temp_dir = FAITHFUL_ASSET_TEMP_TEXTURES_PATH)
-      : encode_(encode),
-        assets_analyzer_(assets_analyzer),
-        user_asset_root_dir_(user_asset_root_dir),
+      : assets_analyzer_(assets_analyzer),
+        extracted_textures_dir_(temp_dir),
         asset_destination_(asset_destination),
-        extracted_textures_dir_(temp_dir) {
+        user_asset_root_dir_(user_asset_root_dir),
+        encode_(encode) {
   }
 
   void Process(const std::filesystem::path& model_path,

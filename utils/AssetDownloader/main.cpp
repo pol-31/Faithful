@@ -217,47 +217,49 @@ bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
 }
 
 bool DownloadFile(const std::string& file_url, const std::string& out_file,
-                  bool assets_info_file, int redirection_count = 0) {
+                  int redirection_count = 0) {
 #if defined(FAITHFUL_ASSET_PROCESSOR_CURL_CLI)
   /// 5 stands for null-termination symbols
+    int needed_command_size =
+        std::strlen(faithful::config::default_url) + 5 +
+        out_file.length() +
+        std::strlen(faithful::config::default_curl_cli_command);
 
-  int command_size = 512;
-  int needed_command_size = std::strlen(faithful::config::default_url) + 4 +
-      std::strlen(faithful::config::default_curl_cli_command);
-  if (command_size > needed_command_size) {
-      char request_command[command_size];
-      snprintf(request_command, sizeof(request_command), "%s \"%s\"",
-              faithful::config::default_curl_cli_command, file_url.c_str());
-      std::cout << "Assets downloading started" << std::endl;
-      if (std::system(request_command)) {
-        std::cerr << "Error: cURL request failed for: " << file_url << std::endl;
-        return false;
-      }
-  } else {
-      auto request_command = new char[needed_command_size];
-      snprintf(request_command, sizeof(request_command), "%s \"%s\"",
-               faithful::config::default_curl_cli_command, file_url.c_str());
-      std::cout << "Assets downloading started" << std::endl;
-      if (std::system(request_command)) {
-        std::cerr << "Error: cURL request failed for: " << file_url
-                  << std::endl;
-        return false;
-      }
-  }
-//  std::filesystem::rename() TODO:------------------------------
+    std::string request_command;
+    request_command.reserve(needed_command_size);
+    request_command += faithful::config::default_curl_cli_command;
+    request_command += ' ';
+    request_command += out_file;
+    request_command += " \"";
+    request_command += file_url;
+    request_command += "\"";
+
+    std::cout << "Assets downloading started" << std::endl;
+    std::cout << request_command << std::endl;
+    if (std::system(request_command.data())) {
+      std::cerr << "Error: cURL request failed for: " << file_url << std::endl;
+      return false;
+    }
 #elif defined(FAITHFUL_ASSET_PROCESSOR_WGET)
   /// 5 stands for null-termination symbols
-  char request_command[std::strlen(faithful::config::default_url) + 5 +
-                       std::strlen(faithful::config::default_zip_name) +
-                       std::strlen(faithful::config::default_wget_command)];
+  int needed_command_size =
+      std::strlen(faithful::config::default_url) + 5 +
+      out_file.length() +
+      std::strlen(faithful::config::default_wget_command);
 
-  snprintf(request_command, sizeof(request_command), "%s %s \"%s\"",
-           faithful::config::default_wget_command,
-           out_file.c_str(), file_url.c_str());
+  std::string request_command;
+  request_command.reserve(needed_command_size);
+  request_command += faithful::config::default_wget_command;
+  request_command += ' ';
+  request_command += out_file;
+  request_command += " \"";
+  request_command += file_url;
+  request_command += "\"";
 
   std::cout << "Assets downloading started" << std::endl;
-  if (std::system(request_command)) {
-    std::cerr << "Error: Wget request failed for: " << file_url << std::endl;
+  std::cout << request_command << std::endl;
+  if (std::system(request_command.data())) {
+    std::cerr << "Error: cURL request failed for: " << file_url << std::endl;
     return false;
   }
 #elif defined(FAITHFUL_ASSET_PROCESSOR_INVOKE_WEB_REQUEST)
@@ -265,38 +267,25 @@ bool DownloadFile(const std::string& file_url, const std::string& out_file,
   /// another 5 for " -Uri"
   /// another 9 for " -OutFile"
   /// another 2 for full -Command wrapping in ""
-
-  
-
-  constexpr int command_size = 512;
   int needed_command_size =
       std::strlen(faithful::config::default_url) + 5 + 5 + 9 + 2 +
-                       std::strlen(faithful::config::default_zip_name) +
-                       std::strlen(faithful::config::default_invoke_webrequest_command);
-  if (command_size > needed_command_size) {
-    char request_command[command_size];
-    snprintf(request_command, sizeof(request_command),
-             "%s -OutFile %s -Uri \'%s\'\"",
-             faithful::config::default_invoke_webrequest_command,
-             out_file.c_str(), file_url.c_str());
-    std::cout << "Assets downloading started" << std::endl;
-    std::cout << request_command << std::endl;
-    if (std::system(request_command)) {
-      std::cerr << "Error: cURL request failed for: " << file_url << std::endl;
-      return false;
-    }
-  } else {
-    auto request_command = new char[needed_command_size];
-    snprintf(request_command, sizeof(request_command),
-             "%s -OutFile %s -Uri \'%s\'\"",
-             faithful::config::default_invoke_webrequest_command,
-             out_file.c_str(), file_url.c_str());
-    std::cout << "Assets downloading started" << std::endl;
-    std::cout << request_command << std::endl;
-    if (std::system(request_command)) {
-      std::cerr << "Error: cURL request failed for: " << file_url << std::endl;
-      return false;
-    }
+      out_file.length() +
+      std::strlen(faithful::config::default_invoke_webrequest_command);
+
+  std::string request_command;
+  request_command.reserve(needed_command_size);
+  request_command += faithful::config::default_invoke_webrequest_command;
+  request_command += " -OutFile ";
+  request_command += out_file;
+  request_command += " -Uri \'";
+  request_command += file_url;
+  request_command += "\'\"";
+
+  std::cout << "Assets downloading started" << std::endl;
+  std::cout << request_command << std::endl;
+  if (std::system(request_command.data())) {
+    std::cerr << "Error: cURL request failed for: " << file_url << std::endl;
+    return false;
   }
 #elif defined(FAITHFUL_ASSET_PROCESSOR_CURL_LIB)
   CURL* curl = curl_easy_init();

@@ -6,17 +6,16 @@
 
 #include <iostream>
 
-#include "vorbis/vorbisenc.h"
-#include "vorbis/vorbisfile.h"
-#include "vorbis/codec.h"
+#include <vorbis/vorbisenc.h>
+#include <vorbis/vorbisfile.h>
+#include <vorbis/codec.h>
 
-#include "dr_mp3.h"
+#include <dr_mp3.h>
+
 
 #include "../../config/AssetFormats.h"
 
 class AssetLoadingThreadPool;
-
-// TODO: clang-tidy, clang-format
 
 class AudioProcessor {
  public:
@@ -94,12 +93,12 @@ class AudioProcessor {
   void PrepareEncodingContext(const std::filesystem::path& model_path,
                               int channels, int sampleRate);
 
-  AssetLoadingThreadPool* thread_pool_ = nullptr;
+  std::filesystem::path asset_destination_;
 
+  AssetLoadingThreadPool* thread_pool_ = nullptr;
   /// storing there for convenience
   /// (we could ask thread_pool_ for it each time, but this is better)
   int worker_threads_count_;
-  std::filesystem::path asset_destination_;
 
   std::vector<ThreadData>* thread_data_;
 

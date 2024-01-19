@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 project(AssetProcessor)
 
-# TODO: if FREEZE_BUILD --> RELEASE
-
 set(CMAKE_CXX_STANDARD 17)
 
 add_executable(AssetProcessor main.cpp
@@ -14,35 +12,36 @@ add_executable(AssetProcessor main.cpp
         ModelProcessor.cpp
         AudioProcessor.cpp
 )
+target_compile_options(AssetProcessor PRIVATE ${FAITHFUL_COMPILE_OPTIONS})
+target_link_options(AssetProcessor PRIVATE ${FAITHFUL_EXE_LINK_OPTIONS})
 
 target_link_libraries(AssetProcessor
-        PUBLIC mimalloc-static
-        PUBLIC stb
-        PUBLIC dr_libs
-        PUBLIC RapidJSON
-        PUBLIC vorbisenc
-        PUBLIC vorbisfile
-        PUBLIC vorbis
-        PUBLIC ogg
-        PUBLIC tinygltf
+        PRIVATE mimalloc-static
+        PRIVATE stb
+        PRIVATE dr_libs
+        PRIVATE RapidJSON
+        PRIVATE vorbisenc
+        PRIVATE vorbisfile
+        PRIVATE vorbis
+        PRIVATE ogg
+        PRIVATE tinygltf
 )
 
-if (FAITHFUL_BUILD_ASTC_ENCODER)
+if(FAITHFUL_BUILD_ASTC_ENCODER)
     target_link_libraries(AssetProcessor PUBLIC astcenc-native-static)
-    target_include_directories(AssetProcessor PUBLIC ${FAITHFUL_SOURCE_DIR}/external)
-endif ()
-
+    target_include_directories(AssetProcessor PRIVATE ${FAITHFUL_SOURCE_DIR}/external)
+endif()
 
 add_dependencies(AssetProcessor meshoptimizer)
 
 target_include_directories(AssetProcessor
-        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/mimalloc/include
-        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/stb
-        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/dr_libs
-        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include
-        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include/rapidjson
-        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/tinygltf
-        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/vorbis/include
-        PUBLIC ${FAITHFUL_SOURCE_DIR}/external/ogg/include
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/mimalloc/include
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/stb
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/dr_libs
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include/rapidjson
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/tinygltf
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/vorbis/include
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/ogg/include
 )
 

@@ -4,11 +4,10 @@
 #include <fstream>
 #include <filesystem>
 
-#include "astc-encoder/Source/astcenc.h"
-// #define STB_IMAGE_IMPLEMENTATION // TODO: already implemented in ModelProc...
-#include "stb_image.h"
-// #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include <astc-encoder/Source/astcenc.h>
+#include <stb_image.h>
+#include <stb_image_write.h>
+
 
 #include "../../config/AssetFormats.h"
 #include "../../config/Paths.h"
@@ -28,10 +27,10 @@
 TextureProcessor::TextureProcessor(
     bool encode, const std::filesystem::path& asset_destination,
     AssetLoadingThreadPool* thread_pool)
-    : encode_(encode),
-      asset_destination_(asset_destination),
+    : asset_destination_(asset_destination),
       thread_pool_(thread_pool),
-      worker_thread_count_(thread_pool->get_thread_count()) {
+      worker_thread_count_(thread_pool->get_thread_count()),
+      encode_(encode) {
 }
 
 TextureProcessor::~TextureProcessor() {
@@ -204,13 +203,13 @@ bool TextureProcessor::Encode(const std::filesystem::path& path,
   encode_success.test_and_set();
   for (int i = 0; i < worker_thread_count_; ++i) {
     thread_pool_->threads_tasks_[i].first =
-        std::move([=, &image, &encode_success]() {
+        [=, &image, &encode_success]() {
           astcenc_error status = astcenc_compress_image(
               context, &image, &config::tex_comp_swizzle, comp_data, comp_len,
               i + 1);  // 0 for Main thread
           if (status != ASTCENC_SUCCESS)
             encode_success.clear();
-        });
+        };
     thread_pool_->threads_tasks_[i].second = true;
   }
   thread_pool_->thread_tasks_mutex_.unlock();
@@ -345,13 +344,13 @@ bool TextureProcessor::Decode(const std::filesystem::path& path,
   while (!thread_pool_->thread_tasks_mutex_.try_lock()) {
   }
   bool decode_fail = true;
-  for (int i = 0; i < thread_pool_->threads_tasks_.size(); ++i) {
+  for (std::size_t i = 0; i < thread_pool_->threads_tasks_.size(); ++i) {
     thread_pool_->threads_tasks_[i].first =
-        std::move([=, &image, &decode_fail]() {
+        [=, &image, &decode_fail]() {
           decode_fail |= astcenc_decompress_image(
               context, comp_data, comp_len, &image, &config::tex_comp_swizzle,
               i + 1);  // 0 for Main thread
-        });
+        };
     thread_pool_->threads_tasks_[i].second = true;
   }
   thread_pool_->thread_tasks_mutex_.unlock();

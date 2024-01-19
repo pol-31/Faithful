@@ -73,7 +73,7 @@ void AssetLoadingThreadPool::Run(AudioProcessor* audio_processor,
 void AssetLoadingThreadPool::UpdateContext() {
   while (threads_completion_accessor_.test_and_set()) {
   }
-  for (int i = 0; i < threads_completion_.size(); ++i)
+  for (std::size_t i = 0; i < threads_completion_.size(); ++i)
     threads_completion_[i] = false;  // TODO: memory order
   threads_completion_accessor_.clear();
 }

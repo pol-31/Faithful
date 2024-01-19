@@ -52,9 +52,6 @@ void LogProcessingResult(const std::string& path, bool encoded);
 
 // TODO: add README.md with naming convention: __ _nmap.astc __
 
-#include "vorbis/vorbisfile.h"
-#include "ogg/ogg.h"
-
 int main(int argc, char** argv) {
   if (argc < 2) {
     std::cout << "Incorrect program's arguments" << std::endl;
@@ -146,7 +143,7 @@ void PrintConfigs(bool encode, AssetController assetController) {
   }
   if (!assetController.audio && !assetController.textures &&
       !assetController.models) {
-    " no asset types chosen }";
+    std::cout << " no asset types chosen }";
     return;
   }
   if (assetController.audio) {

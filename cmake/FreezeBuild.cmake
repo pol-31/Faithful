@@ -5,6 +5,8 @@
 
 # TODO: Faithful/utils/*.(h|cpp)
 
+message(FATAL_ERROR "FreezeBuild is unavailable by now")
+
 set(SOURCE_DIR ${FAITHFUL_SOURCE_DIR})
 set(DESTINATION_DIR ${FAITHFUL_SOURCE_DIR}/Faithful)
 
@@ -115,32 +117,32 @@ install(FILES ${LIB_FILES}
 # --- Freezing of executables
 
 
-if (FAITHFUL_BUILD_ASSET_DOWNLOADER)
+if(FAITHFUL_BUILD_ASSET_DOWNLOADER)
     set_target_properties(AssetDownloader PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${DESTINATION_DIR}/utils
     )
     install(TARGETS AssetDownloader
             DESTINATION ${DESTINATION_DIR}/utils
     )
-endif ()
+endif()
 
-if (FAITHFUL_BUILD_ASSET_PACK)
+if(FAITHFUL_BUILD_ASSET_PACK)
     set_target_properties(AssetPack PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${DESTINATION_DIR}/utils
     )
     install(TARGETS AssetPack
             DESTINATION ${DESTINATION_DIR}/utils
     )
-endif ()
+endif()
 
-if (FAITHFUL_BUILD_ASSET_PROCESSOR)
+if(FAITHFUL_BUILD_ASSET_PROCESSOR)
     set_target_properties(AssetProcessor PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${DESTINATION_DIR}/utils
     )
     install(TARGETS AssetProcessor
             DESTINATION ${DESTINATION_DIR}/utils
     )
-endif ()
+endif()
 
 #if (FAITHFUL_BUILD_ASSET_PROCESSOR)
 #    install(TARGETS ${MESHOPTIMIZER_BINARY_DIR}/gltfpack

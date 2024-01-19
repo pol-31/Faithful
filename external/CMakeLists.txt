@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.26)
 
-# TODO: if FREEZE_BUILD - RELEASE mode
-
 include(CheckCXXSourceRuns)
 
 #    ====================================================================
@@ -11,9 +9,9 @@ include(CheckCXXSourceRuns)
 
 #    --------------------------------------------------------------------
 #    glad (Faithful: OpenGL specification)
-message(STATUS "glad building")
-add_library(glad ${FAITHFUL_SOURCE_DIR}/external/glad/src/glad.c)
-set(FAITHFUL_GLAD_INCLUDE_DIR ${FAITHFUL_SOURCE_DIR}/external/glad/include CACHE INTERNAL "")
+message(STATUS "---> glad building")
+add_library(glad STATIC ${FAITHFUL_SOURCE_DIR}/external/glad/src/glad.c)
+set(FAITHFUL_GLAD_INCLUDE_DIR ${FAITHFUL_SOURCE_DIR}/external/glad/include)
 target_include_directories(glad PRIVATE ${FAITHFUL_GLAD_INCLUDE_DIR})
 
 # if FAITHFUL_GL_SUPPORTS_ASTC, OpenGL has embedded support of astc textures,
@@ -32,11 +30,11 @@ check_cxx_source_runs("
       #endif
     }" FAITHFUL_GL_SUPPORTS_ASTC)
 
-if (FAITHFUL_GL_SUPPORTS_ASTC)
+if(FAITHFUL_GL_SUPPORTS_ASTC)
     message(STATUS "FAITHFUL_GL_SUPPORTS_ASTC --- supported")
-else ()
+else()
     message(STATUS "FAITHFUL_GL_SUPPORTS_ASTC --- not supported")
-endif ()
+endif()
 
 unset(CMAKE_REQUIRED_INCLUDES)
 
@@ -46,123 +44,119 @@ unset(CMAKE_REQUIRED_INCLUDES)
 #      - all textures already compressed to .astc)
 #    AssetProcessor - texture conversion to .astc (+encode, +decode)
 
-if (FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL)
-    if (FAITHFUL_BUILD_ASSET_PROCESSOR OR NOT FAITHFUL_GL_SUPPORTS_ASTC)
-        set(FAITHFUL_BUILD_ASTC_ENCODER ON CACHE BOOL "" FORCE)
-    endif ()
-endif ()
-if (FAITHFUL_BUILD_ASTC_ENCODER)
-    message(STATUS "astc-encoder building")
-    set(ASTCENC_ISA_NATIVE ON CACHE INTERNAL "")
-    if (NOT FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
-        set(ASTCENC_DECOMPRESSOR ON CACHE INTERNAL "")
-    endif ()
-    set(ASTCENC_SHAREDLIB OFF CACHE INTERNAL "")
-    set(ASTCENC_DIAGNOSTICS OFF CACHE INTERNAL "")
-    set(ASTCENC_ASAN OFF CACHE INTERNAL "")
-    set(ASTCENC_UNITTEST OFF CACHE INTERNAL "")
-    set(ASTCENC_INVARIANCE OFF CACHE INTERNAL "")
-    set(ASTCENC_CLI OFF CACHE INTERNAL "")
-    set(ASTCENC_BLOCK_MAX_TEXELS 64 CACHE INTERNAL "")
+if(FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL)
+    if(FAITHFUL_BUILD_ASSET_PROCESSOR OR NOT FAITHFUL_GL_SUPPORTS_ASTC)
+        set(FAITHFUL_BUILD_ASTC_ENCODER ON PARENT_SCOPE)
+    endif()
+endif()
+if(FAITHFUL_BUILD_ASTC_ENCODER)
+    message(STATUS "---> astc-encoder building")
+    set(ASTCENC_ISA_NATIVE ON)
+    if(NOT FAITHFUL_GL_SUPPORTS_ASTC AND NOT FAITHFUL_BUILD_ASSET_PROCESSOR)
+        set(ASTCENC_DECOMPRESSOR ON)
+    endif()
+    set(ASTCENC_SHAREDLIB OFF)
+    set(ASTCENC_DIAGNOSTICS OFF)
+    set(ASTCENC_ASAN OFF)
+    set(ASTCENC_UNITTEST OFF)
+    set(ASTCENC_INVARIANCE OFF)
+    set(ASTCENC_CLI OFF)
+    set(ASTCENC_BLOCK_MAX_TEXELS 64)
     add_subdirectory(astc-encoder)
-endif ()
+endif()
 
 #    --------------------------------------------------------------------
 #    dr_libs (AssetProcessor only: decompress mp3, flac, wav into PCM
 #             for further compression into ogg+Vorbis)
-message(STATUS "dr_libs building")
+message(STATUS "---> dr_libs building")
 configure_file(dr_libs/dr_wav.h dr_wav.cpp COPYONLY)
 configure_file(dr_libs/dr_flac.h dr_flac.cpp COPYONLY)
 configure_file(dr_libs/dr_mp3.h dr_mp3.cpp COPYONLY)
-add_library(dr_libs dr_wav.cpp dr_flac.cpp dr_mp3.cpp)
+add_library(dr_libs STATIC dr_wav.cpp dr_flac.cpp dr_mp3.cpp)
 target_compile_definitions(dr_libs PRIVATE DR_WAV_IMPLEMENTATION DR_FLAC_IMPLEMENTATION DR_MP3_IMPLEMENTATION)
 target_include_directories(dr_libs PRIVATE ${FAITHFUL_SOURCE_DIR}/external/dr_libs)
 
 
 #    --------------------------------------------------------------------
 #    glfw (Faithful: Window/context creation)
-if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+if(FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT GLFW_FOUND))
-    message(STATUS "glfw building")
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build glfw shared libraries" FORCE)
-    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Build glfw example programs" FORCE)
-    set(GLFW_BUILD_TESTS OFF CACHE BOOL "Build glfw tests" FORCE)
-    set(GLFW_BUILD_DOCS OFF CACHE BOOL "Build glfw documentation" FORCE)
-    set(GLFW_INSTALL OFF CACHE BOOL "Install glfw" FORCE)
+    message(STATUS "---> glfw building")
+    set(BUILD_SHARED_LIBS OFF)
+    set(GLFW_BUILD_EXAMPLES OFF)
+    set(GLFW_BUILD_TESTS OFF)
+    set(GLFW_BUILD_DOCS OFF)
+    set(GLFW_INSTALL OFF)
     add_subdirectory(glfw EXCLUDE_FROM_ALL)
 endif()
 
 
 #    --------------------------------------------------------------------
 #    glm (Faithful: math)
-if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+if(FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT GLM_FOUND))
-    message(STATUS "glm building")
+    message(STATUS "---> glm building")
     add_subdirectory(glm EXCLUDE_FROM_ALL)
 endif()
 
 
 #    --------------------------------------------------------------------
 #    googletest (all: testing)
-if (FAITHFUL_BUILD_TESTS)
-    if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+if(FAITHFUL_BUILD_TESTS)
+    if(FAITHFUL_BUILD_EXTERNAL_ALL OR
           (FAITHFUL_BUILD_EXTERNAL AND NOT GTEST_FOUND))
-        message(STATUS "googletest building")
-        set(BUILD_GMOCK OFF CACHE BOOL "Build GoogleTest GMock" FORCE)
-        set(INSTALL_GTEST OFF CACHE BOOL "Install GoogleTest" FORCE)
-        set(GTEST_BINARY_DIR ${FAITHFUL_BINARY_DIR}/external/googletest CACHE INTERNAL "googletest binary directory" FORCE)
+        message(STATUS "---> googletest building")
+        set(BUILD_GMOCK OFF)
+        set(INSTALL_GTEST OFF)
         add_subdirectory(googletest EXCLUDE_FROM_ALL)
-    endif ()
-endif ()
+    endif()
+endif()
 
 
 #    --------------------------------------------------------------------
 #    libogg (Faithful: audio streaming to OpenAL-Soft;
 #            AssetProcessor: compression, transrating)
-if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+if(FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT LIBOGG_FOUND))
-    message(STATUS "libogg building")
-
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libogg shared library" FORCE)
-    set(INSTALL_DOCS OFF CACHE BOOL "Install libogg documentation" FORCE)
-    set(INSTALL_PKG_CONFIG_MODULE OFF CACHE BOOL "Install libogg ogg.pc file" FORCE)
-    set(INSTALL_CMAKE_PACKAGE_MODULE OFF CACHE BOOL "Install libogg CMake package configuration module" FORCE)
+    message(STATUS "---> libogg building")
+    set(BUILD_SHARED_LIBS OFF)
+    set(INSTALL_DOCS OFF)
+    set(INSTALL_PKG_CONFIG_MODULE OFF)
+    set(INSTALL_CMAKE_PACKAGE_MODULE OFF)
     add_subdirectory(ogg EXCLUDE_FROM_ALL)
-endif ()
+endif()
 
 #    --------------------------------------------------------------------
 #    mimalloc (all: general-purpose allocator - overrides malloc/new/etc...)
-if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+if(FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT MIMALLOC_FOUND))
-    message(STATUS "mimalloc building")
-    set(MI_BUILD_SHARED OFF CACHE INTERNAL "")
-    set(MI_BUILD_STATIC ON CACHE INTERNAL "")
-    set(MI_BUILD_OBJECT OFF CACHE INTERNAL "")
-    set(MI_BUILD_TESTS OFF CACHE INTERNAL "")
-    set(MI_USE_CXX ON CACHE INTERNAL "")
+    message(STATUS "---> mimalloc building")
+    set(MI_BUILD_SHARED OFF)
+    set(MI_BUILD_STATIC ON)
+    set(MI_BUILD_OBJECT OFF)
+    set(MI_BUILD_TESTS OFF)
+    set(MI_USE_CXX ON)
     add_subdirectory(mimalloc EXCLUDE_FROM_ALL)
 endif()
 
 
 #    --------------------------------------------------------------------
 #    OpenAL-Soft (Faithful: spatial audio streaming)
-if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+if(FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT OPENAL_FOUND))
-    message(STATUS "openal-soft building")
-
-    set(LIBTYPE "STATIC" CACHE INTERNAL "")
-    set(ALSOFT_DLOPEN OFF CACHE INTERNAL "")
-    set(ALSOFT_UTILS OFF CACHE INTERNAL "")
-    set(ALSOFT_EXAMPLES OFF CACHE INTERNAL "")
-    set(ALSOFT_TESTS OFF CACHE INTERNAL "")
-    set(ALSOFT_INSTALL OFF CACHE INTERNAL "")
-    set(ALSOFT_INSTALL_CONFIG OFF CACHE INTERNAL "")
-    set(ALSOFT_INSTALL_HRTF_DATA OFF CACHE INTERNAL "")
-    set(ALSOFT_INSTALL_AMBDEC_PRESETS OFF CACHE INTERNAL "")
-    set(ALSOFT_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
-    set(ALSOFT_INSTALL_UTILS OFF CACHE INTERNAL "")
-    set(ALSOFT_UPDATE_BUILD_VERSION OFF CACHE INTERNAL "")
-
+    message(STATUS "---> openal-soft building")
+    set(LIBTYPE "STATIC")
+    set(ALSOFT_DLOPEN OFF)
+    set(ALSOFT_UTILS OFF)
+    set(ALSOFT_EXAMPLES OFF)
+    set(ALSOFT_TESTS OFF)
+    set(ALSOFT_INSTALL OFF)
+    set(ALSOFT_INSTALL_CONFIG OFF)
+    set(ALSOFT_INSTALL_HRTF_DATA OFF)
+    set(ALSOFT_INSTALL_AMBDEC_PRESETS OFF)
+    set(ALSOFT_INSTALL_EXAMPLES OFF)
+    set(ALSOFT_INSTALL_UTILS OFF)
+    set(ALSOFT_UPDATE_BUILD_VERSION OFF)
     add_subdirectory(openal-soft EXCLUDE_FROM_ALL)
 endif()
 
@@ -172,19 +166,16 @@ endif()
 #               AssetProcessor: safely extract embedded textures for further
 #                               .astc copmression)
 
-if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+if(FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT RAPIDJSON_FOUND))
-    message(STATUS "rapidjson building")
-    set(RAPIDJSON_BUILD_DOC OFF CACHE BOOL "Build rapidjson documentation." FORCE)
-    set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "Build rapidjson examples." FORCE)
-    set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "Build rapidjson perftests and unittests." FORCE)
-    set(RAPIDJSON_BUILD_THIRDPARTY_GTEST OFF CACHE BOOL
-            "Use rapidjson gtest installation in `thirdparty/gtest` by default if available" FORCE)
-
-    set(RAPIDJSON_BUILD_CXX11 OFF CACHE BOOL "Build rapidjson with C++11" FORCE)
-    set(RAPIDJSON_BUILD_CXX17 ON CACHE BOOL "Build rapidjson with C++17" FORCE)
-    set(RAPIDJSON_ENABLE_INSTRUMENTATION_OPT ON CACHE BOOL "Build rapidjson with -march or -mcpu options" FORCE)
-
+    message(STATUS "---> rapidjson building")
+    set(RAPIDJSON_BUILD_DOC OFF)
+    set(RAPIDJSON_BUILD_EXAMPLES OFF)
+    set(RAPIDJSON_BUILD_TESTS OFF)
+    set(RAPIDJSON_BUILD_THIRDPARTY_GTEST OFF)
+    set(RAPIDJSON_BUILD_CXX11 OFF)
+    set(RAPIDJSON_BUILD_CXX17 ON)
+    set(RAPIDJSON_ENABLE_INSTRUMENTATION_OPT ON)
     add_subdirectory(rapidjson EXCLUDE_FROM_ALL)
 endif()
 
@@ -192,11 +183,11 @@ endif()
 #    --------------------------------------------------------------------
 #    stb_image, stb_image_write (Faithful: texture loading for further
 #                                          compression into .astc)
-message(STATUS "stb_image, stb_image_write building")
+message(STATUS "---> stb_image, stb_image_write building")
 configure_file(stb/stb_image.h stb_image.cpp COPYONLY)
 configure_file(stb/stb_image_write.h stb_image_write.cpp COPYONLY)
-add_library(stb stb_image.cpp stb_image_write.cpp)
-target_compile_definitions(stb PRIVATE
+add_library(stb STATIC stb_image.cpp stb_image_write.cpp)
+target_compile_definitions(stb PUBLIC
         STB_IMAGE_IMPLEMENTATION
         STB_IMAGE_WRITE_IMPLEMENTATION
 )
@@ -205,11 +196,11 @@ target_include_directories(stb PRIVATE ${FAITHFUL_SOURCE_DIR}/external/stb)
 
 #    --------------------------------------------------------------------
 #    tinygltf (Faithful: process/draw .gltf model)
-message(STATUS "tinygltf building")
+message(STATUS "---> tinygltf building")
 configure_file(tinygltf/tiny_gltf.h tiny_gltf.cpp COPYONLY)
-add_library(tinygltf tiny_gltf.cpp)
-target_compile_definitions(tinygltf PUBLIC TINYGLTF_IMPLEMENTATION)
+add_library(tinygltf STATIC tiny_gltf.cpp)
 target_compile_definitions(tinygltf PUBLIC
+        TINYGLTF_IMPLEMENTATION
         TINYGLTF_NOEXCEPTION
         JSON_NOEXCEPTION
         TINYGLTF_NO_EXTERNAL_IMAGE
@@ -227,33 +218,33 @@ target_include_directories(tinygltf
 #    vorbis (Faithful: audio streaming to OpenAL-Soft;
 #            AssetProcessor: compression, transrating)
 
-if (FAITHFUL_BUILD_EXTERNAL_ALL OR
+if(FAITHFUL_BUILD_EXTERNAL_ALL OR
       (FAITHFUL_BUILD_EXTERNAL AND NOT VORBIS_FOUND))
-    message(STATUS "vorbis building")
-    set(BUILD_SHARED_LIB OFF CACHE BOOL "Build shared library" FORCE)
-    set(INSTALL_CMAKE_PACKAGE_MODULE OFF CACHE BOOL "Install CMake package configuration module" FORCE)
+    message(STATUS "---> vorbis building")
+    set(BUILD_SHARED_LIB OFF)
+    set(INSTALL_CMAKE_PACKAGE_MODULE OFF)
     add_subdirectory(vorbis EXCLUDE_FROM_ALL)
-endif ()
+endif()
 
 
 #    ====================================================================
 #    FAITHFUL_ASSET_PROCESSOR-specific
 
-if (FAITHFUL_BUILD_ASSET_PROCESSOR)
+if(FAITHFUL_BUILD_ASSET_PROCESSOR)
     #    --------------------------------------------------------------------
     #    meshoptimizer (AssetProcessor: gltfpack - gltf optimization
     add_subdirectory(meshoptimizer EXCLUDE_FROM_ALL)
-endif ()
+endif()
 
 
 #    ====================================================================
 #    {FAITHFUL_ASSET_DOWNLOADER / FAITHFUL_ASSET_PACK} -specific
 
-if (FAITHFUL_BUILD_ASSET_DOWNLOADER OR FAITHFUL_BUILD_ASSET_PACK)
+if(FAITHFUL_BUILD_ASSET_DOWNLOADER OR FAITHFUL_BUILD_ASSET_PACK)
     #    --------------------------------------------------------------------
     #    miniz (AssetDownloader, AssetPack: unzip downloaded assets archive)
-    message(STATUS "miniz building")
-    add_library(miniz ${FAITHFUL_SOURCE_DIR}/external/miniz/miniz.c)
+    message(STATUS "---> miniz building")
+    add_library(miniz STATIC ${FAITHFUL_SOURCE_DIR}/external/miniz/miniz.c)
     target_compile_definitions(miniz PUBLIC
             MINIZ_NO_ZLIB_APIS
             MINIZ_NO_TIME
@@ -263,4 +254,4 @@ if (FAITHFUL_BUILD_ASSET_DOWNLOADER OR FAITHFUL_BUILD_ASSET_PACK)
     #    --------------------------------------------------------------------
     #    PicoSHA2 (AssetDownloader, AssetPack: validate downloaded assets)
     #    only one header, so included directly
-endif ()
+endif()

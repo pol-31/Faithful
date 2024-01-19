@@ -19,7 +19,7 @@ class AudioProcessor;
 class ModelProcessor;
 class TextureProcessor;
 
-#include "../Function.h"
+#include <../utils/Function.h>
 
 /** Processing order:
  * "full-threaded" audio

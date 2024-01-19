@@ -4,15 +4,10 @@
 #include <fstream>
 #include <iostream>
 
-//#define TINYGLTF_IMPLEMENTATION
-//#define TINYGLTF_USE_RAPIDJSON
-//#define STB_IMAGE_IMPLEMENTATION
-//#define STB_IMAGE_WRITE_IMPLEMENTATION
-
-#include "tiny_gltf.h"
-#include "rapidjson/document.h"
-#include "rapidjson/ostreamwrapper.h"
-#include "rapidjson/istreamwrapper.h"
+#include <tiny_gltf.h>
+#include <rapidjson/document.h>
+#include <rapidjson/ostreamwrapper.h>
+#include <rapidjson/istreamwrapper.h>
 
 #include "AssetCategory.h"
 #include "AssetInfo.h"
@@ -148,9 +143,9 @@ void ModelProcessor::ExtractBase64ImageData(
   int data_pos = uri.find(',');
   int extension_start_pos = uri.find('/');
   int extension_end_pos = uri.find(';');
-  if (data_pos == std::string::npos ||
-      extension_start_pos == std::string::npos ||
-      extension_end_pos == std::string::npos) {
+  if (data_pos == static_cast<int>(std::string::npos) ||
+      extension_start_pos == static_cast<int>(std::string::npos) ||
+      extension_end_pos == static_cast<int>(std::string::npos)) {
     std::cout << "incorrect uri for " << out_filename << std::endl;
     return;
   }
@@ -167,12 +162,13 @@ void ModelProcessor::ExtractBase64ImageData(
   outputFile.write(reinterpret_cast<const char*>(decodedData.data()),
                    decodedData.size());
   assets_analyzer_->AddEntry(
-      {std::move(out_filename.string()), path_suffix.string(), category});
+      {out_filename.string(), path_suffix.string(), category});
 }
 
 // TODO: we can skip it for now, because it's not common case
-void ModelProcessor::ExtractBufferImageData(int buffer_view_id,
-                                            const std::string& out_filename) {
+void ModelProcessor::ExtractBufferImageData(
+    int buffer_view_id __attribute__((unused)),
+    const std::string& out_filename __attribute__((unused))) {
   // TODO: the worse case
   // TODO: find offset in needed buffer, extract it, sheer rest data to left,
   //      change offset, id for all buffers which are later
@@ -197,7 +193,7 @@ void ModelProcessor::ExtractExternalImageData(
   auto image_copy_path = extracted_textures_dir_ / uri;
   std::filesystem::copy_file(image_absolute_path, image_copy_path);
   AssetCategory texture_category = DeduceAssetEncodeCategory(uri);
-  assets_analyzer_->AddEntry({std::move(image_copy_path.string()),
+  assets_analyzer_->AddEntry({image_copy_path.string(),
                               path_suffix.string(), texture_category});
 }
 
@@ -270,10 +266,12 @@ void ModelProcessor::EncodeGltfModelTextures(
   }
 }
 
-void ModelProcessor::DecodeGlbModel(const std::filesystem::path& model_path,
-                                    const std::filesystem::path& path_suffix) {
+void ModelProcessor::DecodeGlbModel(
+    const std::filesystem::path& model_path __attribute__((unused)),
+    const std::filesystem::path& path_suffix __attribute__((unused))) {
 }
 
-void ModelProcessor::DecodeGltfModel(const std::filesystem::path& model_path,
-                                     const std::filesystem::path& path_suffix) {
+void ModelProcessor::DecodeGltfModel(
+    const std::filesystem::path& model_path __attribute__((unused)),
+    const std::filesystem::path& path_suffix __attribute__((unused))) {
 }

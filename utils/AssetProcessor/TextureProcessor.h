@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <string>
 
-#include "astc-encoder/Source/astcenc.h"
+#include <astc-encoder/Source/astcenc.h>
 
 enum class AssetCategory;
 class AssetLoadingThreadPool;
@@ -69,6 +69,8 @@ class TextureProcessor {
   bool ReadAstcFile(const std::string& path, int& width, int& height,
                     int& comp_len, uint8_t*& comp_data);
 
+  std::filesystem::path asset_destination_;
+
   astcenc_context* context_ldr_ = nullptr;
   astcenc_context* context_hdr_ = nullptr;
   astcenc_context* context_nmap_ = nullptr;
@@ -79,7 +81,6 @@ class TextureProcessor {
   int worker_thread_count_;
 
   bool encode_;
-  std::filesystem::path asset_destination_;
 };
 
 #endif  // ASSETPROCESSOR_IMAGEPROCESSOR_H
