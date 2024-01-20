@@ -11,6 +11,8 @@
 #include <vorbis/codec.h>
 
 #include <dr_mp3.h>
+#include <dr_flac.h>
+#include <dr_wav.h>
 
 
 #include "../../config/AssetFormats.h"
@@ -25,13 +27,19 @@ class AudioProcessor {
         return;
       vorbis_info_init(&vi);
       vorbis_comment_init(&vc);
-      vorbis_comment_add_tag(&vc, "PROJECT", "Faithful");
+//      vorbis_comment_add_tag(&vc, "author", "Faithful");
+      vorbis_comment_add(&vc, "ARTIST=Faithful");
+      vorbis_comment_add(&vc, "TITLE=Faithful");
+      vorbis_comment_add(&vc, "DURATION=57");
+      vorbis_comment_add(&vc, "LENGTH=57");
+      vorbis_comment_add(&vc, "TRACKTOTAL=57");
+      vorbis_comment_add(&vc, "TOTALTIME=57000");
       vorbis_encode_init_vbr(&vi, channels, sampleRate,
                              faithful::config::audio_comp_quality);
 
-      ogg_stream_init(&os, 0);  // TODO: replace rand (or not...)
       vorbis_analysis_init(&vd, &vi);
       vorbis_block_init(&vd, &vb);
+      ogg_stream_init(&os, 0);  // TODO: replace rand (or not...)
       vorbis_analysis_headerout(&vd, &vc, &ogg_header, &ogg_header_comm,
                                 &ogg_header_code);
       ogg_stream_packetin(&os, &ogg_header);
@@ -76,19 +84,18 @@ class AudioProcessor {
   void DecodeSound(const std::filesystem::path& model_path,
                    const std::filesystem::path& path_suffix);
 
-  void DecompressMp3Chunk(drmp3& drmp3_context, int channels, float** pPCM,
+  void DecompressMp3Chunk(drmp3& drmp3_context, float** pPCM,
                           uint64_t* frames);
-  void DecompressFlacChunk(const std::filesystem::path& model_path,
-                           float** pPCM, uint64_t* frames, int* channels,
-                           int* sampleRate);
-  void DecompressWavChunk(const std::filesystem::path& model_path, float** pPCM,
-                          uint64_t* frames, int* channels, int* sampleRate);
+  void DecompressFlacChunk(drflac& drflac_context, float** pPCM,
+                           uint64_t* frames);
+  void DecompressWavChunk(drwav& drflac_context, float** pPCM,
+                          uint64_t* frames);
   void DecompressOggChunk(const std::filesystem::path& model_path, float** pPCM,
                           uint64_t* frames, int* channels, int* sampleRate);
 
   void CompressChunk(const std::filesystem::path& model_path, float* pPCM,
                      uint64_t frames, int channels, int sampleRate,
-                     std::vector<std::pair<long int, char*>>& buffers);
+                     std::vector<std::pair<long int, std::unique_ptr<char>>>& buffers);
 
   void PrepareEncodingContext(const std::filesystem::path& model_path,
                               int channels, int sampleRate);

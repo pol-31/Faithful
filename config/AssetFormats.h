@@ -59,7 +59,7 @@ inline constexpr char models_decomp_format[] = "gltf";
 
 /// audio compression
 inline constexpr float audio_comp_quality = 0.4; // [0.1; 1]
-inline constexpr int audio_comp_chunk_size = 1024 * 64;
+inline constexpr int audio_comp_chunk_size = 1024 * 32;
 inline constexpr int audio_decomp_frames_count = 4096;
 
 /// models compression:
