@@ -4,8 +4,6 @@
 #include <filesystem>
 #include <vector>
 
-#include <iostream>
-
 #include <vorbis/vorbisenc.h>
 #include <vorbis/vorbisfile.h>
 #include <vorbis/codec.h>
@@ -14,39 +12,15 @@
 #include <dr_flac.h>
 #include <dr_wav.h>
 
-
-#include "../../config/AssetFormats.h"
-
 class AssetLoadingThreadPool;
 
 class AudioProcessor {
  public:
   struct ThreadData {
-    void Init(int channels, int sampleRate) {
-      if (initialized)
-        return;
-      vorbis_info_init(&vi);
-      vorbis_comment_init(&vc);
-//      vorbis_comment_add_tag(&vc, "author", "Faithful");
-      vorbis_comment_add(&vc, "ARTIST=Faithful");
-      vorbis_comment_add(&vc, "TITLE=Faithful");
-      vorbis_comment_add(&vc, "DURATION=57");
-      vorbis_comment_add(&vc, "LENGTH=57");
-      vorbis_comment_add(&vc, "TRACKTOTAL=57");
-      vorbis_comment_add(&vc, "TOTALTIME=57000");
-      vorbis_encode_init_vbr(&vi, channels, sampleRate,
-                             faithful::config::audio_comp_quality);
+    ThreadData() = default;
+    void Init(int channels, int sampleRate);
+    ~ThreadData();
 
-      vorbis_analysis_init(&vd, &vi);
-      vorbis_block_init(&vd, &vb);
-      ogg_stream_init(&os, 0);  // TODO: replace rand (or not...)
-      vorbis_analysis_headerout(&vd, &vc, &ogg_header, &ogg_header_comm,
-                                &ogg_header_code);
-      ogg_stream_packetin(&os, &ogg_header);
-      ogg_stream_packetin(&os, &ogg_header_comm);
-      ogg_stream_packetin(&os, &ogg_header_code);
-      initialized = true;
-    }
     ogg_stream_state os;
     vorbis_dsp_state vd;
     vorbis_block vb;
@@ -54,16 +28,9 @@ class AudioProcessor {
     ogg_page og;
     vorbis_info vi;
     vorbis_comment vc;
-
-    ogg_packet ogg_header;
-    ogg_packet ogg_header_comm;
-    ogg_packet ogg_header_code;
-
-   private:
-    bool initialized = false;
   };
 
-  AudioProcessor(bool encode, const std::filesystem::path& asset_destination,
+  AudioProcessor(const std::filesystem::path& asset_destination,
                  AssetLoadingThreadPool* thread_pool);
 
   ~AudioProcessor();
@@ -74,16 +41,6 @@ class AudioProcessor {
                     const std::filesystem::path& path_suffix);
 
  private:
-  void EncodeMusic(const std::filesystem::path& model_path,
-                   const std::filesystem::path& path_suffix);
-  void DecodeMusic(const std::filesystem::path& model_path,
-                   const std::filesystem::path& path_suffix);
-
-  void EncodeSound(const std::filesystem::path& model_path,
-                   const std::filesystem::path& path_suffix);
-  void DecodeSound(const std::filesystem::path& model_path,
-                   const std::filesystem::path& path_suffix);
-
   void DecompressMp3Chunk(drmp3& drmp3_context, float** pPCM,
                           uint64_t* frames);
   void DecompressFlacChunk(drflac& drflac_context, float** pPCM,
@@ -97,23 +54,14 @@ class AudioProcessor {
                      uint64_t frames, int channels, int sampleRate,
                      std::vector<std::pair<long int, std::unique_ptr<char>>>& buffers);
 
-  void PrepareEncodingContext(const std::filesystem::path& model_path,
-                              int channels, int sampleRate);
-
   std::filesystem::path asset_destination_;
 
   AssetLoadingThreadPool* thread_pool_ = nullptr;
   /// storing there for convenience
   /// (we could ask thread_pool_ for it each time, but this is better)
   int worker_threads_count_;
-
-  std::vector<ThreadData>* thread_data_;
-
-  int chunk_compress_size_ = faithful::config::audio_comp_chunk_size;
-  int frames_decompress_count_ = faithful::config::audio_decomp_frames_count;
-
-  bool initialized_ = false;
-  bool encode_;
+  long int last_gramulepos_ = 0;
+  std::vector<int>* last_packetno_;
 };
 
 #endif  // ASSETPROCESSOR_AUDIOPROCESSOR_H

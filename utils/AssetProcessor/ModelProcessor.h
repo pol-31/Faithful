@@ -31,27 +31,17 @@ class ModelProcessor {
   void Process(const std::filesystem::path& model_path,
                const std::filesystem::path& path_suffix);
 
-  void EncodeGlbModel(const std::filesystem::path& model_path,
-                      const std::filesystem::path& path_suffix);
-  void DecodeGlbModel(const std::filesystem::path& model_path,
+  void ConvertGlbToGltf(const std::filesystem::path& model_path,
                       const std::filesystem::path& path_suffix);
 
-  void EncodeGltfModel(const std::filesystem::path& model_path,
-                       const std::filesystem::path& path_suffix);
+  void ExtractBufferData(const std::filesystem::path& model_path,
+                         const std::filesystem::path& path_suffix);
+
   void DecodeGltfModel(const std::filesystem::path& model_path,
                        const std::filesystem::path& path_suffix);
 
-  void ExtractBase64ImageData(const std::string& uri,
-                              const std::filesystem::path& path_suffix,
-                              const std::filesystem::path& out_filename,
-                              AssetCategory category);
-
-  void ExtractBufferImageData(int buffer_view_id,
+  void ExtractGltfModelTextures(int buffer_view_id,
                               const std::string& out_filename);
-
-  void ExtractExternalImageData(const std::string& uri,
-                                const std::filesystem::path& path_suffix,
-                                bool dir_created);
 
   void EncodeGltfModelTextures(const std::filesystem::path& path_suffix,
                                rapidjson::Value& images,
@@ -67,6 +57,8 @@ class ModelProcessor {
   /// useful when model has external texture to understand
   /// has it been processed before
   std::filesystem::path user_asset_root_dir_;
+
+  std::filesystem::path temp_dir_ = "temp";
 
   bool encode_;
 };

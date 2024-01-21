@@ -31,7 +31,7 @@ void AssetProcessor::ProcessEncoding(const std::filesystem::path& path) {
   AssetsAnalyzer assets_info(*thread_pool_);
   assets_info.GatherEncodeThreadInfo(path);
 
-  AudioProcessor audio_processor(true, asset_destination_ / "audio",
+  AudioProcessor audio_processor(asset_destination_ / "audio",
                                  thread_pool_);
   TextureProcessor texture_processor(true, asset_destination_ / "textures",
                                      thread_pool_);
@@ -87,7 +87,9 @@ void AssetProcessor::ProcessDecoding(
   AssetsAnalyzer assets_info(*thread_pool_);
   assets_info.GatherDecodeThreadInfo(FAITHFUL_ASSET_TEXTURE_PATH);
 
-  AudioProcessor audio_processor(false, asset_destination_, thread_pool_);
+  // TODO: for audio only copying
+  AudioProcessor audio_processor(asset_destination_, thread_pool_);
+
   TextureProcessor texture_processor(false, asset_destination_, thread_pool_);
   ModelProcessor model_processor(false, &assets_info, path, asset_destination_);
 
