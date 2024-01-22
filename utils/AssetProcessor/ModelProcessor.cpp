@@ -13,68 +13,124 @@
 #include "AssetInfo.h"
 #include "AssetsAnalyzer.h"
 
+#include "../../config/Paths.h"
+
 void ModelProcessor::Process(const std::filesystem::path& model_path,
                              const std::filesystem::path& path_suffix) {
+  std::filesystem::path model_final_path = asset_destination_ / path_suffix;
+  model_final_path.replace_extension(".gltf");
   if (encode_) {
+    bool success;
     if (model_path.extension() == ".glb") {
-      ConvertGlbToGltf(model_path, path_suffix);
-      // TODO: another model path in this case
+      success = ConvertGlbToGltf(model_path, path_suffix);
     } else {
-      ExtractBufferData(model_path, path_suffix);
+      success = ReadGltfModel(model_path);
     }
-//    ExtractGltfModelTextures();
-//    EncodeGltfModelTextures();
+    if (!success) {
+      return;
+    }
+
+    if (!ExtractBuffers()) {
+      return;
+    };
+    if (!ExtractTextures()) {
+      return;
+    };
+    if (!SaveModel(document, model_final_path)) {
+      return;
+    };
+    if (!OptimizeModel(model_final_path)) {
+      return;
+    };
   } else {
-    DecodeGltfModel(model_path, path_suffix);
+    std::cout << "Model decoded: " << model_path << std::endl;
+    if (!DecodeTextures(model_path, path_suffix)) {
+      return;
+    };
+    if (!SaveModel(document, model_final_path)) {
+      return;
+    };
   }
-
-  // TODO: optimization
-  ////   TODO: -noq?
-  //  const char* command =
-  //  "/home/pavlo/CLionProjects/provingGround/cmake-build-debug/glad-build/gltfpack
-  //  -noq -i /home/pavlo/Downloads/DamagedHelmet.glb  -o final_test.gltf"; if
-  //  (std::system(command) == 0) {
-  //    std::cout << "Optimized" << std::endl;
-  //  }
 }
 
-void ModelProcessor::ExtractBufferData(
-    const std::filesystem::path& model_path,
-    const std::filesystem::path& path_suffix) {
-  // TODO: extract everything embedded to gltf json (encoded in Base64)
-  /*
-  int data_pos = uri.find(',');
-  int extension_start_pos = uri.find('/');
-  int extension_end_pos = uri.find(';');
-  if (data_pos == static_cast<int>(std::string::npos) ||
-      extension_start_pos == static_cast<int>(std::string::npos) ||
-      extension_end_pos == static_cast<int>(std::string::npos)) {
-    std::cout << "incorrect uri for " << out_filename << std::endl;
-    return;
-  }
-  std::string base64Data = uri.substr(data_pos + 1);
-  base64Data.pop_back();
-  auto decodedData = tinygltf::base64_decode(base64Data);
-
-  extension_start_pos += 1;
-  int extension_len = extension_end_pos - extension_start_pos;
-  std::ofstream outputFile(out_filename, std::ios::binary);
-
-  std::cout << out_filename << "<-- here we writing" << std::endl;
-
-  outputFile.write(reinterpret_cast<const char*>(decodedData.data()),
-                   decodedData.size());
-  assets_analyzer_->AddEntry(
-      {out_filename.string(), path_suffix.string(), category});*/
+// if base64 - convert to binary -> assets/models/${model_suffix}/.bin
+bool ModelProcessor::ExtractBuffers() {
+  //
 }
 
-void ModelProcessor::ConvertGlbToGltf(
+// if url/base64 - convert -> assets/textures/${model_suffix}
+// if bufferview - embed from .bin + remark bufferview
+bool ModelProcessor::ExtractTextures() {
+  //
+}
+
+bool ModelProcessor::SaveModel(const rapidjson::Document& document,
+                               const std::string& model_path) {
+  std::ofstream jsonFile(model_path);
+  if (!jsonFile.is_open()) {
+    std::cerr << "Error opening output JSON file." << std::endl;
+    return false;
+  }
+
+  rapidjson::OStreamWrapper osw(jsonFile);
+  rapidjson::Writer<rapidjson::OStreamWrapper> writer(osw);
+  document.Accept(writer);
+  jsonFile.close();
+  return true;
+}
+
+bool ModelProcessor::ReadGltfModel(const std::string& model_path) {
+  std::ifstream fileStream(model_path, std::ios::in);
+  if (!fileStream.is_open()) {
+    std::cerr << "Error: can't open model: " << model_path << std::endl;
+    return false;
+  }
+
+  std::ostringstream fileContent;
+  fileContent << fileStream.rdbuf();
+  std::string gltfContent = fileContent.str();
+
+  document.Parse(gltfContent.c_str());
+
+  if (document.HasParseError()) {
+    std::cerr << "Error parsing JSON: " << document.GetParseError() << std::endl;
+    return false;
+  }
+  return true;
+}
+
+// in-place gltfpack
+bool ModelProcessor::OptimizeModel(const std::string& model_path) {
+  std::string command;
+  command.reserve(std::strlen(FAITHFUL_GLTFPACK_PATH) +
+                  model_path.size() * 2 + 12); // 12 for flags, whitespaces
+  command = FAITHFUL_GLTFPACK_PATH;
+  command += " -tr -i "; // no changes for textures
+  command += model_path;
+  command += " -o ";
+  command += model_path;
+  if (std::system(command.c_str()) != 0) {
+    std::cerr << "Error: unable to optimize model" << std::endl;
+    return false;
+  }
+  std::cout << "Optimized" << std::endl;
+  return true;
+}
+
+std::string ModelProcessor::DecodeBase64(
+    const std::string& base64_data) {
+  // TODO: Base64 data (buffers / images)
+  //   auto decodedData = tinygltf::base64_decode(base64Data);
+  // TODO: how to say about error - return ""
+}
+
+bool ModelProcessor::ConvertGlbToGltf(
     const std::filesystem::path& model_path,
     const std::filesystem::path& path_suffix) {
   std::ifstream glbFile(model_path, std::ios::binary);
   if (!glbFile.is_open()) {
     std::cerr << "Error opening GLB file: " << model_path << std::endl;
-    return;
+    return false;
   }
 
   char header[12];
@@ -83,7 +139,7 @@ void ModelProcessor::ConvertGlbToGltf(
   if (glbFile.gcount() != 12 || memcmp(header, "glTF", 4) != 0 ||
       memcmp(header + 4, "\x02\x00\x00\x00", 4) != 0) {
     std::cerr << "Invalid GLB file format: " << model_path << std::endl;
-    return;
+    return false;
   }
 
   uint32_t jsonChunkLength;
@@ -97,15 +153,15 @@ void ModelProcessor::ConvertGlbToGltf(
   std::string jsonData(jsonChunkLength, '\0');
   glbFile.read(jsonData.data(), jsonChunkLength);
 
-  rapidjson::Document document;
   document.Parse(jsonData.c_str());
   if (document.HasParseError()) {
     std::cerr << "Error parsing JSON section: "
               << rapidjson::ParseErrorCode(document.GetParseError())
               << std::endl;
-    return;
+    return false;
   }
 
+  // TODO: write to assets/models (!)
   // write bin data
   uint32_t binChunkLength;
   glbFile.read(reinterpret_cast<char*>(&binChunkLength), sizeof(uint32_t));
@@ -116,15 +172,15 @@ void ModelProcessor::ConvertGlbToGltf(
   std::string binData(binChunkLength, '\0');
   glbFile.read(binData.data(), binChunkLength);
 
-  std::filesystem::path bin_file_url = temp_dir_ / path_suffix.parent_path() /
-                                   path_suffix.stem() / ".bin";
+  std::filesystem::path bin_file_url = "";//temp_dir_ / path_suffix.parent_path() /
+//                                   path_suffix.stem() / ".bin";
 
   std::filesystem::create_directories(bin_file_url.parent_path());
 
   std::ofstream binFile(bin_file_url, std::ios::binary);
   if (!binFile.is_open()) {
     std::cerr << "Error opening output BIN file." << std::endl;
-    return;
+    return false;
   }
 
   binFile.write(binData.c_str(), binData.size());
@@ -156,122 +212,56 @@ void ModelProcessor::ConvertGlbToGltf(
   //
   //
 
-  std::ofstream jsonFile(temp_dir_ / path_suffix.parent_path() /
-                           path_suffix.stem() / ".gltf");
+  std::filesystem::path model_dir_path("");//temp_dir_ / path_suffix.parent_path() /
+//                                  path_suffix.stem());
+  std::string model_filename;
+  model_filename.reserve(model_dir_path.stem().string().length() + 5);
+  model_filename = path_suffix.stem().string();
+  model_filename += ".gltf";
+
+  std::ofstream jsonFile(model_dir_path / model_filename);
   if (!jsonFile.is_open()) {
     std::cerr << "Error opening output JSON file." << std::endl;
-    return;
+    return false;
   }
 
   rapidjson::OStreamWrapper osw(jsonFile);
   rapidjson::Writer<rapidjson::OStreamWrapper> writer(osw);
   document.Accept(writer);
   jsonFile.close();
+  return true;
 }
 
 
-void ModelProcessor::ExtractGltfModelTextures(
-    int buffer_view_id __attribute__((unused)),
-    const std::string& out_filename __attribute__((unused))) {
-  // TODO: the worse case
-  // TODO: find offset in needed buffer, extract it, sheer rest data to left,
-  //      change offset, id for all buffers which are later
-  //    - if that buffer is stored separately - open it; otherwise
-  std::cout << "Processing embedded data" << std::endl;
-  // Your logic for handling embedded data goes here
+bool ModelProcessor::ExtractGltfModelTextures(
+    const std::filesystem::path& model_path) {
+  // TODO: check does any textures belongs to buffer
+  // TODO: for each from previous step extract them to ${name}
+  // TODO: ${name} generated from mime+name or on our own
 }
 
 
-void ModelProcessor::EncodeGltfModelTextures(
-    const std::filesystem::path& path_suffix, rapidjson::Value& images,
-    rapidjson::Document& document) {
+bool ModelProcessor::EncodeGltfModelTextures(
+    const std::filesystem::path& model_path) {
+  // Now all textures located externally, so we need to work solely with "url"
+  // to external file. Members mimetype/name/bufferview __already_deleted__
 
-  /// has it been already added to ThreadPool tasks by AssetsAnalyzer
-/*  auto image_absolute_path = std::filesystem::current_path() / uri;
-  std::filesystem::path relativePath =
-      std::filesystem::relative(image_absolute_path, user_asset_root_dir_);
-  if (!relativePath.empty() && relativePath.string().find("..") != 0) {
-    return;
-  }
-  if (!dir_created) {
-    std::filesystem::create_directories(path_suffix);
-  }
-  auto image_copy_path = extracted_textures_dir_ / uri;
-  std::filesystem::copy_file(image_absolute_path, image_copy_path);
-  AssetCategory texture_category = DeduceAssetEncodeCategory(uri);
-  assets_analyzer_->AddEntry({image_copy_path.string(),
-                              path_suffix.string(), texture_category});*/
-  int i = 0;
-  bool dir_created = false;
-  std::filesystem::path dir_absolute_path =
-      (extracted_textures_dir_ / path_suffix).remove_filename();
-  std::filesystem::path file_stem;
-  for (rapidjson::Value::ValueIterator itr = images.Begin();
-       ++i, itr != images.End(); ++itr) {
-    rapidjson::Value& image = *itr;
-    std::filesystem::path outputFileName(dir_absolute_path);
 
-    std::string buffer;
-    buffer.reserve(10);
-    AssetCategory category;
-    if (image.HasMember("name") &&
-        image.HasMember("mimeType")) {  // TODO: what a allocation mess...
-      buffer += image["mimeType"].GetString();
-      buffer = buffer.substr(buffer.find('/') + 1);  // TODO; 1
-      category = DeduceAssetEncodeCategory(image["name"].GetString() + buffer);
-      buffer.clear();
-      if (category == AssetCategory::kTextureLdr) {
-        buffer += "_ldr.astc";
-      } else if (category == AssetCategory::kTextureHdr) {
-        buffer += "_hdr.astc";
-      } else {
-        buffer += "_nmap.astc";
-      }
-      file_stem = outputFileName /
-                  (std::to_string(i) + "_" +
-                   std::filesystem::path(image["name"].GetString()).string());
-      ;  // TODO; 2
-      outputFileName /=
-          std::to_string(i) + "_" +
-          std::filesystem::path(image["name"].GetString()).string() + buffer;
-    } else {
-      outputFileName /= std::to_string(i) + "_" + buffer;
-    }  // TODO: uri, mime...
+  // TODO: if texture location(url) is in root search dir OR is outside of the it
+  //    add it to assets/textures/ (root of all textures) => suffix == ""
 
-    if (image.HasMember("uri")) {
-      std::string uri = image["uri"].GetString();
-      if (uri.compare(0, 5, "data:") == 0) {
-        if (!dir_created) {
-          std::filesystem::create_directories(dir_absolute_path);
-        }
-//        ExtractBase64ImageData(uri, path_suffix,
-//                               "here need old filename",
-//                               category);  // TODO: incorrect path
-      } else {
-//        ExtractExternalImageData(uri, path_suffix, dir_created);
-      }
-    } else if (image.HasMember("bufferView")) {
-      if (!dir_created) {
-        std::filesystem::create_directories(dir_absolute_path);
-      }
-      int buffer_view_id = image["bufferView"].GetInt();
-      ExtractGltfModelTextures(buffer_view_id, outputFileName.string());
-    } else {
-      return;
-    }
-    image["name"].SetString(outputFileName.stem().string().c_str(),
-                            document.GetAllocator());
-    image["mimeType"].SetString("image/astc", document.GetAllocator());
-    image["uri"].SetString(outputFileName.string().c_str(),
-                           document.GetAllocator());
-  }
+  // TODO: check has it been already added to ThreadPool tasks
+  // TODO: ldr/hdr/nmap category deducing
+  // TODO: paths: path suffix, rename
+  // TODO: change url in .gltf
+  // TODO: add textures to TextureProcessor queue for encoding
 }
 
 
-
-void ModelProcessor::DecodeGltfModel(
-    const std::filesystem::path& model_path __attribute__((unused)),
-    const std::filesystem::path& path_suffix __attribute__((unused))) {
-  std::cout << "Modle decoding is not implemented yet" << std::endl;
-  // TODO:
+bool ModelProcessor::DecodeTextures(
+    const std::filesystem::path& model_path,
+    const std::filesystem::path& path_suffix) {
+  // TODO: check has it been already added to ThreadPool tasks
+  // TODO: change url in .gltf
+  // TODO: add textures to TextureProcessor queue for decoding
 }

@@ -1,26 +1,74 @@
 #ifndef FAITHFUL_TEXTURE_H
 #define FAITHFUL_TEXTURE_H
 
-#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
-#include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
 #include "Image.h"
 
-#include <array>
 #include <filesystem>
+#include <iostream> // todo: replace by Logger
+#include <string>
 
 namespace faithful {
 
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
-/// DEPRECATED & MOVED TO Faithful/utils/AssetProcessor
-///                      (or .../AssetPreprocessor)
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
+/* We need manager with info about how relevant OpenGL_img_id is, so
+ * when need to load new texture then just reuse them.
+ *
+ * BUT we update relevancy only if we need new texture
+ * AND how we do this:
+ * assume we are at point (0;0), then with regard to:
+ * - time
+ * - position
+ * - act (part of the game)
+ * Then we get list of relevant textures for current position
+ * Then iterating through active textures and if it in list - save, mark as useless otherwise
+ *
+ * How we know where we need new texture:
+ * - time
+ * - position (divide all map to regions --> like bucket sort)
+ * (cache included)
+ *
+ * */
 
-/*
-class Sprite;
+/* How loading occurs:
+ * @params: OpenGL id = cur_id, int mode = 1d / 2d
+ * 1) delete previous data from cur_id (if needed)
+ * 2) ifdef FAITHFUL_OPENGL_SUPPORT_ASTC
+ * 3) read file, parse header
+ * 4) decompress (if astc not supported)
+ * 5) load to cur_id
+ * */
+
+class TextureManager {
+ protected:
+  friend class Texture;
+  // friend class FaithfulCoreEngine;
+
+  TextureManager() = default;
+
+  bool Init() {
+    if (initialized_) {
+      return true;
+    }
+    // we have previously defined __num__ of textures
+    // call glGenTextures for __num__ textures
+    initialized_ = true;
+    return true;
+  }
+
+  int Acquire() {
+    // Is it blocking ?
+  }
+
+  void Release(int id) {
+    // check all assets for relevancy,
+    // give id of irrelevant texture
+  }
+
+ private:
+  bool initialized_ = false;
+  // pool of id
+};
 
 class Texture : public Image {
  public:
@@ -31,124 +79,35 @@ class Texture : public Image {
     kHeight
   };
 
-  enum class WrapType {
-    kClampToEdge,
-    kClampToBorder,
-    kMirroredRepeat,
-    kRepeat
-  };
-
-  Texture() = default;
-  Texture(const Texture& tex) : Image(tex) {}
-  Texture(Texture&& tex) : Image() {
-    id_ = tex.get_id();
-    type_ = tex.get_type();
-    data_ = std::move(tex.get_data());
-    width_ = tex.get_width();
-    height_ = tex.get_height();
-    channels_ = tex.get_channels();
-    color_model_ = tex.get_color_model();
-
-    tex.set_data(nullptr);
+  Texture(std::nullptr_t) {
+    std::cerr << "Invalid TextureManager" << std::endl;
+    abort();
   }
 
-  Texture& operator=(const Texture& tex) {
-    Image::operator=(tex);
-  }
-  Texture& operator=(Texture&& tex) {
-    Image::operator=(std::move(tex));
+  Texture(TextureManager* manager) : manager_(manager) {
   }
 
-  Texture(const char* path)
-      : Image(path, ImageType::kTexture) {}
-  Texture(const Sprite& sprite);
-
-  static Texture* InitLoad(const char* path) {
-    auto texture = new Texture();
-    texture->set_id(Image::InitLoad(path, ImageType::kTexture));
+  void Activate() {
+    active_ = true;
+    opengl_id_ = manager_->Acquire();
   }
 
-  /// modifiers
-
-  void WrapS(WrapType type);
-  void WrapT(WrapType type);
-  void WrapR(WrapType type);
-
-  void MinFilter(ImageFilter filter) {
-    Image::MinFilter(filter);
-  }
-  void MagFilter(ImageFilter filter) {
-    Image::MagFilter(filter);
-  }
-  void MipMapLevel(std::size_t level, const Image& img) {
-    Image::MipMapLevel(level, img);
-  }
-  void MipMapLevel(std::size_t level, const char* path) {
-    Image::MipMapLevel(level, path);
+  void Deactivate() {
+    active_ = false;
+    manager_->Release(opengl_id_);
+    opengl_id_ = -1;
   }
 
-  /// getters/setters
-
-  bool Modified() const {
-    return !data_.Empty();
-  }
-
-  GLuint get_id() const {
-    return id_;
-  }
-  void set_id(GLuint id) {
-    id_ = id;
-  }
-
-  utility::Span<unsigned char> get_data() const {
-    return data_;
-  }
-  void set_data(utility::Span<unsigned char> data) {
-    if (data == nullptr) {
-      data_ = nullptr;
-    } else data_ = data;
-  }
-
-  int get_width() const {
-    return width_;
-  }
-  void set_width(int width) {
-    width_ = width;
-  }
-
-  int get_height() const {
-    return height_;
-  }
-  void set_height(int height) {
-    height_ = height;
-  }
-
-  GLenum get_color_model() const {
-    return color_model_;
-  }
-  void set_color_model(GLenum colorModel) {
-    color_model_ = colorModel;
-  }
-
-  int get_channels() const {
-    return channels_;
-  }
-  void set_channels(int channels) {
-    channels_ = channels;
-  }
-};
-
-class DefaultTextures {
- public:
-  static void Init();
-  static std::array<GLuint, sizeof(uint8_t)> ids_;
  private:
-  static uint8_t ids_pos_;
-  static bool initialized_;
-  static std::filesystem::path dir_path_;
+  TextureManager* manager_ = nullptr;
+
+  std::string file_path_;
+  int global_id_;
+  int opengl_id_;
+  bool active_ = false;
+  // properties (ldr/hdr/nmap deduce only once, reuse after)
 };
 
-*/
 
 }  // namespace faithful
 

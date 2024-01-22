@@ -11,8 +11,8 @@
 class AssetsAnalyzer;
 enum class AssetCategory;
 
-// TODO: default value FAITHFUL_TEMP_DIR, which should be
-//   created&deleted only by AssetProcessor_class
+
+// 1 model <-> 1 class instance
 
 class ModelProcessor {
  public:
@@ -22,7 +22,6 @@ class ModelProcessor {
       const std::filesystem::path& asset_destination,
       const std::filesystem::path& temp_dir = FAITHFUL_ASSET_TEMP_TEXTURES_PATH)
       : assets_analyzer_(assets_analyzer),
-        extracted_textures_dir_(temp_dir),
         asset_destination_(asset_destination),
         user_asset_root_dir_(user_asset_root_dir),
         encode_(encode) {
@@ -31,26 +30,29 @@ class ModelProcessor {
   void Process(const std::filesystem::path& model_path,
                const std::filesystem::path& path_suffix);
 
-  void ConvertGlbToGltf(const std::filesystem::path& model_path,
+  bool ConvertGlbToGltf(
+      const std::filesystem::path& model_path,
+      const std::filesystem::path& path_suffix);
+
+  bool ExtractBuffers();
+  bool ExtractTextures();
+
+  std::string DecodeBase64(const std::string& base64_data);
+
+  bool ExtractGltfModelTextures(const std::filesystem::path& model_path);
+
+  bool EncodeGltfModelTextures(const std::filesystem::path& model_path);
+  bool DecodeTextures(const std::filesystem::path& model_path,
                       const std::filesystem::path& path_suffix);
 
-  void ExtractBufferData(const std::filesystem::path& model_path,
-                         const std::filesystem::path& path_suffix);
+  bool OptimizeModel(const std::string& model_path);
 
-  void DecodeGltfModel(const std::filesystem::path& model_path,
-                       const std::filesystem::path& path_suffix);
-
-  void ExtractGltfModelTextures(int buffer_view_id,
-                              const std::string& out_filename);
-
-  void EncodeGltfModelTextures(const std::filesystem::path& path_suffix,
-                               rapidjson::Value& images,
-                               rapidjson::Document& document);
+  bool SaveModel(const rapidjson::Document& document,
+                 const std::string& model_path);
+  bool ReadGltfModel(const std::string& model_path);
 
  private:
   AssetsAnalyzer* assets_analyzer_;
-  /// for temporary images and their further encoding
-  std::filesystem::path extracted_textures_dir_;
 
   std::filesystem::path asset_destination_;
 
@@ -58,8 +60,7 @@ class ModelProcessor {
   /// has it been processed before
   std::filesystem::path user_asset_root_dir_;
 
-  std::filesystem::path temp_dir_ = "temp";
-
+  rapidjson::Document document;
   bool encode_;
 };
 

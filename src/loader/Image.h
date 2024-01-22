@@ -12,35 +12,12 @@
 #include "../../utils/Span.h"
 #include "LoadPathManager.h"
 
+// DEPRECATED
+/*
 namespace faithful {
 
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
-/// DEPRECATED & MOVED TO Faithful/utils/AssetProcessor
-///                      (or .../AssetPreprocessor)
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
-
-// TODO: anisotropic filtering
-// TODO: rewrite texture_ops with OpenCL (gpu-programming)
-
-/*
 class ImageIdComparator;
 class Image;
-class DefaultImage;
-class Texture;
-class CubeMap;
-
-
-enum class ImageType {
-  kTexture,
-  kSprite
-};
-
-// TODO:
-// TODO: comments (COMMENTS !!!!!!!!!!
-<<<--------------------------------------------------)
-// TODO:
 
 namespace details {
 namespace image {
@@ -172,7 +149,7 @@ class Image {
 
   // if (data.Empty()) - id the same as is image and we don't need copy
   // BUT if we want to change image (resize/rotate/custom__glTexImage), then we
-making a copy utility::Span<unsigned char> data_;
+// making a copy utility::Span<unsigned char> data_;
 
   // used in derived classes: Texture, Sprite...
   GLuint id_ = 0;
@@ -183,8 +160,8 @@ struct ImageIdComparator {
     return img1->get_id() < img2->get_id();
   }
 };
-*/
 
 }  // namespace faithful
+*/
 
 #endif  // FAITHFUL_IMAGE_H

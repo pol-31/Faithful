@@ -4,25 +4,19 @@
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 
-#include "../../external/stb_image/stb_image.h"
+#include "stb/stb_image.h"
 
 #include "Image.h"
 #include "../../utils/Span.h"
 #include "../../utils/Allocator.h"
 
-#include "../../utils/Executors/ThreadPoolCall.h"
-
 #include <thread>
+
+// DEPRECATED
+/*
 
 namespace faithful {
 
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
-/// DEPRECATED & MOVED TO Faithful/utils/AssetProcessor
-///                      (or .../AssetPreprocessor)
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
-/*
 namespace details {
 namespace image {
 
@@ -376,6 +370,7 @@ GLuint Image::InitLoad(const char* path, ImageType type) {
   glGenerateMipmap(GL_TEXTURE_2D);
 
   return id;
-}*/
+}
 
 }  // namespace faithful
+*/
