@@ -1,13 +1,17 @@
 #ifndef FAITHFUL_TEXTURE_H
 #define FAITHFUL_TEXTURE_H
 
-#include <glad/gl.h>
-
-#include "Image.h"
-
+#include <array>
 #include <filesystem>
-#include <iostream> // todo: replace by Logger
 #include <string>
+#include <vector>
+
+
+#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
+#include <astcenc.h>
+#endif
+
+#include "../utils/ConstexprVector.h"
 
 namespace faithful {
 
@@ -39,75 +43,82 @@ namespace faithful {
  * 5) load to cur_id
  * */
 
+
+/* How to "generate" texture:
+ * struct ModelTexture {.~ModelTexture(){Release for each id}..};
+ * model_texture.albedo_id = Load("path_to_texture"); todo + counter
+ *
+ * */
+
+
+inline constexpr int max_active_texture_num = 20;
+inline constexpr int threads_per_texture = 4;
+
 class TextureManager {
  protected:
   friend class Texture;
   // friend class FaithfulCoreEngine;
 
-  TextureManager() = default;
+  TextureManager();
+  ~TextureManager();
 
-  bool Init() {
-    if (initialized_) {
-      return true;
-    }
-    // we have previously defined __num__ of textures
-    // call glGenTextures for __num__ textures
-    initialized_ = true;
-    return true;
-  }
+  // TODO: Is it blocking ? <<-- add thread-safety
+  int Load(std::string&& texture_path);
+  void Restore(int opengl_id);
 
-  int Acquire() {
-    // Is it blocking ?
-  }
-
-  void Release(int id) {
-    // check all assets for relevancy,
-    // give id of irrelevant texture
-  }
-
- private:
-  bool initialized_ = false;
-  // pool of id
-};
-
-class Texture : public Image {
- public:
-  enum class Type {
-    kDiffuse,
-    kSpecular,
-    kNormal,
-    kHeight
+  struct AstcHeader {
+    uint8_t magic[4];  /// format identifier
+    uint8_t block_x;
+    uint8_t block_y;
+    uint8_t block_z;
+    uint8_t dim_x[3];
+    uint8_t dim_y[3];
+    uint8_t dim_z[3];
   };
 
-  Texture(std::nullptr_t) {
-    std::cerr << "Invalid TextureManager" << std::endl;
-    abort();
-  }
+  struct InstanceInfo {
+    std::string* path = nullptr;
+    int opengl_id = -1;
+    int counter = 0;
+  };
 
-  Texture(TextureManager* manager) : manager_(manager) {
-  }
-
-  void Activate() {
-    active_ = true;
-    opengl_id_ = manager_->Acquire();
-  }
-
-  void Deactivate() {
-    active_ = false;
-    manager_->Release(opengl_id_);
-    opengl_id_ = -1;
-  }
+  enum class TextureCategory {
+    kLdr,
+    kHdr,
+    kNmap
+  };
 
  private:
-  TextureManager* manager_ = nullptr;
 
-  std::string file_path_;
-  int global_id_;
-  int opengl_id_;
-  bool active_ = false;
-  // properties (ldr/hdr/nmap deduce only once, reuse after)
+#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
+  bool InitContextLdr();
+  bool InitContextHdr();
+  bool InitContextNmap();
+#endif
+
+  void LoadTextureData(int active_instance_id);
+
+  astcenc_context* PrepareContext(TextureCategory category);
+
+  std::unique_ptr<uint8_t> DecompressAstcTexture(
+      std::unique_ptr<uint8_t> tex_data, int tex_width,
+      int tex_height, astcenc_context* context);
+
+  TextureCategory DeduceTextureCategory(const std::filesystem::path& filename);
+  bool DetectHdr(const std::filesystem::path& filename);
+  bool DetectNmap(const std::filesystem::path& filename);
+
+  bool CleanInactive();
+
+  std::array<InstanceInfo, max_active_texture_num> active_instances_;
+  faithful::utils::ConstexprVector<int, max_active_texture_num> free_instances_;
+
+#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
+  astcenc_context* context_ldr_ = nullptr;
+  astcenc_context* context_hdr_ = nullptr;
+  astcenc_context* context_nmap_ = nullptr;
+#endif
 };
-
 
 }  // namespace faithful
 

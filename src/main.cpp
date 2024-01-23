@@ -349,6 +349,8 @@ int main() {
 #include "AL/alc.h"
 #include <iostream>
 
+#include "loader/Texture.h"
+
 // Function to check for OpenAL errors
 void CheckALError(const char* message) {
 //  ALenum error = alGetError();

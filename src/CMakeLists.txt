@@ -4,7 +4,13 @@ project(faithful-core)
 
 #file(GLOB_RECURSE FAITHFUL_MAIN_SOURCES ${FAITHFUL_SOURCE_DIR}/src/*.cpp)
 
-add_executable(faithful-core main.cpp io/Monitor.cpp io/Window.cpp loader/ShaderProgram.cpp ${FAITHFUL_MAIN_SOURCES})
+add_executable(faithful-core
+        main.cpp
+        io/Monitor.cpp
+        io/Window.cpp
+        loader/ShaderProgram.cpp
+        loader/Texture.cpp
+        ${FAITHFUL_MAIN_SOURCES})
 
 target_compile_options(faithful-core PRIVATE ${FAITHFUL_COMPILE_OPTIONS})
 target_link_options(faithful-core PRIVATE ${FAITHFUL_EXE_LINK_OPTIONS})
