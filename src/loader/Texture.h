@@ -6,10 +6,11 @@
 #include <string>
 #include <vector>
 
-
 #ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
 #include <astcenc.h>
 #endif
+
+#include <glad/glad.h>
 
 #include "../utils/ConstexprVector.h"
 
@@ -52,8 +53,12 @@ namespace faithful {
 
 
 inline constexpr int max_active_texture_num = 20;
-inline constexpr int threads_per_texture = 4;
+inline constexpr int threads_per_texture = 4; // max / 2 || max -> +1 at static loading
 
+
+// TODO: add ref_counter and destroy only if ref_counter == 0
+
+/// should be only 1 instance for the entire program
 class TextureManager {
  protected:
   friend class Texture;
@@ -110,6 +115,8 @@ class TextureManager {
 
   bool CleanInactive();
 
+  void ReuseTexture(int opengl_id);
+
   std::array<InstanceInfo, max_active_texture_num> active_instances_;
   faithful::utils::ConstexprVector<int, max_active_texture_num> free_instances_;
 
@@ -118,6 +125,65 @@ class TextureManager {
   astcenc_context* context_hdr_ = nullptr;
   astcenc_context* context_nmap_ = nullptr;
 #endif
+};
+
+class Texture {
+ public:
+  Texture() = delete;
+  Texture(TextureManager* manager) : manager_(manager) {
+    id_ = 0; /// id == 0 - id for default texture
+  }
+
+  Texture(const Texture& other) {
+    manager_->ReuseTexture(other.id_);
+  }
+  Texture(Texture&& other) {
+    other.id_ = 0;
+    manager_->ReuseTexture(other.id_);
+  }
+
+  Texture& operator=(const Texture& other) {
+    if (other == *this) {
+      return *this;
+    }
+    RestoreTextureId();
+    manager_->ReuseTexture(other.id_);
+    return *this;
+  }
+  Texture& operator=(Texture&& other) {
+    if (other == *this) {
+      return *this;
+    }
+    RestoreTextureId();
+    other.id_ = 0;
+    manager_->ReuseTexture(other.id_);
+    return *this;
+  }
+
+  ~Texture() {
+    RestoreTextureId();
+  }
+
+  void Load(std::string&& path) {
+    RestoreTextureId();
+    manager_->Load(std::move(path));
+  }
+
+  void Bind(GLenum target);
+
+  friend bool operator==(const Texture& tex1, const Texture& tex2) {
+    /// requires the same instance (not content equality)
+    return tex1.id_ == tex2.id_ && &*tex1.manager_ == &*tex2.manager_;
+  }
+
+ private:
+  void RestoreTextureId() {
+    if (id_ != 0) {
+      manager_->Restore(id_);
+    }
+  }
+  TextureManager* manager_;
+  int id_;
 };
 
 }  // namespace faithful

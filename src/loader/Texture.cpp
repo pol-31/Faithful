@@ -16,8 +16,6 @@ TextureManager::TextureManager() {
   //  2) load 1 default texture
   //  3) init free_instances_ with indices: 1,2,3,....,max_active_texture_num
 
-  free_instances_.reserve(max_active_texture_num);
-
 #ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
   InitContextLdr();
   InitContextHdr();
@@ -279,16 +277,29 @@ bool TextureManager::DetectNmap(const std::filesystem::path& filename) {
 }
 
 bool TextureManager::CleanInactive() {
-  if (free_instances_.size() == 0) {
+  if (free_instances_.Size() == 0) {
     for (auto& t: active_instances_) {
       if (t.counter == 0) {
         delete t.path;
         /// safe because both std::array have the same size
-        free_instances_[free_instances_.size()];
+        free_instances_[free_instances_.Size()];
       }
     }
   }
-  return free_instances_.size() == 0 ? false : true;
+  return free_instances_.Size() == 0 ? false : true;
 }
+
+void TextureManager::ReuseTexture(int opengl_id) {
+  for (auto& t : active_instances_) {
+    if (t.opengl_id == opengl_id) {
+      ++t.counter;
+    }
+  }
+}
+
+void Texture::Bind(GLenum target) {
+  glBindTexture(target, id_);
+}
+
 
 }  // namespace faithful

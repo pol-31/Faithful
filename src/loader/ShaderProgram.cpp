@@ -4,22 +4,13 @@
 #include <fstream>
 #include <new>
 
-#include "glad/glad.h"
-
 namespace faithful {
-
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
-/// DEPRECATED & MOVED TO Faithful/utils/AssetProcessor
-///                      (or .../AssetPreprocessor)
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
 namespace utility {
 
-ShaderProgram::ShaderProgram() {
+ShaderManager::ShaderManager() {
 }
 
-ShaderProgram::ShaderProgram(const char* vertex_shader_path,
+ShaderManager::ShaderManager(const char* vertex_shader_path,
                              const char* fragment_shader_path,
                              const char* geometry_shader_path) noexcept {
   buffer_ = new (std::nothrow) char[256];
@@ -44,12 +35,12 @@ ShaderProgram::ShaderProgram(const char* vertex_shader_path,
   }
 }
 
-ShaderProgram::~ShaderProgram() {
+ShaderManager::~ShaderManager() {
   glDeleteProgram(program_);
   delete[] buffer_;
 }
 
-bool ShaderProgram::IsValidShader(GLuint shader, GLenum shader_type) noexcept {
+bool ShaderManager::IsValidShader(GLuint shader, GLenum shader_type) noexcept {
   if (!shader) {
     return false;
   }
@@ -82,7 +73,7 @@ bool ShaderProgram::IsValidShader(GLuint shader, GLenum shader_type) noexcept {
   return true;
 }
 
-bool ShaderProgram::IsValidProgram() noexcept {
+bool ShaderManager::IsValidProgram() noexcept {
   if (!program_) {
     return false;
   }
@@ -98,7 +89,7 @@ bool ShaderProgram::IsValidProgram() noexcept {
   return true;
 }
 
-void ShaderProgram::AttachShader(const char* path,
+void ShaderManager::AttachShader(const char* path,
                                  GLenum shader_type) noexcept {
   if (!ReadToBuffer(path)) {
     return;
@@ -114,7 +105,7 @@ void ShaderProgram::AttachShader(const char* path,
   glDeleteShader(shader);
 }
 
-bool ShaderProgram::ReadToBuffer(const char* path) noexcept {
+bool ShaderManager::ReadToBuffer(const char* path) noexcept {
   if (!path) {
     [[unlikely]] return false;
   }
@@ -167,6 +158,36 @@ glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4),
                 glm::value_ptr(projection));
 glBindBuffer(GL_UNIFORM_BUFFER, 0);
 */
+
+
+void ShaderManager::ReuseShaderProgram(int opengl_id) {
+  // similar to TextureManager
+}
+void ShaderManager::Restore(int opengl_id) {
+  // similar to TextureManager
+}
+
+
+void ShaderObject::Load(std::string&& path) {
+  // reuse on of Shader id from manager_
+  // load implementation __there__
+  //   (opposite to Texture : TextureManager relationships)
+}
+
+void ShaderProgram::Bake() {
+  // compile, check for errors
+}
+
+void ShaderProgram::AttachShader(GLenum shader_type,
+                                 const ShaderObject& shader_obj) {
+  // attach, check for erorrs
+}
+
+void ShaderProgram::Use() {
+  if (id_) {
+    glUseProgram(id_);
+  }
+}
 
 }  // namespace utility
 }  // namespace faithful

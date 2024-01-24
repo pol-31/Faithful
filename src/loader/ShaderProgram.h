@@ -36,139 +36,117 @@
 namespace faithful {
 namespace utility {
 
-// Class ShaderProgram stands for generating one specific OpenGl shader program
-// using vertex, fragment and geometry shaders, which have to be passed to ctor
-// through their paths.
-// Only movable, non-copyable.
+/// should be only 1 instance for the entire program
 class ShaderManager {
  public:
-  ShaderManager() = default;
-  static bool Init() {
-    // shader creation
-    return true;
-  }
+  ShaderManager();
 
- private:
-  using Shader = int;
-  static Shader shader1;
-  static Shader shader2;
-  static Shader shader3;
-  // ... etc
-
-  static char* path1 /* = "path1"*/;
-  static char* path2 /* = "path2"*/;
-  // ... etc
-};
-
-class ShaderProgram {
- public:
-  ShaderProgram();
-
-  ShaderProgram(const char* vertex_shader_path,
+  ShaderManager(const char* vertex_shader_path,
                 const char* fragment_shader_path,
                 const char* geometry_shader_path = nullptr) noexcept;
 
-  ShaderProgram(const ShaderProgram&) = delete;
-  ShaderProgram(ShaderProgram&& sp) = delete;
-  ShaderProgram& operator=(const ShaderProgram&) = delete;
-  ShaderProgram& operator=(ShaderProgram&& sp) = delete;
+  ShaderManager(const ShaderManager&) = delete;
+  ShaderManager(ShaderManager&& sp) = delete;
+  ShaderManager& operator=(const ShaderManager&) = delete;
+  ShaderManager& operator=(ShaderManager&& sp) = delete;
 
-  ~ShaderProgram();
+  ~ShaderManager();
 
-  void Use() const noexcept {
-    if (program_) {
-      glUseProgram(program_);
-    }
-  }
+  void ReuseShaderProgram(int opengl_id);
+  void Restore(int opengl_id);
 
-  GLuint Id() const noexcept {
-    return program_;
-  };
+  inline void SetUniform(const GLchar* name, GLboolean v0);
 
-  inline void AdjustVar(const GLchar* name, GLboolean v0);
-  inline void AdjustVar(const GLchar* name, GLfloat v0);
-  inline void AdjustVar(const GLchar* name, GLfloat v0, GLfloat v1);
-  inline void AdjustVar(const GLchar* name, GLfloat v0, GLfloat v1, GLfloat v2);
+  inline void SetUniform(const GLchar* name, GLfloat v0);
 
-  inline void AdjustVar(const GLchar* name, GLfloat v0, GLfloat v1, GLfloat v2,
-                        GLfloat v3);
+  inline void SetUniform(const GLchar* name, GLfloat v0, GLfloat v1);
 
-  inline void AdjustVar(const GLchar* name, GLint v0);
+  inline void SetUniform(const GLchar* name, GLfloat v0,
+                         GLfloat v1, GLfloat v2);
 
-  inline void AdjustVar(const GLchar* name, GLint v0, GLint v1);
+  inline void SetUniform(const GLchar* name, GLfloat v0,
+                         GLfloat v1, GLfloat v2, GLfloat v3);
 
-  inline void AdjustVar(const GLchar* name, GLint v0, GLint v1, GLint v2);
+  inline void SetUniform(const GLchar* name, GLint v0);
 
-  inline void AdjustVar(const GLchar* name, GLint v0, GLint v1, GLint v2,
-                        GLint v3);
+  inline void SetUniform(const GLchar* name, GLint v0, GLint v1);
 
-  inline void AdjustVar(const GLchar* name, GLuint v0);
+  inline void SetUniform(const GLchar* name, GLint v0, GLint v1, GLint v2);
 
-  inline void AdjustVar(const GLchar* name, GLuint v0, GLuint v1);
+  inline void SetUniform(const GLchar* name, GLint v0, GLint v1,
+                         GLint v2, GLint v3);
 
-  inline void AdjustVar(const GLchar* name, GLuint v0, GLuint v1, GLuint v2);
+  inline void SetUniform(const GLchar* name, GLuint v0);
 
-  inline void AdjustVar(const GLchar* name, GLuint v0, GLuint v1, GLuint v2,
-                        GLuint v3);
+  inline void SetUniform(const GLchar* name, GLuint v0, GLuint v1);
 
-  inline void AdjustVec1(const GLchar* name, GLsizei count,
-                         const GLfloat* value);
+  inline void SetUniform(const GLchar* name, GLuint v0, GLuint v1, GLuint v2);
 
-  inline void AdjustVec2(const GLchar* name, GLsizei count,
-                         const GLfloat* value);
+  inline void SetUniform(const GLchar* name, GLuint v0, GLuint v1,
+                         GLuint v2, GLuint v3);
 
-  inline void AdjustVec3(const GLchar* name, GLsizei count,
-                         const GLfloat* value);
+  inline void SetUniformVec1(const GLchar* name, GLsizei count,
+                             const GLfloat* value);
 
-  inline void AdjustVec4(const GLchar* name, GLsizei count,
-                         const GLfloat* value);
+  inline void SetUniformVec2(const GLchar* name, GLsizei count,
+                             const GLfloat* value);
 
-  inline void AdjustVec1(const GLchar* name, GLsizei count, const GLint* value);
+  inline void SetUniformVec3(const GLchar* name, GLsizei count,
+                             const GLfloat* value);
 
-  inline void AdjustVec2(const GLchar* name, GLsizei count, const GLint* value);
+  inline void SetUniformVec4(const GLchar* name, GLsizei count,
+                             const GLfloat* value);
 
-  inline void AdjustVec3(const GLchar* name, GLsizei count, const GLint* value);
+  inline void SetUniformVec1(const GLchar* name, GLsizei count,
+                             const GLint* value);
 
-  inline void AdjustVec4(const GLchar* name, GLsizei count, const GLint* value);
+  inline void SetUniformVec2(const GLchar* name, GLsizei count,
+                             const GLint* value);
 
-  inline void AdjustVec1(const GLchar* name, GLsizei count,
-                         const GLuint* value);
+  inline void SetUniformVec3(const GLchar* name, GLsizei count,
+                             const GLint* value);
 
-  inline void AdjustVec2(const GLchar* name, GLsizei count,
-                         const GLuint* value);
+  inline void SetUniformVec4(const GLchar* name, GLsizei count,
+                             const GLint* value);
 
-  inline void AdjustVec3(const GLchar* name, GLsizei count,
-                         const GLuint* value);
+  inline void SetUniformVec1(const GLchar* name, GLsizei count,
+                             const GLuint* value);
 
-  inline void AdjustVec4(const GLchar* name, GLsizei count,
-                         const GLuint* value);
+  inline void SetUniformVec2(const GLchar* name, GLsizei count,
+                             const GLuint* value);
 
-  inline void AdjustMat2v(const GLchar* name, GLsizei count,
-                          GLboolean transpose, const GLfloat* value);
+  inline void SetUniformVec3(const GLchar* name, GLsizei count,
+                             const GLuint* value);
 
-  inline void AdjustMat3v(const GLchar* name, GLsizei count,
-                          GLboolean transpose, const GLfloat* value);
+  inline void SetUniformVec4(const GLchar* name, GLsizei count,
+                             const GLuint* value);
 
-  inline void AdjustMat4v(const GLchar* name, GLsizei count,
-                          GLboolean transpose, const GLfloat* value);
+  inline void SetUniformMat2v(const GLchar* name, GLsizei count,
+                              GLboolean transpose, const GLfloat* value);
 
-  inline void AdjustMat2x3v(const GLchar* name, GLsizei count,
-                            GLboolean transpose, const GLfloat* value);
+  inline void SetUniformMat3v(const GLchar* name, GLsizei count,
+                              GLboolean transpose, const GLfloat* value);
 
-  inline void AdjustMat3x2v(const GLchar* name, GLsizei count,
-                            GLboolean transpose, const GLfloat* value);
+  inline void SetUniformMat4v(const GLchar* name, GLsizei count,
+                              GLboolean transpose, const GLfloat* value);
 
-  inline void AdjustMat2x4v(const GLchar* name, GLsizei count,
-                            GLboolean transpose, const GLfloat* value);
+  inline void SetUniformMat2x3v(const GLchar* name, GLsizei count,
+                                GLboolean transpose, const GLfloat* value);
 
-  inline void AdjustMat4x2v(const GLchar* name, GLsizei count,
-                            GLboolean transpose, const GLfloat* value);
+  inline void SetUniformMat3x2v(const GLchar* name, GLsizei count,
+                                GLboolean transpose, const GLfloat* value);
 
-  inline void AdjustMat3x4v(const GLchar* name, GLsizei count,
-                            GLboolean transpose, const GLfloat* value);
+  inline void SetUniformMat2x4v(const GLchar* name, GLsizei count,
+                                GLboolean transpose, const GLfloat* value);
 
-  inline void AdjustMat4x3v(const GLchar* name, GLsizei count,
-                            GLboolean transpose, const GLfloat* value);
+  inline void SetUniformMat4x2v(const GLchar* name, GLsizei count,
+                                GLboolean transpose, const GLfloat* value);
+
+  inline void SetUniformMat3x4v(const GLchar* name, GLsizei count,
+                                GLboolean transpose, const GLfloat* value);
+
+  inline void SetUniformMat4x3v(const GLchar* name, GLsizei count,
+                                GLboolean transpose, const GLfloat* value);
 
  protected:
   friend class DefaultShaderProgram;
@@ -190,6 +168,107 @@ class ShaderProgram {
   GLint buffer_size_ = 0;
   GLint success_ = 0;
   GLuint program_ = 0;
+};
+
+class ShaderObject {
+ public:
+  ShaderObject(GLenum shader_type, std::string&& path) {
+    // load
+    // compile
+    // keep id_
+  }
+
+  /* typical scenario:
+   * { // one scope
+   *  ShaderObject sho1(vertex_type, "some path 1");
+   *  ShaderObject sho2(fragment_type, "some path 2");
+   *
+   *
+   *  // create program_1
+   *  program_1.AttachShader(sho1, sho2);
+   *
+   *
+   *  // there it has not been deleted and internally it reused
+   *  // but ++ref_counter
+   *  ShaderObject sho3(vertex_type, "some path 1");
+   *
+   * program_2.AttachShader(sho3); <-- successfully reused
+   *
+   * }
+   *
+   * */
+
+  ~ShaderObject() {
+    if (id_ != 0) {
+      // glDeleteShader();
+    }
+  }
+
+  void Load(std::string&& path);
+
+ private:
+  ShaderManager* manager_;
+  int id_ = 0;
+};
+
+class ShaderProgram {
+ public:
+  ShaderProgram() = delete;
+  ShaderProgram(ShaderManager* manager) : manager_(manager) {
+    id_ = 0; /// id == 0 - id for default texture
+  }
+
+  ShaderProgram(const ShaderProgram& other) {
+    manager_->ReuseShaderProgram(other.id_);
+  }
+  ShaderProgram(ShaderProgram&& other) {
+    other.id_ = 0;
+    manager_->ReuseShaderProgram(other.id_);
+  }
+
+  ShaderProgram& operator=(const ShaderProgram& other) {
+    if (other == *this) {
+      return *this;
+    }
+    RestoreTextureId();
+    manager_->ReuseShaderProgram(other.id_);
+    return *this;
+  }
+  ShaderProgram& operator=(ShaderProgram&& other) {
+    if (other == *this) {
+      return *this;
+    }
+    RestoreTextureId();
+    other.id_ = 0;
+    manager_->ReuseShaderProgram(other.id_);
+    return *this;
+  }
+
+  ~ShaderProgram() {
+    RestoreTextureId();
+  }
+
+  void Bake();
+
+  void AttachShader(GLenum shader_type, const ShaderObject& shader_obj);
+
+  void Use();
+
+  friend bool operator==(const ShaderProgram& tex1, const ShaderProgram& tex2) {
+    /// requires the same instance (not content equality)
+    return tex1.id_ == tex2.id_ && &*tex1.manager_ == &*tex2.manager_;
+  }
+
+ private:
+  void RestoreTextureId() {
+    if (id_ != 0) {
+      manager_->Restore(id_);
+    }
+  }
+  ShaderManager* manager_;
+  int id_;
+  /// if baked we can't attach shader objects
+  bool baked_ = false;
 };
 
 }  // namespace utility
