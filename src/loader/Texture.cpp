@@ -57,26 +57,16 @@ int TextureManager::Load(std::string&& texture_path) {
         << "Can't load texture: reserve more place for textures; "
         << max_active_texture_num << " is not enough;\n"
         << "failure for: " << texture_path << std::endl;
-    return 0; // todo: there must be id of default texture
+    return default_texture_id_;
   }
-  int id = free_instances_.back();
-  free_instances_.pop_back();
+  int id = free_instances_.Back();
+  free_instances_.PopBack();
   auto& instance = active_instances_[id];
   ++instance.counter;
   *instance.path = std::move(texture_path);
   LoadTextureData(id);
   return id;
 }
-
-// TODO: need optimize (asc order -> heap search)
-void TextureManager::Restore(int opengl_id) {
-  for (auto& t : active_instances_) {
-    if (t.opengl_id == opengl_id) {
-      --t.counter;
-    }
-  }
-}
-
 
 #ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
 bool TextureManager::InitContextLdr() {
@@ -230,7 +220,7 @@ std::unique_ptr<uint8_t> TextureManager::DecompressAstcTexture(
 //  }
 }
 
-astcenc_context* TextureManager::PrepareContext(TextureCategory category) {
+astcenc_context* TextureManager::PrepareContext(TextureManager::TextureCategory category) {
   astcenc_context* context;
   switch (category) {
     case TextureCategory::kLdr:
@@ -276,29 +266,8 @@ bool TextureManager::DetectNmap(const std::filesystem::path& filename) {
   return stem_string.compare(suffixPos, std::string::npos, "_nmap") == 0;
 }
 
-bool TextureManager::CleanInactive() {
-  if (free_instances_.Size() == 0) {
-    for (auto& t: active_instances_) {
-      if (t.counter == 0) {
-        delete t.path;
-        /// safe because both std::array have the same size
-        free_instances_[free_instances_.Size()];
-      }
-    }
-  }
-  return free_instances_.Size() == 0 ? false : true;
-}
-
-void TextureManager::ReuseTexture(int opengl_id) {
-  for (auto& t : active_instances_) {
-    if (t.opengl_id == opengl_id) {
-      ++t.counter;
-    }
-  }
-}
-
 void Texture::Bind(GLenum target) {
-  glBindTexture(target, id_);
+  glBindTexture(target, opengl_id_);
 }
 
 

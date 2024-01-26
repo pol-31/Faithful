@@ -14,6 +14,8 @@
 
 #include "../utils/ConstexprVector.h"
 
+#include "ResourceManager.h"
+
 namespace faithful {
 
 /* We need manager with info about how relevant OpenGL_img_id is, so
@@ -45,32 +47,41 @@ namespace faithful {
  * */
 
 
-/* How to "generate" texture:
- * struct ModelTexture {.~ModelTexture(){Release for each id}..};
- * model_texture.albedo_id = Load("path_to_texture"); todo + counter
- *
- * */
+// TODO: implement global_id_ infrastructure <----------------------------------
+
 
 
 inline constexpr int max_active_texture_num = 20;
 inline constexpr int threads_per_texture = 4; // max / 2 || max -> +1 at static loading
 
-
-// TODO: add ref_counter and destroy only if ref_counter == 0
-
 /// should be only 1 instance for the entire program
-class TextureManager {
- protected:
-  friend class Texture;
-  // friend class FaithfulCoreEngine;
+template <int max_active_textures>
+class TextureManager : public faithful::details::IResourceManager<max_active_textures> {
+ public:
+  using Base = faithful::details::IResourceManager<max_active_textures>;
+  using InstanceInfo = typename Base::InstanceInfo;
+
+  enum class TextureCategory {
+    kLdr,
+    kHdr,
+    kNmap
+  };
 
   TextureManager();
   ~TextureManager();
 
-  // TODO: Is it blocking ? <<-- add thread-safety
-  int Load(std::string&& texture_path);
-  void Restore(int opengl_id);
+  /// not copyable
+  TextureManager(const TextureManager&) = delete;
+  TextureManager& operator=(const TextureManager&) = delete;
 
+  /// movable
+  TextureManager(TextureManager&&) = default;
+  TextureManager& operator=(TextureManager&&) = default;
+
+  // TODO: Is it blocking ? <<-- add thread-safety
+  InstanceInfo Load(std::string&& texture_path);
+
+ private:
   struct AstcHeader {
     uint8_t magic[4];  /// format identifier
     uint8_t block_x;
@@ -80,20 +91,6 @@ class TextureManager {
     uint8_t dim_y[3];
     uint8_t dim_z[3];
   };
-
-  struct InstanceInfo {
-    std::string* path = nullptr;
-    int opengl_id = -1;
-    int counter = 0;
-  };
-
-  enum class TextureCategory {
-    kLdr,
-    kHdr,
-    kNmap
-  };
-
- private:
 
 #ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
   bool InitContextLdr();
@@ -113,77 +110,21 @@ class TextureManager {
   bool DetectHdr(const std::filesystem::path& filename);
   bool DetectNmap(const std::filesystem::path& filename);
 
-  bool CleanInactive();
-
-  void ReuseTexture(int opengl_id);
-
-  std::array<InstanceInfo, max_active_texture_num> active_instances_;
-  faithful::utils::ConstexprVector<int, max_active_texture_num> free_instances_;
-
 #ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
   astcenc_context* context_ldr_ = nullptr;
   astcenc_context* context_hdr_ = nullptr;
   astcenc_context* context_nmap_ = nullptr;
 #endif
+
+  int default_texture_id_ = 0; // adjust
 };
 
-class Texture {
+
+/// how to create textures from path: result from TextureManager.Load();
+class Texture : public details::IResource {
  public:
-  Texture() = delete;
-  Texture(TextureManager* manager) : manager_(manager) {
-    id_ = 0; /// id == 0 - id for default texture
-  }
-
-  Texture(const Texture& other) {
-    manager_->ReuseTexture(other.id_);
-  }
-  Texture(Texture&& other) {
-    other.id_ = 0;
-    manager_->ReuseTexture(other.id_);
-  }
-
-  Texture& operator=(const Texture& other) {
-    if (other == *this) {
-      return *this;
-    }
-    RestoreTextureId();
-    manager_->ReuseTexture(other.id_);
-    return *this;
-  }
-  Texture& operator=(Texture&& other) {
-    if (other == *this) {
-      return *this;
-    }
-    RestoreTextureId();
-    other.id_ = 0;
-    manager_->ReuseTexture(other.id_);
-    return *this;
-  }
-
-  ~Texture() {
-    RestoreTextureId();
-  }
-
-  void Load(std::string&& path) {
-    RestoreTextureId();
-    manager_->Load(std::move(path));
-  }
-
-  void Bind(GLenum target);
-
-  friend bool operator==(const Texture& tex1, const Texture& tex2) {
-    /// requires the same instance (not content equality)
-    return tex1.id_ == tex2.id_ && &*tex1.manager_ == &*tex2.manager_;
-  }
-
- private:
-  void RestoreTextureId() {
-    if (id_ != 0) {
-      manager_->Restore(id_);
-    }
-  }
-  TextureManager* manager_;
-  int id_;
+  using Base = details::IResource;
+  using Base::Base;
 };
 
 }  // namespace faithful

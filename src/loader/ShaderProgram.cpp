@@ -5,12 +5,14 @@
 #include <new>
 
 namespace faithful {
-namespace utility {
 
-ShaderManager::ShaderManager() {
+namespace details {
+namespace shader {
+
+ShaderProgramManager::ShaderProgramManager() {
 }
 
-ShaderManager::ShaderManager(const char* vertex_shader_path,
+ShaderProgramManager::ShaderProgramManager(const char* vertex_shader_path,
                              const char* fragment_shader_path,
                              const char* geometry_shader_path) noexcept {
   buffer_ = new (std::nothrow) char[256];
@@ -35,12 +37,12 @@ ShaderManager::ShaderManager(const char* vertex_shader_path,
   }
 }
 
-ShaderManager::~ShaderManager() {
+ShaderProgramManager::~ShaderProgramManager() {
   glDeleteProgram(program_);
   delete[] buffer_;
 }
 
-bool ShaderManager::IsValidShader(GLuint shader, GLenum shader_type) noexcept {
+bool ShaderProgramManager::IsValidShader(GLuint shader, GLenum shader_type) noexcept {
   if (!shader) {
     return false;
   }
@@ -63,7 +65,7 @@ bool ShaderManager::IsValidShader(GLuint shader, GLenum shader_type) noexcept {
 
   glGetShaderiv(shader, GL_COMPILE_STATUS, &success_);
 
-// TODO:  glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
+  // TODO:  glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
 
   if (!success_) {
     glGetShaderInfoLog(shader, buffer_size_, nullptr, buffer_);
@@ -73,7 +75,7 @@ bool ShaderManager::IsValidShader(GLuint shader, GLenum shader_type) noexcept {
   return true;
 }
 
-bool ShaderManager::IsValidProgram() noexcept {
+bool ShaderProgramManager::IsValidProgram() noexcept {
   if (!program_) {
     return false;
   }
@@ -89,7 +91,7 @@ bool ShaderManager::IsValidProgram() noexcept {
   return true;
 }
 
-void ShaderManager::AttachShader(const char* path,
+void ShaderProgramManager::AttachShader(const char* path,
                                  GLenum shader_type) noexcept {
   if (!ReadToBuffer(path)) {
     return;
@@ -105,7 +107,7 @@ void ShaderManager::AttachShader(const char* path,
   glDeleteShader(shader);
 }
 
-bool ShaderManager::ReadToBuffer(const char* path) noexcept {
+bool ShaderProgramManager::ReadToBuffer(const char* path) noexcept {
   if (!path) {
     [[unlikely]] return false;
   }
@@ -160,26 +162,28 @@ glBindBuffer(GL_UNIFORM_BUFFER, 0);
 */
 
 
-void ShaderManager::ReuseShaderProgram(int opengl_id) {
+void ShaderProgramManager::ReuseShaderProgram(int opengl_id) {
   // similar to TextureManager
 }
-void ShaderManager::Restore(int opengl_id) {
+void ShaderProgramManager::Restore(int opengl_id) {
   // similar to TextureManager
 }
 
 
-void ShaderObject::Load(std::string&& path) {
-  // reuse on of Shader id from manager_
-  // load implementation __there__
-  //   (opposite to Texture : TextureManager relationships)
-}
+} // namespace shader
+} // namespace details
+
+
 
 void ShaderProgram::Bake() {
+
   // compile, check for errors
 }
 
 void ShaderProgram::AttachShader(GLenum shader_type,
                                  const ShaderObject& shader_obj) {
+  glAttachShader(id_, shader_obj.Id());
+  manager_->IsValidShader(id_, shader_type);
   // attach, check for erorrs
 }
 
@@ -189,5 +193,4 @@ void ShaderProgram::Use() {
   }
 }
 
-}  // namespace utility
 }  // namespace faithful

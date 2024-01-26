@@ -7,6 +7,8 @@
 
 #include <iostream>
 
+#include "ResourceManager.h"
+
 
 /** How to use Shader:
    *
@@ -34,26 +36,36 @@
  */
 
 namespace faithful {
-namespace utility {
+
+class ShaderObject;
+class ShaderProgram;
+
+namespace details {
+namespace shader {
 
 /// should be only 1 instance for the entire program
-class ShaderManager {
+template <int max_active_shader_programs>
+class ShaderProgramManager : public faithful::details::IResourceManager<max_active_shader_programs> {
  public:
-  ShaderManager();
+  using Base = faithful::details::IResourceManager<max_active_shader_programs>;
+  using InstanceInfo = typename Base::InstanceInfo;
 
-  ShaderManager(const char* vertex_shader_path,
-                const char* fragment_shader_path,
-                const char* geometry_shader_path = nullptr) noexcept;
+  friend class faithful::ShaderProgram;
 
-  ShaderManager(const ShaderManager&) = delete;
-  ShaderManager(ShaderManager&& sp) = delete;
-  ShaderManager& operator=(const ShaderManager&) = delete;
-  ShaderManager& operator=(ShaderManager&& sp) = delete;
+  ShaderProgramManager();
+  ~ShaderProgramManager();
 
-  ~ShaderManager();
+  /// not copyable
+  ShaderProgramManager(const ShaderProgramManager&) = delete;
+  ShaderProgramManager& operator=(const ShaderProgramManager&) = delete;
 
-  void ReuseShaderProgram(int opengl_id);
-  void Restore(int opengl_id);
+  /// movable
+  ShaderProgramManager(ShaderProgramManager&&) = default;
+  ShaderProgramManager& operator=(ShaderProgramManager&&) = default;
+
+  // TODO: Is it blocking ? <<-- add thread-safety
+  InstanceInfo Load(std::string&& texture_path);
+
 
   inline void SetUniform(const GLchar* name, GLboolean v0);
 
@@ -148,73 +160,32 @@ class ShaderManager {
   inline void SetUniformMat4x3v(const GLchar* name, GLsizei count,
                                 GLboolean transpose, const GLfloat* value);
 
+
  protected:
-  friend class DefaultShaderProgram;
-
-  void SetProgram(GLuint program) {
-    program_ = program;
-  }
-
- private:
   bool IsValidShader(GLuint shader, GLenum shader_type) noexcept;
-
   bool IsValidProgram() noexcept;
 
   void AttachShader(const char* path, GLenum shader_type) noexcept;
 
   bool ReadToBuffer(const char* path) noexcept;
 
+ private:
   char* buffer_ = nullptr;
   GLint buffer_size_ = 0;
   GLint success_ = 0;
   GLuint program_ = 0;
+  int default_shader_program_id_ = 0; // adjust
 };
 
-class ShaderObject {
- public:
-  ShaderObject(GLenum shader_type, std::string&& path) {
-    // load
-    // compile
-    // keep id_
-  }
+} // namespace shader
+} // namespace details
 
-  /* typical scenario:
-   * { // one scope
-   *  ShaderObject sho1(vertex_type, "some path 1");
-   *  ShaderObject sho2(fragment_type, "some path 2");
-   *
-   *
-   *  // create program_1
-   *  program_1.AttachShader(sho1, sho2);
-   *
-   *
-   *  // there it has not been deleted and internally it reused
-   *  // but ++ref_counter
-   *  ShaderObject sho3(vertex_type, "some path 1");
-   *
-   * program_2.AttachShader(sho3); <-- successfully reused
-   *
-   * }
-   *
-   * */
-
-  ~ShaderObject() {
-    if (id_ != 0) {
-      // glDeleteShader();
-    }
-  }
-
-  void Load(std::string&& path);
-
- private:
-  ShaderManager* manager_;
-  int id_ = 0;
-};
+// TODO: inherit from details::IResource
 
 class ShaderProgram {
  public:
   ShaderProgram() = delete;
-  ShaderProgram(ShaderManager* manager) : manager_(manager) {
+  ShaderProgram(details::shader::ShaderProgramManager* manager) : manager_(manager) {
     id_ = 0; /// id == 0 - id for default texture
   }
 
@@ -265,13 +236,12 @@ class ShaderProgram {
       manager_->Restore(id_);
     }
   }
-  ShaderManager* manager_;
+  details::shader::ShaderProgramManager* manager_;
   int id_;
   /// if baked we can't attach shader objects
   bool baked_ = false;
 };
 
-}  // namespace utility
 }  // namespace faithful
 
 #include "ShaderProgram-inl.h"
