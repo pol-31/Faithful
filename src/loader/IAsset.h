@@ -1,27 +1,31 @@
-#ifndef FAITHFUL_SRC_LOADER_RESOURCEMANAGER_H_
-#define FAITHFUL_SRC_LOADER_RESOURCEMANAGER_H_
+#ifndef FAITHFUL_SRC_LOADER_IASSET_H_
+#define FAITHFUL_SRC_LOADER_IASSET_H_
 
 #include <array>
+#include <iostream> // TODO: replace by utils/Logger.h
 
-// TODO: replace by utils/Logger.h
-#include <iostream>
+#include <glad/glad.h>
 
 #include "../utils/ConstexprVector.h"
+
+
+// TODO: rename file / OR relocate IAsset to separate header
+
 
 namespace faithful {
 namespace details {
 
-class ResourceManagerRefCounter {
+class AssetManagerRefCounter {
  public:
-  ResourceManagerRefCounter() : counter_(0) {}
+  AssetManagerRefCounter() : counter_(0) {}
 
   /// not copyable
-  ResourceManagerRefCounter(const ResourceManagerRefCounter&) = delete;
-  ResourceManagerRefCounter& operator=(const ResourceManagerRefCounter&) = delete;
+  AssetManagerRefCounter(const AssetManagerRefCounter&) = delete;
+  AssetManagerRefCounter& operator=(const AssetManagerRefCounter&) = delete;
 
   /// movable
-  ResourceManagerRefCounter(ResourceManagerRefCounter&&) = default;
-  ResourceManagerRefCounter& operator=(ResourceManagerRefCounter&&) = default;
+  AssetManagerRefCounter(AssetManagerRefCounter&&) = default;
+  AssetManagerRefCounter& operator=(AssetManagerRefCounter&&) = default;
 
   void Increment() {
     ++counter_;
@@ -43,31 +47,32 @@ class ResourceManagerRefCounter {
   int counter_;
 };
 
+
+struct InstanceInfo {
+  InstanceInfo() {
+    ref_counter = new AssetManagerRefCounter;
+  }
+  std::string* path = nullptr; // TODO: does _hash() make sense?
+  AssetManagerRefCounter* ref_counter;
+  int opengl_id = -1;
+};
+
 /** Base class for ShaderProgramManager, ShaderObjectManager, TextureManager, etc
  * despite 'I' that's not interface, but still shouldn't be used directly
  * each Derived_class should implement Load();
  * */
 template <int max_instances>
-class IResourceManager {
+class IAssetManager {
  public:
-  struct InstanceInfo {
-    InstanceInfo() {
-      ref_counter = new ResourceManagerRefCounter;
-    }
-    std::string* path = nullptr; // TODO: does _hash() make sense?
-    ResourceManagerRefCounter* ref_counter;
-    int opengl_id = -1;
-  };
-
-  IResourceManager() = default;
+  IAssetManager() = default;
 
   /// not copyable
-  IResourceManager(const IResourceManager&) = delete;
-  IResourceManager& operator=(const IResourceManager&) = delete;
+  IAssetManager(const IAssetManager&) = delete;
+  IAssetManager& operator=(const IAssetManager&) = delete;
 
   /// movable
-  IResourceManager(IResourceManager&&) = default;
-  IResourceManager& operator=(IResourceManager&&) = default;
+  IAssetManager(IAssetManager&&) = default;
+  IAssetManager& operator=(IAssetManager&&) = default;
 
 
   /// we don't need virtual functions, so just hide it from Derived class
@@ -75,14 +80,6 @@ class IResourceManager {
   InstanceInfo Load() {
     HandleMissingImpl();
   }
-
-  // TODO: these:
-  //  - void Restore(int opengl_id)
-  //  - void ReuseId(int opengl_id)
-  //  should be implemented directly inside the Texture, ShaderObject
-  //  classes because its just effective (they have ptr to ref_counter)
-  //  So they should handle both incrementing / decrementing
-  //  So need somehow always remember about it <------------------------
 
   bool CleanInactive() {
     if (free_instances_.Size() == 0) {
@@ -110,32 +107,32 @@ class IResourceManager {
 };
 
 // TODO: explain opengl_id_, etc, etc
-class IResource {
+class IAsset {
  public:
-  using InstanceInfo = faithful::details::IResourceManager::InstanceInfo;
+  using InstanceInfo = faithful::details::InstanceInfo;
 
-  IResource() {
+  IAsset() {
     ref_counter_ = nullptr;
     opengl_id_ = -1;
   }
 
-  IResource(const InstanceInfo& instance_info) {
+  IAsset(const InstanceInfo& instance_info) {
     opengl_id_ = instance_info.opengl_id;
     ref_counter_ = &*instance_info.ref_counter;
   }
 
-  IResource(const IResource& other) {
+  IAsset(const IAsset& other) {
     opengl_id_ = other.opengl_id_;
     ref_counter_ = &*other.ref_counter_;
     ref_counter_->Increment();
   }
-  IResource(IResource&& other) {
+  IAsset(IAsset&& other) {
     opengl_id_ = other.opengl_id_;
     ref_counter_ = &*other.ref_counter_;
     other.ref_counter_ = nullptr;
   }
 
-  IResource& operator=(const IResource& other) {
+  IAsset& operator=(const IAsset& other) {
     if (other == *this) {
       return *this;
     }
@@ -145,7 +142,7 @@ class IResource {
     ref_counter_->Increment();
     return *this;
   }
-  IResource& operator=(IResource&& other) {
+  IAsset& operator=(IAsset&& other) {
     if (other == *this) {
       return *this;
     }
@@ -156,27 +153,42 @@ class IResource {
     return *this;
   }
 
-  ~IResource() {
+  ~IAsset() {
     DetachRefCounter();
   }
 
-  // TODO: should be hided in derived class
-  void Bind(GLenum target);
+  int OpenglId() const {
+    return opengl_id_;
+  }
 
-  friend bool operator==(const IResource& tex1, const IResource& tex2) {
+  int GlobalId() const {
+    return global_id_;
+  }
+
+  void Bind(GLenum target __attribute__((unused))) {
+      HandleMissingImpl();
+  };
+
+  friend bool operator==(const IAsset& tex1, const IAsset& tex2) {
     return tex1.global_id_ == tex2.global_id_;
   }
 
-  // TODO: explain
+  // TODO: explain SetRefCounter & SetOpenglId
 
   /// DON'T USE without ref_counter handling)
-  void SetRefCounter(details::ResourceManagerRefCounter* ref_counter) {
+  void SetRefCounter(details::AssetManagerRefCounter* ref_counter) {
     ref_counter_ = &*ref_counter;
   }
   /// DON'T USE without ref_counter handling)
   void SetOpenglId(int id) {
     opengl_id_ = id;
   }
+
+ protected:
+  details::AssetManagerRefCounter* ref_counter_;
+  int opengl_id_;
+  int global_id_;
+
  private:
   void DetachRefCounter() {
     if (ref_counter_) {
@@ -184,13 +196,15 @@ class IResource {
     }
   }
 
-  details::ResourceManagerRefCounter* ref_counter_;
-  int opengl_id_;
-  int global_id_;
+  // TODO: static assert
+  void HandleMissingImpl() {
+    std::cerr << "Derived of IResource must implement "
+              << "Bind(GLenum)" << std::endl;
+  }
 };
 
 
 } // namespace details
 } // namespace faithful
 
-#endif  // FAITHFUL_SRC_LOADER_RESOURCEMANAGER_H_
+#endif  // FAITHFUL_SRC_LOADER_IASSET_H_

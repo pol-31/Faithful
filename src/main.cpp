@@ -340,6 +340,10 @@ int main() {
 /// We don't need to #include "mimalloc-new-delete.h"
 /// as it has already been overridden by libmimalloc.a
 
+#include "loader/ShaderObject.h"
+#include "loader/ShaderProgram.h"
+#include "loader/IAsset.h"
+
 #define AL_LIBTYPE_STATIC // <--------------------- important (!!!)
 //#include "config.h"
 

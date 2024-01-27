@@ -6,8 +6,11 @@
 #include "glad/glad.h"
 
 #include <iostream>
+#include <memory>
 
-#include "ResourceManager.h"
+#include "IAsset.h"
+
+#include "ShaderObject.h"
 
 
 /** How to use Shader:
@@ -35,25 +38,46 @@
    *    after last shader processing programmer/user should call ClearCache())
  */
 
-namespace faithful {
 
-class ShaderObject;
-class ShaderProgram;
+/* TODO: handle case:
+ * typical scope failure scenario:
+   * { // scope # 1
+   *  ShaderProgram shp;
+   *
+   * { // scope # 2
+   *   ShaderObject sho(vertex_type, "shader path")
+   *   shp.AttachShader(sho);
+   * } // -- ~sho();
+   *  // --- there happened a lot of things, including Shader object Clearing
+   *  shp.Bake(); < -- there shader object already invalid
+   * }
+   * */
+
+namespace faithful {
 
 namespace details {
 namespace shader {
 
 /// should be only 1 instance for the entire program
 template <int max_active_shader_programs>
-class ShaderProgramManager : public faithful::details::IResourceManager<max_active_shader_programs> {
+class ShaderProgramManager : public faithful::details::IAssetManager<max_active_shader_programs> {
  public:
-  using Base = faithful::details::IResourceManager<max_active_shader_programs>;
+  using Base = faithful::details::IAssetManager<max_active_shader_programs>;
   using InstanceInfo = typename Base::InstanceInfo;
 
-  friend class faithful::ShaderProgram;
+  ShaderProgramManager() {
+    // TODO:
+    //  1) call glCreateProgram for __num__ shader programs
+    //  2) load default shader program
+    //  3) init free_instances_ with indices: 1,2,3,....,max_active_shader_program_num
 
-  ShaderProgramManager();
-  ~ShaderProgramManager();
+    // if (!program_) return;
+  }
+  ~ShaderProgramManager() {
+    for (auto& i : active_instances_) {
+      glDeleteProgram(i.opengl_id_);
+    }
+  }
 
   /// not copyable
   ShaderProgramManager(const ShaderProgramManager&) = delete;
@@ -63,9 +87,47 @@ class ShaderProgramManager : public faithful::details::IResourceManager<max_acti
   ShaderProgramManager(ShaderProgramManager&&) = default;
   ShaderProgramManager& operator=(ShaderProgramManager&&) = default;
 
-  // TODO: Is it blocking ? <<-- add thread-safety
-  InstanceInfo Load(std::string&& texture_path);
+  InstanceInfo Load(std::string&&) {}
 
+ private:
+  using Base::active_instances_;
+  using Base::free_instances_;
+
+  int default_shader_program_id_ = 0; // adjust
+};
+
+} // namespace shader
+} // namespace details
+
+
+class ShaderProgram : public details::IAsset {
+ public:
+  using Base = details::IAsset;
+  using Base::Base;
+  using Base::operator=;
+
+  /// Base::Bind(GLenum) intentionally hided
+  void Bind(GLenum target) {
+    if (!baked_) {
+      glLinkProgram(opengl_id_);
+      // TODO: <---------------------
+//      if (!IsValidProgram()) {
+//        glDeleteProgram(program_);
+//        program_ = 0;
+//      }
+      baked_ = true;
+    }
+    glUseProgram(opengl_id_);
+  }
+
+  void AttachShader(GLenum shader_type, const ShaderObject& shader_obj) {
+    baked_ = false;
+    glAttachShader(opengl_id_, shader_obj.OpenglId());
+  }
+  void DetachShader(GLenum shader_type, const ShaderObject& shader_obj) {
+    baked_ = false;
+    glDetachShader(opengl_id_, 0); // TODO: second arg (do we need to store idx:type?)
+  }
 
   inline void SetUniform(const GLchar* name, GLboolean v0);
 
@@ -161,83 +223,33 @@ class ShaderProgramManager : public faithful::details::IResourceManager<max_acti
                                 GLboolean transpose, const GLfloat* value);
 
 
- protected:
-  bool IsValidShader(GLuint shader, GLenum shader_type) noexcept;
-  bool IsValidProgram() noexcept;
-
-  void AttachShader(const char* path, GLenum shader_type) noexcept;
-
-  bool ReadToBuffer(const char* path) noexcept;
-
  private:
-  char* buffer_ = nullptr;
-  GLint buffer_size_ = 0;
-  GLint success_ = 0;
-  GLuint program_ = 0;
-  int default_shader_program_id_ = 0; // adjust
-};
-
-} // namespace shader
-} // namespace details
-
-// TODO: inherit from details::IResource
-
-class ShaderProgram {
- public:
-  ShaderProgram() = delete;
-  ShaderProgram(details::shader::ShaderProgramManager* manager) : manager_(manager) {
-    id_ = 0; /// id == 0 - id for default texture
-  }
-
-  ShaderProgram(const ShaderProgram& other) {
-    manager_->ReuseShaderProgram(other.id_);
-  }
-  ShaderProgram(ShaderProgram&& other) {
-    other.id_ = 0;
-    manager_->ReuseShaderProgram(other.id_);
-  }
-
-  ShaderProgram& operator=(const ShaderProgram& other) {
-    if (other == *this) {
-      return *this;
+  bool IsValidProgram() noexcept {
+    if (!opengl_id_) {
+      return false;
     }
-    RestoreTextureId();
-    manager_->ReuseShaderProgram(other.id_);
-    return *this;
-  }
-  ShaderProgram& operator=(ShaderProgram&& other) {
-    if (other == *this) {
-      return *this;
+
+    // TODO: am i sure for text below?
+
+    int success;
+
+    /// we're using mimalloc, so such allocation won't harm too much
+    int buffer_size = 512;
+    std::string buffer;
+    buffer.reserve(buffer_size);
+
+    glGetProgramiv(opengl_id_, GL_LINK_STATUS, &success);
+
+    // TODO:  glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
+    if (!success) {
+      glGetProgramInfoLog(global_id_, buffer_size, nullptr, buffer.data());
+      std::cout << "Program linking error: " << buffer << "\n";
+      return false;
     }
-    RestoreTextureId();
-    other.id_ = 0;
-    manager_->ReuseShaderProgram(other.id_);
-    return *this;
+    return true;
   }
 
-  ~ShaderProgram() {
-    RestoreTextureId();
-  }
-
-  void Bake();
-
-  void AttachShader(GLenum shader_type, const ShaderObject& shader_obj);
-
-  void Use();
-
-  friend bool operator==(const ShaderProgram& tex1, const ShaderProgram& tex2) {
-    /// requires the same instance (not content equality)
-    return tex1.id_ == tex2.id_ && &*tex1.manager_ == &*tex2.manager_;
-  }
-
- private:
-  void RestoreTextureId() {
-    if (id_ != 0) {
-      manager_->Restore(id_);
-    }
-  }
-  details::shader::ShaderProgramManager* manager_;
-  int id_;
+  using Base::opengl_id_;
   /// if baked we can't attach shader objects
   bool baked_ = false;
 };
