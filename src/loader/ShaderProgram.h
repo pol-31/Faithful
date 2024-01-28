@@ -13,32 +13,6 @@
 #include "ShaderObject.h"
 
 
-/** How to use Shader:
-   *
-   * enum class ShaderMode {
-   * VertFrag,
-   * Computation,
-   * VertGeomFrag,
-   * TesselationGeom,
-   * Tesselation,
-   * etc...
-   * }
-   *
-   * Shader sun_shader(ShaderMode::VertFrag,
-   *                   "../assets/shaders/basic_shader.vert",
-   *                   "../assets/shaders/basic_shader.frag");
-   *
-   * // and then just use:
-   *
-   * glUseProgram(sun_shader.GetShaderId());
-   *
-   *
-   * TODO: reusing of glShaderObject (maybe ctor internally will check paths
-   *    and in case of already processed just return ref/ptr to it, then
-   *    after last shader processing programmer/user should call ClearCache())
- */
-
-
 /* TODO: handle case:
  * typical scope failure scenario:
    * { // scope # 1
@@ -66,12 +40,18 @@ class ShaderProgramManager : public faithful::details::IAssetManager<max_active_
   using InstanceInfo = typename Base::InstanceInfo;
 
   ShaderProgramManager() {
-    // TODO:
-    //  1) call glCreateProgram for __num__ shader programs
-    //  2) load default shader program
-    //  3) init free_instances_ with indices: 1,2,3,....,max_active_shader_program_num
-
-    // if (!program_) return;
+    for (auto& program : active_instances_) {
+      program = {"", new details::AssetManagerRefCounter, glCreateProgram()};
+      if (program.opengl_id == 0) {
+        std::cerr << "shaderProgramManager() error in glCreateProgram()"
+                  << std::endl;
+        return;
+      }
+    }
+    // TODO: load default shader program
+    for (int i = 0; i < free_instances_.Size(); ++i) {
+      free_instances_[i] = i;
+    }
   }
   ~ShaderProgramManager() {
     for (auto& i : active_instances_) {
@@ -121,12 +101,21 @@ class ShaderProgram : public details::IAsset {
   }
 
   void AttachShader(GLenum shader_type, const ShaderObject& shader_obj) {
+    int shader_object_info_id = ShaderIdByShaderType(shader_type);
+    if (shader_object_info_id == -1) return;
+    // TODO: should delete previous data <----------------------------------------
+    ShaderObjectInfo& instance = shader_object_info_[shader_object_info_id];
+    instance.ref_counter = shader_obj.GetRefCounter();
+    instance.opengl_id = shader_obj.OpenglId();
     baked_ = false;
     glAttachShader(opengl_id_, shader_obj.OpenglId());
   }
   void DetachShader(GLenum shader_type, const ShaderObject& shader_obj) {
+    int shader_object_info_id = ShaderIdByShaderType(shader_type);
+    if (shader_object_info_id == -1) return;
     baked_ = false;
-    glDetachShader(opengl_id_, 0); // TODO: second arg (do we need to store idx:type?)
+    glDetachShader(opengl_id_,
+                   shader_object_info_[shader_object_info_id].opengl_id);
   }
 
   inline void SetUniform(const GLchar* name, GLboolean v0);
@@ -224,19 +213,39 @@ class ShaderProgram : public details::IAsset {
 
 
  private:
+  int ShaderIdByShaderType(GLenum shader_type) {
+    switch (shader_type) {
+      case GL_VERTEX_SHADER:
+        return 0;
+      case GL_FRAGMENT_SHADER:
+        return 1;
+      case GL_GEOMETRY_SHADER:
+        return 2;
+      case GL_TESS_CONTROL_SHADER:
+        return 3;
+      case GL_TESS_EVALUATION_SHADER:
+        return 4;
+      case GL_COMPUTE_SHADER:
+        return 5;
+      default:
+        std::cerr << "ShaderProgram::ShaderIdByShaderType error in shader_type"
+                  << std::endl;
+        return -1;
+    }
+  }
+
   bool IsValidProgram() noexcept {
     if (!opengl_id_) {
       return false;
     }
 
-    // TODO: am i sure for text below?
-
-    int success;
-
+    //   TODO: am i sure for text below?
     /// we're using mimalloc, so such allocation won't harm too much
     int buffer_size = 512;
     std::string buffer;
     buffer.reserve(buffer_size);
+    
+    int success;
 
     glGetProgramiv(opengl_id_, GL_LINK_STATUS, &success);
 
@@ -250,6 +259,16 @@ class ShaderProgram : public details::IAsset {
   }
 
   using Base::opengl_id_;
+
+  struct ShaderObjectInfo {
+    GLuint opengl_id;
+    details::AssetManagerRefCounter* ref_counter;
+  };
+
+  /// there is possible only 6 types of shader by now
+  /// they comes in such order: vert, frag, geom, tess_control, tess_eval, comp
+  std::array<ShaderObjectInfo, 6> shader_object_info_;
+
   /// if baked we can't attach shader objects
   bool baked_ = false;
 };

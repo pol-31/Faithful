@@ -3,6 +3,7 @@
 
 #include <array>
 #include <iostream> // TODO: replace by utils/Logger.h
+#include <tuple>
 
 #include <glad/glad.h>
 
@@ -49,10 +50,8 @@ class AssetManagerRefCounter {
 
 
 struct InstanceInfo {
-  InstanceInfo() {
-    ref_counter = new AssetManagerRefCounter;
-  }
-  std::string* path = nullptr; // TODO: does _hash() make sense?
+  InstanceInfo() : ref_counter(new AssetManagerRefCounter) {};
+  std::string path{}; // TODO: does _hash() make sense?
   AssetManagerRefCounter* ref_counter;
   int opengl_id = -1;
 };
@@ -85,7 +84,7 @@ class IAssetManager {
     if (free_instances_.Size() == 0) {
       for (auto& t: active_instances_) {
         if (!t.ref_counter->Active()) {
-          delete t.path;
+          t.path.clear();
           /// safe because both std::array have the same size
           free_instances_[free_instances_.Size()];
         }
@@ -94,9 +93,21 @@ class IAssetManager {
     return free_instances_.Size() == 0 ? false : true;
   }
 
+  /// returns opengl id and active_instances id
+  std::tuple<int, int> AcquireId() {
+    if (free_instances_.Empty()) {
+      if (!CleanInactive()) {
+        return {0, 0};
+      }
+    }
+    int active_instances_id = free_instances_.Back();
+    free_instances_.PopBack();
+    return {active_instances_[active_instances_id], active_instances_id};
+  }
+
  protected:
   std::array<InstanceInfo, max_instances> active_instances_;
-  faithful::utils::ConstexprVector<int, max_instances> free_instances_;
+  faithful::utils::ConstexprVector<int, max_instances> free_instances_; // id's for active_instances TODO: explain
 
  private:
   // TODO: static assert

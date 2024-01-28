@@ -22,8 +22,30 @@ class ShaderObjectManager : public faithful::details::IAssetManager<max_active_s
   using InstanceInfo = typename Base::InstanceInfo;
 
   ShaderObjectManager() {
+    static_assert(max_active_shader_objects < 6,
+                  "max_active_shader_objects should be at least 6");
+
+    // TODO: very bad, need to adjust
+    active_instances_[0] = {"",
+                            new details::AssetManagerRefCounter,
+                            glCreateShader(GL_VERTEX_SHADER)};
+    active_instances_[1] = {"",
+                            new details::AssetManagerRefCounter,
+                            glCreateShader(GL_FRAGMENT_SHADER)};
+    active_instances_[2] = {"",
+                            new details::AssetManagerRefCounter,
+                            glCreateShader(GL_GEOMETRY_SHADER)};
+    active_instances_[3] = {"",
+                            new details::AssetManagerRefCounter,
+                            glCreateShader(GL_TESS_CONTROL_SHADER)};
+    active_instances_[4] = {"",
+                            new details::AssetManagerRefCounter,
+                            glCreateShader(GL_TESS_EVALUATION_SHADER)};
+    active_instances_[5] = {"",
+                            new details::AssetManagerRefCounter,
+                            glCreateShader(GL_COMPUTE_SHADER)};
     // TODO:
-    //  1) call glGenShader for __num__ shader objects
+    //  (-) call glGenShader for __num__ shader objects
     //  2) load 1-2 default shader objects
     //  3) init free_instances_ with indices: 1,2,3,....,max_active_shader_objects_num
     //  4) allocate buffer_; bool success_, int buffer_size_
@@ -48,39 +70,64 @@ class ShaderObjectManager : public faithful::details::IAssetManager<max_active_s
 
   // TODO: Is it blocking ? <<-- add thread-safety
   InstanceInfo Load(std::string&& shader_path) {
-
+    /// we're using mimalloc, so such allocation won't harm too much
     int buffer_size = 512;
     std::string buffer;
     buffer.reserve(buffer_size);
 
     if (!ReadToBuffer(shader_path)) {
-      return;
+      return {"", nullptr, default_shader_object_id_};
     }
     auto shader_type = DeduceShaderType(shader_path);
-    GLuint shader = glCreateShader(shader_type);
 
-    /// we're using mimalloc, so such allocation won't harm too much
-    glShaderSource(shader, 1, buffer.data(), nullptr);
-    glCompileShader(shader);
-
-    InstanceInfo instance_info;
-
-    if (!IsValidShader()) {
-      instance_info.opengl_id = default_shader_object_id_;
-      instance_info.ref_counter = nullptr;
-      shader_path = nullptr;
-    } else {
-      // TODO: reuse ref_counter (see Texture.h)
-      // TODO: reuse opengl_id (see Texture.h)
-      instance_info.path = shader_path;
+    auto [shader_id, active_instances_id] = Base::AcquireId(); // structure binding
+    if (shader_id == 0) {
+      return {"", nullptr, default_shader_object_id_};
     }
+
+    glShaderSource(shader_id, 1,
+                   reinterpret_cast<const GLchar* const*>(buffer.c_str()),
+                   nullptr);
+    glCompileShader(shader_id);
+
+    if (!IsValidShader(shader_id, shader_type,
+                       buffer_size, std::move(buffer))) {
+      return {"", nullptr, default_shader_object_id_};
+    }
+    return {shader_path, active_instances_[active_instances_id], shader_path};
   }
 
  private:
   GLenum DeduceShaderType(std::string&& shader_path) {
-    // TODO: .vert, .frag, etc...
-    std::cerr << "DeduceShaderType(std::string&&) not implemented"
-              << std::endl;
+    /**
+     * Vertex Shader: .vert
+     * Fragment Shader: .frag
+     * Geometry Shader: .geom
+     * Tessellation Control Shader (TCS): .tesc
+     * Tessellation Evaluation Shader (TES): .tese
+     * Compute Shader: .comp
+     */
+    if (shader_path.length() <= 5) {
+      // TODO: handle error there; return
+      return 0;
+    }
+    switch (shader_path.back()) {
+      case 't':
+        return GL_VERTEX_SHADER;
+      case 'g':
+        return GL_FRAGMENT_SHADER;
+      case 'm':
+        return GL_GEOMETRY_SHADER;
+      case 'c':
+        return GL_TESS_CONTROL_SHADER;
+      case 'e':
+        return GL_TESS_EVALUATION_SHADER;
+      case 'p':
+        return GL_COMPUTE_SHADER;
+      default:
+        // TODO: handle error there; return
+        return 0;
+    }
   }
 
   bool IsValidShader(GLuint shader, GLenum shader_type,
@@ -88,7 +135,6 @@ class ShaderObjectManager : public faithful::details::IAssetManager<max_active_s
     if (!shader) {
       return false;
     }
-
     std::string_view shader_name;
 
     switch (shader_type) {
@@ -100,6 +146,15 @@ class ShaderObjectManager : public faithful::details::IAssetManager<max_active_s
         break;
       case GL_GEOMETRY_SHADER:
         shader_name = "Geometry shader";
+        break;
+      case GL_TESS_CONTROL_SHADER:
+        shader_name = "Tessellation control shader";
+        break;
+      case GL_TESS_EVALUATION_SHADER:
+        shader_name = "Tesselation evaluation shader";
+        break;
+      case GL_COMPUTE_SHADER:
+        shader_name = "Compute shader";
         break;
       default:
         shader_name = "Shader";
@@ -119,11 +174,10 @@ class ShaderObjectManager : public faithful::details::IAssetManager<max_active_s
   }
 
 
- // TODO: buffer usage totally incorrect <---------------------
-  bool ReadToBuffer(const char* path,
+  bool ReadToBuffer(const std::string& path,
                     int buffer_size, std::string& buffer) noexcept {
-    if (!path) {
-      [[unlikely]] return false;
+    if (path.empty()) {
+      return false;
     }
     std::ifstream shader_file(path, std::ios::binary);
 
@@ -133,25 +187,18 @@ class ShaderObjectManager : public faithful::details::IAssetManager<max_active_s
       return false;
     }
 
-    // getting file size
     shader_file.seekg(0, std::ios::end);
     std::fpos shader_file_size = shader_file.tellg();
 
     shader_file.seekg(0, std::ios::beg);
 
+    int needed_buffer_size = static_cast<int>(shader_file_size);
+
     // TODO: (class Buffer)
-    if (sizeof(buffer) < (static_cast<int>(shader_file_size) + 1)) {
-      delete[] buffer_;
-      buffer_ = new (std::nothrow) char[static_cast<int>(shader_file_size) + 1];
-      if (!buffer_) {
-        return false;
-      }
-      buffer_size_ = static_cast<int>(shader_file_size) + 1;
+    if (sizeof(buffer_size) < needed_buffer_size) {
+      buffer.reserve(needed_buffer_size);
     }
-
-    shader_file.read(buffer.c_str(), shader_file_size);
-    buffer[shader_file_size] = '\0';
-
+    shader_file.read(buffer.data(), shader_file_size);
     return true;
   }
 
@@ -165,16 +212,27 @@ class ShaderObjectManager : public faithful::details::IAssetManager<max_active_s
 } // namespace details
 
 
-// TODO: somehow integrate shader type (vertex, fragment, geometry, etc...)
 class ShaderObject : public details::IAsset {
  public:
   using Base = details::IAsset;
   using Base::Base;
   using Base::operator=;
 
+  // TODO: make accessible only to details::shader::ShaderObjectManager
+  void SetShaderType(GLenum shader_type) {
+    shader_type_ = shader_type;
+  }
+
+ protected:
+  friend class ShaderProgram;
+  details::AssetManagerRefCounter* GetRefCounter() const {
+    return ref_counter_;
+  }
+
  private:
-  // TODO: type?
+  GLenum shader_type_;
   using Base::opengl_id_;
+  using Base::ref_counter_;
 };
 
 } // namespace faithful
