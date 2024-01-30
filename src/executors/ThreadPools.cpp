@@ -9,9 +9,9 @@
 #include "GLFW/glfw3.h"
 #include <glad/gl.h>
 
-#include "../src/Engine.h"
-#include "Logger.h"
-#include "Function.h"
+#include "../Engine.h"
+#include "../../utils/Logger.h"
+#include "../../utils/Function.h"
 #include "ThreadPoolCall.h"
 
 namespace faithful {

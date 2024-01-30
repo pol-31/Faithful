@@ -9,8 +9,8 @@
 #include "GLFW/glfw3.h"
 #include <glad/gl.h>
 
-#include "Function.h"
-#include "Logger.h"
+#include "../../utils/Function.h"
+#include "../../utils/Logger.h"
 
 namespace faithful {
 
