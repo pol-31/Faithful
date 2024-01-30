@@ -76,7 +76,7 @@ class IAssetManager {
 
   /// we don't need virtual functions, so just hide it from Derived class
   /// (there's no usage of this dynamic polymorphism on Faithful by now)
-  InstanceInfo Load() {
+  InstanceInfo Load(std::string&&) {
     HandleMissingImpl();
   }
 
@@ -176,10 +176,6 @@ class IAsset {
     return global_id_;
   }
 
-  void Bind(GLenum target __attribute__((unused))) {
-      HandleMissingImpl();
-  };
-
   friend bool operator==(const IAsset& tex1, const IAsset& tex2) {
     return tex1.global_id_ == tex2.global_id_;
   }
@@ -205,12 +201,6 @@ class IAsset {
     if (ref_counter_) {
       ref_counter_->Decrement();
     }
-  }
-
-  // TODO: static assert
-  void HandleMissingImpl() {
-    std::cerr << "Derived of IResource must implement "
-              << "Bind(GLenum)" << std::endl;
   }
 };
 
