@@ -340,45 +340,29 @@ int main() {
 /// We don't need to #include "mimalloc-new-delete.h"
 /// as it has already been overridden by libmimalloc.a
 
-#include "loader/ShaderObject.h"
-#include "loader/ShaderProgram.h"
-#include "loader/IAsset.h"
-
 #define AL_LIBTYPE_STATIC // <--------------------- important (!!!)
 //#include "config.h"
 
 #include <cmath>
-
-#include "AL/al.h"
-#include "AL/alc.h"
 #include <iostream>
 
-#include "loader/Texture.h"
+#include <AL/al.h>
+#include <AL/alc.h>
 
-// Function to check for OpenAL errors
-void CheckALError(const char* message) {
-//  ALenum error = alGetError();
-//  if (error != AL_NO_ERROR) {
-//    std::cerr << "OpenAL Error (" << message << "): " << alGetString(error) << std::endl;
-//  }
-}
+#include "executors/AudioThreadPool.h"
+
+//TODO:
+// 1) Init AudioThreadPool (OpenAL context & devices & extensions)
+// 2) create & init SoundManager, MusicManager
+// 3) run music, sound (separately)
+// n)...
 
 int main() {
-  // Initialize OpenAL context
-  ALCdevice* device = alcOpenDevice(nullptr);
-  if (!device) {
-    std::cerr << "Failed to initialize OpenAL device" << std::endl;
-    return 1;
-  }
 
-  ALCcontext* context = alcCreateContext(device, nullptr);
-  if (!context) {
-    std::cerr << "Failed to create OpenAL context" << std::endl;
-    alcCloseDevice(device);
-    return 1;
-  }
+  std::cerr << "we relocated creation of OpenAL context, device !!" << std::endl;
+  return 0;
 
-  alcMakeContextCurrent(context);
+
 
   // Check OpenAL version
   const ALCchar* al_version = alGetString(AL_VERSION);
@@ -428,11 +412,7 @@ int main() {
   alDeleteSources(1, &source);
   alDeleteBuffers(1, &buffer);
 
-  alcMakeContextCurrent(nullptr);
-  alcDestroyContext(context);
-  alcCloseDevice(device);
-
-  CheckALError("msg");
+  std::cerr << "we relocated destrotying of OpenAL context, device !!" << std::endl;
 
   return 0;
 }

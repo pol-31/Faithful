@@ -15,6 +15,8 @@
 
 #include <vorbis/vorbisfile.h>
 
+#include "queues/LifoBoundedMPSCBlockingQueue.h"
+
 namespace faithful {
 namespace details {
 
@@ -43,8 +45,41 @@ struct StreamingAudioData
 #define alCall(function, ...) alCallImpl(__FILE__, __LINE__, function, __VA_ARGS__)
 #define alcCall(function, device, ...) alcCallImpl(__FILE__, __LINE__, function, device, __VA_ARGS__)
 
-class AudioThreadPool : public Executor {
+/// "1" - because we need only ONE openAL context
+class AudioThreadPool : public StaticExecutor<1> {
  public:
+  AudioThreadPool() {
+    if (!InitOpenALContext()) {
+      std::cerr << "Can't create OpenAL context" << std::endl;
+      std::abort(); // TODO: replace by Logger::LogIF OR FAITHFUL_TERMINATE
+    }
+  }
+
+  ~AudioThreadPool() {
+    alcMakeContextCurrent(nullptr);
+    alcDestroyContext(openal_context_);
+    alcCloseDevice(openal_device_);
+  }
+
+ private:
+  bool InitOpenALContext() {
+    // Initialize OpenAL context
+    ALCdevice* device = alcOpenDevice(nullptr);
+    if (!device) {
+      std::cerr << "Failed to initialize OpenAL device" << std::endl;
+      return false;
+    }
+
+    ALCcontext* context = alcCreateContext(device, nullptr);
+    if (!context) {
+      std::cerr << "Failed to create OpenAL context" << std::endl;
+      alcCloseDevice(device);
+      return false;
+    }
+
+    alcMakeContextCurrent(context); // TODO: ----------------------------------idk
+    return true;
+  }
 
   void check_al_errors(const std::string& filename, const std::uint_fast32_t line)
   {
@@ -185,10 +220,8 @@ class AudioThreadPool : public Executor {
     return audioData->sizeConsumed;
   }
 
-  void PlayCurrent();
-  void UpdateCurrent();
-  void StopCurrent();
-
+  ALCcontext* openal_context_;
+  ALCdevice* openal_device_;
 };
 
 } // namespace details

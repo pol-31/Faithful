@@ -8,8 +8,8 @@ add_executable(faithful-core
         main.cpp
         io/Monitor.cpp
         io/Window.cpp
-        loader/ShaderProgram.cpp
-        loader/Texture.cpp
+        executors/queues/LifoBoundedMPSCBlockingQueue.cpp
+        executors/AudioThreadPool.cpp
         ${FAITHFUL_MAIN_SOURCES})
 
 target_compile_options(faithful-core PRIVATE ${FAITHFUL_COMPILE_OPTIONS})
