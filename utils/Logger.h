@@ -9,15 +9,16 @@
 #include <type_traits>
 #include <string>
 
-#ifndef ASSET_PROCESSOR
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
-#include <glad/gl.h>
-#endif
+#include <glad/glad.h>
 
 #include "Span.h"
 #include "Buffer.h"
 
+
+#include <AL/al.h>
+#include <AL/alc.h>
 
 //FAITHFUL_LOGGER_BUFFERING TODO:__________________________________
 //FAITHFUL_LOGGER_SEVERITY_ALL
@@ -25,18 +26,6 @@
 //FAITHFUL_LOGGER_SEVERITY_ONLY_FATAL
 
 namespace faithful {
-
-template <typename T>
-struct IsLogCompatibleStringType
-    : std::disjunction<std::is_same<std::decay_t<T>, const char*>,
-                       std::is_same<std::decay_t<T>, const std::string&>,
-                       std::is_same<std::decay_t<T>, std::string>,
-                       std::is_same<std::decay_t<T>, std::string&>,
-                       std::is_same<std::decay_t<T>, std::string&&>> {};
-
-template <typename T>
-constexpr bool IsLogCompatibleStringType_v =
-    IsLogCompatibleStringType<T>::value;
 
 enum class LogType {
   kInfo,
@@ -97,24 +86,22 @@ class Logger {
   /// so we always writing to console (immediately in both cases):
   ///    in Debug: all types
   ///    in Release: kError, kWarning (BUT we can add command for showing kInfo)
-  template <typename T,
-            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void Log(LogType type, T error_info) {
+  void Log(LogType type, std::string&& error_info) {
     switch (type) {
       // TODO: FAITHFUL_MAIN_LOGGER
 #ifndef LOG_INFO_MESSAGES
       case LogType::kInfo:
         if (log_level_ == LogLevel::kAll)
-          WriteMessage(error_info, "Info: ");
+          WriteMessage(std::move(error_info), "Info: ");
         break;
 #endif
       case LogType::kWarning:
         if (log_level_ != LogLevel::kOnlyFatal)
-          WriteMessage(error_info, "Warning: ");
+          WriteMessage(std::move(error_info), "Warning: ");
         break;
       case LogType::kError:
         if (log_level_ != LogLevel::kOnlyFatal)
-          WriteMessage(error_info, "Error: ");
+          WriteMessage(std::move(error_info), "Error: ");
         break;
       case LogType::kFatal:
         HandleFatalError(error_info);
@@ -123,119 +110,10 @@ class Logger {
         break;
     }
   }
-  template <typename T,
-            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void LogIf(LogType type, bool cond, T error_info) {
+
+  void LogIf(LogType type, bool cond, std::string&& error_info) {
     if (cond)
-      Log(type, error_info);
-  }
-
-  // TODO 1: OpenAl, Assimp error checking
-
-  /// for Debug purposes: Assimp, OpenGL, GLFW error checks
-
-  // TODO 2: depends on macros in CmakeList.txt (Faithful / AssetProcessor)
-
-  // TODO: FAITHFUL_MAIN_LOGGER
-#ifndef ASSET_PROCESSOR
-  template <typename T,
-            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void GLCheckError(T error_info) {
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR) {
-      switch (error) {
-        case GL_INVALID_ENUM: {
-          WriteMessage(error_info, "GL: invalid enum: ");
-          return;
-        }
-        case GL_INVALID_VALUE: {
-          WriteMessage(error_info, "GL: invalid value: ");
-          return;
-        }
-        case GL_INVALID_OPERATION: {
-          WriteMessage(error_info, "GL: invalid operation: ");
-          return;
-        }
-        case GL_INVALID_FRAMEBUFFER_OPERATION: {
-          WriteMessage(error_info, "GL: invalid framebuffer operation: ");
-          return;
-        }
-        case GL_OUT_OF_MEMORY: {
-          WriteMessage(error_info, "GL: out of memory: ");
-          return;
-        }
-        default: {
-          WriteMessage(error_info, "GL: undefined error: ");
-          return;
-        }
-      }
-    }
-  }
-
-  template <typename T,
-            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void GLFWCheckError(T error_info) {
-    int error = glfwGetError(nullptr);
-    if (error != GLFW_NO_ERROR) {
-      switch (error) {
-        case GLFW_NOT_INITIALIZED: {
-          WriteMessage(error_info, "GLFW: not initialized: ");
-          return;
-        }
-        case GLFW_NO_CURRENT_CONTEXT: {
-          WriteMessage(error_info, "GLFW: no current context: ");
-          return;
-        }
-        case GLFW_INVALID_ENUM: {
-          WriteMessage(error_info, "GLFW: invalid enum: ");
-          return;
-        }
-        case GLFW_INVALID_VALUE: {
-          WriteMessage(error_info, "GLFW: invalid value: ");
-          return;
-        }
-        case GLFW_OUT_OF_MEMORY: {
-          WriteMessage(error_info, "GLFW: out of memory: ");
-          return;
-        }
-        case GLFW_API_UNAVAILABLE: {
-          WriteMessage(error_info, "GLFW: api unavailable: ");
-          return;
-        }
-        case GLFW_VERSION_UNAVAILABLE: {
-          WriteMessage(error_info, "GLFW: version unavailable: ");
-          return;
-        }
-        case GLFW_PLATFORM_ERROR: {
-          WriteMessage(error_info, "GLFW: platform error: ");
-          return;
-        }
-        case GLFW_FORMAT_UNAVAILABLE: {
-          WriteMessage(error_info, "GLFW: format unavailable: ");
-          return;
-        }
-        case GLFW_NO_WINDOW_CONTEXT: {
-          WriteMessage(error_info, "GLFW: no window context: ");
-          return;
-        }
-        default: {
-          WriteMessage(error_info, "GLFW: undefined error: ");
-          return;
-        }
-      }
-    }
-  }
-
-#endif
-
-  template <typename T,
-            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void AssimpCheckError(T error_info) {
-  }
-
-  template <typename T,
-            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void ALCheckError(T error_info) {
+      Log(type, std::move(error_info));
   }
 
   virtual void Flush() = 0;
@@ -279,10 +157,6 @@ class Logger {
     std::terminate();  // TODO: not Terminate, but safe_program_exit
   }
 
-  virtual void WriteMessage(const char* error_info,
-                            const char* extra_error_info) = 0;
-  virtual void WriteMessage(const std::string& error_info,
-                            const char* extra_error_info) = 0;
   virtual void WriteMessage(std::string&& error_info,
                             const char* extra_error_info) = 0;
 
@@ -308,17 +182,9 @@ class ConsoleLogger : public Logger {
     std::cout << std::flush;
   }
 
-  void WriteMessage(const char* error_info,
-                    const char* extra_error_info) override {
-    WriteMessageImpl(error_info, extra_error_info);
-  }
-  void WriteMessage(const std::string& error_info,
-                    const char* extra_error_info) override {
-    WriteMessageImpl(error_info, extra_error_info);
-  }
   void WriteMessage(std::string&& error_info,
                     const char* extra_error_info) override {
-    WriteMessageImpl(error_info, extra_error_info);
+    WriteMessageImpl(std::move(error_info), extra_error_info);
   }
 
  private:
@@ -326,9 +192,7 @@ class ConsoleLogger : public Logger {
   /// then we automatically std::flush output
   /// it seems we lose immediate error information, but corresponding
   /// IOThreadPool should handle it adequately in term of time
-  template <typename T,
-            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void WriteMessageImpl(T error_info, const char* extra_error_info) {
+  void WriteMessageImpl(std::string&& error_info, const char* extra_error_info) {
     if (!busy_.test_and_set(std::memory_order_relaxed)) {
       auto accumulated_data = buffer_.Read();
       for (auto i : accumulated_data) {
@@ -395,23 +259,13 @@ class FileLogger : public Logger {
     std::terminate();  // TODO: not Terminate, but safe_program_exit
   }
 
-  void WriteMessage(const char* error_info,
-                    const char* extra_error_info) override {
-    WriteMessageImpl(error_info, extra_error_info);
-  }
-  void WriteMessage(const std::string& error_info,
-                    const char* extra_error_info) override {
-    WriteMessageImpl(error_info, extra_error_info);
-  }
   void WriteMessage(std::string&& error_info,
                     const char* extra_error_info) override {
-    WriteMessageImpl(error_info, extra_error_info);
+    WriteMessageImpl(std::move(error_info), extra_error_info);
   }
 
  private:
-  template <typename T,
-            typename = std::enable_if_t<IsLogCompatibleStringType_v<T>>>
-  void WriteMessageImpl(T error_info, const char* extra_error_info) {
+  void WriteMessageImpl(std::string&& error_info, const char* extra_error_info) {
 #ifdef DEBUG_BUILD
     if (!busy_.test_and_set(std::memory_order_relaxed)) {
       if ((buffering_on && buffer_.Full()) || !buffering_on) {
@@ -469,23 +323,84 @@ class FileLogger : public Logger {
   std::ofstream log_file_;
 };
 
-Logger* CreateLogger() {
-#if DEBUG_BUILD
-  return new ConsoleLogger;
-#else
-  return new FileLogger;
+#define GL_CALL(function, ...) GlCallImpl(__FILE__, __LINE__, function, __VA_ARGS__)
+void CheckOpenGlError(std::string&& error_info);
+
+#define GLFW_CALL(function, ...) GlfwCallImpl(__FILE__, __LINE__, function, __VA_ARGS__)
+void CheckOpenGlfwError(std::string&& error_info);
+
+#define AL_CALL(function, ...) AlCallImpl(__FILE__, __LINE__, function, __VA_ARGS__)
+#define ALC_CALL(function, device, ...) AlcCallImpl(__FILE__, __LINE__, function, device, __VA_ARGS__)
+void CheckOpenAlError(std::string&& error_info);
+
+template<typename Fn, typename... Args>
+auto GlCallImpl(const char* filename, int line, Fn fn, Args... args)
+    ->typename std::enable_if<std::is_same<void, decltype(fn(args...))>::value,
+                               decltype(fn(args...))>::type {
+  function(std::forward<Args>(args)...);
+#ifndef FAITHFUL_DEBUG
+  std::string error_info;
+  error_info += "Error OpenGL (";
+  error_info += filename;
+  error_info += ": ";
+  error_info += line;
+  error_info += ") ";
+  CheckOpenGlError(std::move(error_info));
 #endif
 }
 
-Logger* CreateLogger(Logger::LogMode mode) {
-  if (mode == Logger::LogMode::kConsole) {
-    return new ConsoleLogger;
-  } else {
-    return new FileLogger;
-  }
+template<typename Fn, typename... Args>
+auto GlfwCallImpl(const char* filename, int line, Fn fn, Args... args)
+    ->typename std::enable_if<std::is_same<void, decltype(fn(args...))>::value,
+                               decltype(fn(args...))>::type {
+  function(std::forward<Args>(args)...);
+#ifndef FAITHFUL_DEBUG
+  std::string error_info;
+  error_info += "Error GLFW (";
+  error_info += filename;
+  error_info += ": ";
+  error_info += line;
+  error_info += ") ";
+  CheckOpenGlfwError(std::move(error_info));
+#endif
 }
 
-#ifdef DEBUG_BUILD
+template<typename Fn, typename... Args>
+auto AlCallImpl(const char* filename, int line, Fn fn, Args... args)
+    ->typename std::enable_if<std::is_same<void, decltype(fn(args...))>::value,
+                               decltype(fn(args...))>::type {
+  function(std::forward<Args>(args)...);
+#ifndef FAITHFUL_DEBUG
+  std::string error_info;
+  error_info += "Error OpenAL (";
+  error_info += filename;
+  error_info += ": ";
+  error_info += line;
+  error_info += ") ";
+  CheckOpenAlError(std::move(error_info));
+#endif
+}
+
+template<typename Fn, typename... Args>
+auto AlcCallImpl(const char* filename, int line, Fn fn, Args... args)
+    ->typename std::enable_if<!std::is_same<void, decltype(fn(args...))>::value,
+                               decltype(fn(args...))>::type {
+#ifndef FAITHFUL_DEBUG
+  auto ret = function(std::forward<Args>(args)...);
+  std::string error_info;
+  error_info += "Error OpenAL (";
+  error_info += filename;
+  error_info += ": ";
+  error_info += line;
+  error_info += ") ";
+  CheckOpenAlError(std::move(error_info));
+  return ret;
+#else
+  return function(std::forward<Args>(args)...);
+#endif
+}
+
+#ifdef FAITHFUL_DEBUG
 bool Logger::buffering_on = true;
 #endif
 

@@ -44,6 +44,8 @@ class SoundManager
   ~SoundManager() {
     for (auto& i : active_instances_) {
       // TODO: remove source
+//      alDeleteSources(1, &source);
+//      alDeleteBuffers(1, &buffer);
     }
   }
 

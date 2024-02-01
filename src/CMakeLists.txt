@@ -10,6 +10,7 @@ add_executable(faithful-core
         io/Window.cpp
         executors/queues/LifoBoundedMPSCBlockingQueue.cpp
         executors/AudioThreadPool.cpp
+        ../utils/Logger.cpp
         ${FAITHFUL_MAIN_SOURCES})
 
 target_compile_options(faithful-core PRIVATE ${FAITHFUL_COMPILE_OPTIONS})

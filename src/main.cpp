@@ -335,6 +335,10 @@ int main() {
   return 0;
 }*/
 
+
+#define FAITHFUL_DEBUG // todo: -> CMake
+
+
 #include <stdlib.h>
 #include <mimalloc-override.h>
 /// We don't need to #include "mimalloc-new-delete.h"
@@ -343,11 +347,11 @@ int main() {
 #define AL_LIBTYPE_STATIC // <--------------------- important (!!!)
 //#include "config.h"
 
+#include <AL/al.h>
+#include <AL/alc.h>
 #include <cmath>
 #include <iostream>
 
-#include <AL/al.h>
-#include <AL/alc.h>
 
 #include "executors/AudioThreadPool.h"
 
@@ -359,61 +363,7 @@ int main() {
 
 int main() {
 
-  std::cerr << "we relocated creation of OpenAL context, device !!" << std::endl;
-  return 0;
-
-
-
-  // Check OpenAL version
-  const ALCchar* al_version = alGetString(AL_VERSION);
-  const ALCchar* al_renderer = alGetString(AL_RENDERER);
-
-  std::cout << "OpenAL Version: " << al_version << std::endl;
-  std::cout << "OpenAL Renderer: " << al_renderer << std::endl;
-
-  // Play a sound (you can replace this with your own sound file)
-  ALuint source;
-  ALuint buffer;
-
-  alGenBuffers(1, &buffer);
-  alGenSources(1, &source);
-
-  // For simplicity, a short sine wave is used as a sample sound
-  const int frequency = 440;  // 440 Hz
-  const int duration = 2;     // 2 seconds
-  const int sample_rate = 44100;
-
-  const int num_samples = duration * sample_rate;
-  short* samples = new short[num_samples];
-
-  for (int i = 0; i < num_samples; ++i) {
-    samples[i] = static_cast<short>(
-        32767.0 * sin(2.0 * 3.14159 * frequency * i / sample_rate));
-  }
-
-  alBufferData(buffer, AL_FORMAT_MONO16, samples, num_samples * sizeof(short),
-               sample_rate);
-  alSourcei(source, AL_BUFFER, buffer);
-
-  alSourcePlay(source);
-  std::cout << "Playing sound..." << std::endl;
-
-  // Wait for the sound to finish playing
-  ALint source_state;
-  do {
-    alGetSourcei(source, AL_SOURCE_STATE, &source_state);
-  } while (source_state == AL_PLAYING);
-
-  std::cout << "Sound finished playing." << std::endl;
-
-  // Clean up
-  delete[] samples;
-
-  alDeleteSources(1, &source);
-  alDeleteBuffers(1, &buffer);
-
-  std::cerr << "we relocated destrotying of OpenAL context, device !!" << std::endl;
-
+  std::cerr << "Hello, World?" << std::endl;
   return 0;
 }
 
