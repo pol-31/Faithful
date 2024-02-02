@@ -1,130 +1,132 @@
 #include "AudioThreadPool.h"
 
+#include "../../utils/Logger.h"
+
+#include "../loader/Music.h"
+#include "../loader/Sound.h"
+
 namespace faithful {
 namespace details {
 
-namespace audio {
-
-std::size_t OggReadCallback(void* ptr, std::size_t size,
-                            std::size_t nmemb, void* datasource) {
-  StreamingAudioData* audio = reinterpret_cast<StreamingAudioData*>(datasource);
-  ALsizei length = size * nmemb;
-
-  if(audio->sizeConsumed + length > audio->size) {
-    length = audio->size - audio->sizeConsumed;
+void AudioThreadPool::Run() {
+  if (state_ != State::kNotStarted) {
+    return;
   }
-
-  if(!audio->file.is_open()) {
-    audio->file.open(audio->filename, std::ios::binary);
-    if(!audio->file.is_open()) {
-      std::cerr << "Error: Can't open streaming file: "
-                << audio->filename << std::endl;
-      return 0;
+  state_ = State::kRunning;
+  while (state_ != State::kJoined &&
+         state_ != State::kSuspended) {
+      //TODO: sound tasks
+      // task_queue_->Front();
+      // task_queue_->Pop();
+    for (auto& music : music_sources_) {
+      UpdateMusicStream(music);
     }
   }
+}
 
-  auto buffer = std::make_unique<char>(length);
 
-  audio->file.clear();
-  audio->file.seekg(audio->sizeConsumed);
-  if(!audio->file.read(buffer.get(), length)) {
-    if (audio->file.eof()) {
-      audio->file.clear();
-    } else if(audio->file.fail()) {
-      std::cerr << "Error libogg: fail / bad stream" << audio->filename << std::endl;
-      audio->file.clear();
-      return 0;
+/* for these two we have some queues with length of openal_sound_num, openal_music_num
+ * then when the queue is full (we didn't have enough time to process them all),
+ * -> we just rewrite the older by newer
+ * */
+void AudioThreadPool::Play(Sound sound) {
+  //
+}
+void AudioThreadPool::Play(Music music) {
+  //
+}
+
+void AudioThreadPool::SetBackground(faithful::Music music) {
+  SmoothlyStop(music_sources_[0].source_id);
+  music_sources_[0].data = music;
+  // TODO: switch background_update_data
+  SmoothlyStart(music_sources_[0].source_id);
+}
+
+void AudioThreadPool::SmoothlyStart(ALuint source) {
+  AL_CALL(alSourcePlay, source); // todo smoothly
+  // looping
+}
+void AudioThreadPool::SmoothlyStop(ALuint source) {
+  AL_CALL(alSourceStop, source); // todo smoothly
+}
+
+bool AudioThreadPool::InitOpenALContext() {
+  ALCdevice* device = alcOpenDevice(nullptr);
+  if (!device) {
+    std::cerr << "Failed to initialize OpenAL device" << std::endl;
+    return false;
+  }
+
+  ALCcontext* context = alcCreateContext(device, nullptr);
+  if (!context) {
+    std::cerr << "Failed to create OpenAL context" << std::endl;
+    alcCloseDevice(device);
+    return false;
+  }
+
+  /// we have only one OpenAL context
+  alcMakeContextCurrent(context);
+
+  /// generate sources & buffers
+  int total_sources_num = faithful::config::openal_sound_num +
+                          faithful::config::openal_music_num;
+  ALuint source_ids[total_sources_num];
+  alGenSources(total_sources_num, source_ids);
+
+  int total_buffers_num = faithful::config::openal_sound_num +
+                          faithful::config::openal_buffers_per_music *
+                              faithful::config::openal_music_num;
+  ALuint buffer_ids[total_buffers_num];
+  alGenBuffers(total_buffers_num, buffer_ids);
+
+  for (int i = 0; i < faithful::config::openal_sound_num; ++i) {
+    sound_sources_[i].source_id = source_ids[i];
+    sound_sources_[i].buffer_id = buffer_ids[i];
+  }
+
+  for (int i = 0; i < faithful::config::openal_sound_num; ++i) {
+    music_sources_[i].source_id = source_ids[i];
+    for (int j = 0; j < faithful::config::openal_buffers_per_music; ++j) {
+      music_sources_[i].buffers_id[j] = buffer_ids[i]; // TODO: need offset
     }
   }
-  audio->sizeConsumed += length;
-
-  std::memcpy(ptr, buffer.get(), length);
-
-  audio->file.clear();
-
-  return length;
+  return true;
 }
 
-int OggSeekCallback(void *datasource, ogg_int64_t offset, int whence) {
-  StreamingAudioData* audio =
-      reinterpret_cast<StreamingAudioData*>(datasource);
-
-  if(whence == SEEK_CUR) {
-    audio->sizeConsumed += offset;
-  } else if(whence == SEEK_END) {
-    audio->sizeConsumed = audio->size - offset;
-  } else if(whence == SEEK_SET) {
-    audio->sizeConsumed = offset;
-  } else {
-    return -1;
-  }
-
-  if(audio->sizeConsumed < 0) {
-    audio->sizeConsumed = 0;
-    return -1;
-  }
-
-  if(audio->sizeConsumed > audio->size) {
-    audio->sizeConsumed = audio->size;
-    return -1;
-  }
-
-  return 0;
-}
-
-long OggTellCallback(void* datasource) {
-  StreamingAudioData* audio =
-      reinterpret_cast<StreamingAudioData*>(datasource);
-  return audio->sizeConsumed;
-}
-
-} // namespace audio
-
-
-
-void AudioThreadPool::PlayCurrent() {
-  alCall(alSourceStop, audioData.source);
-  alCall(alSourcePlay, audioData.source);
-}
-
-void AudioThreadPool::UpdateCurrent() {
+void AudioThreadPool::UpdateMusicStream(MusicSourceData& music_data) {
   ALint buffersProcessed = 0;
-  alCall(alGetSourcei, audioData.source, AL_BUFFERS_PROCESSED, &buffersProcessed);
+  AL_CALL(alGetSourcei, music_data.source_id, AL_BUFFERS_PROCESSED, &buffersProcessed);
   if(buffersProcessed <= 0) {
     return;
   }
-  while(buffersProcessed--)
-  {
+  while(buffersProcessed--) {
     ALuint buffer;
-    alCall(alSourceUnqueueBuffers, audioData.source, 1, &buffer);
+    AL_CALL(alSourceUnqueueBuffers, music_data.source_id, 1, &buffer);
 
-    char* data = new char[BUFFER_SIZE];
-    std::memset(data,0,BUFFER_SIZE);
+    auto buffer_size = faithful::config::openal_buffers_size;
+    auto data = std::make_unique<char>(buffer_size);
+    std::memset(data.get(), 0, buffer_size);
 
     ALsizei dataSizeToBuffer = 0;
     std::int32_t sizeRead = 0;
 
-    while(sizeRead < BUFFER_SIZE)
-    {
-      std::int32_t result = ov_read(&audioData.oggVorbisFile, &data[sizeRead], BUFFER_SIZE - sizeRead, 0, 2, 1, reinterpret_cast<int*>(&audioData.oggCurrentSection));
-      if(result == OV_HOLE)
-      {
+    while(sizeRead < buffer_size) {
+      std::int32_t result = ov_read(
+          &music_data.data.oggVorbisFile, data.get() + sizeRead,
+          buffer_size - sizeRead, 0, 2, 1,
+          reinterpret_cast<int*>(music_data.data.oggCurrentSection));
+      if(result == OV_HOLE) {
         std::cerr << "ERROR: OV_HOLE found in update of buffer " << std::endl;
         break;
-      }
-      else if(result == OV_EBADLINK)
-      {
+      } else if(result == OV_EBADLINK) {
         std::cerr << "ERROR: OV_EBADLINK found in update of buffer " << std::endl;
         break;
-      }
-      else if(result == OV_EINVAL)
-      {
+      } else if(result == OV_EINVAL) {
         std::cerr << "ERROR: OV_EINVAL found in update of buffer " << std::endl;
         break;
-      }
-      else if(result == 0)
-      {
-        std::int32_t seekResult = ov_raw_seek(&audioData.oggVorbisFile, 0);
+      } else if(result == 0) {
+        std::int32_t seekResult = ov_raw_seek(&music_data.data.oggVorbisFile, 0);
         if(seekResult == OV_ENOSEEK)
           std::cerr << "ERROR: OV_ENOSEEK found when trying to loop" << std::endl;
         else if(seekResult == OV_EINVAL)
@@ -138,8 +140,7 @@ void AudioThreadPool::UpdateCurrent() {
         else if(seekResult == OV_EBADLINK)
           std::cerr << "ERROR: OV_EBADLINK found when trying to loop" << std::endl;
 
-        if(seekResult != 0)
-        {
+        if(seekResult != 0) {
           std::cerr << "ERROR: Unknown error in ov_raw_seek" << std::endl;
           return;
         }
@@ -148,31 +149,22 @@ void AudioThreadPool::UpdateCurrent() {
     }
     dataSizeToBuffer = sizeRead;
 
-    if(dataSizeToBuffer > 0)
-    {
-      alCall(alBufferData, buffer, audioData.format, data, dataSizeToBuffer, audioData.sampleRate);
-      alCall(alSourceQueueBuffers, audioData.source, 1, &buffer);
+    if(dataSizeToBuffer > 0) {
+      AL_CALL(alBufferData, buffer, music_data.data.format, data, dataSizeToBuffer, music_data.data.sampleRate);
+      AL_CALL(alSourceQueueBuffers, music_data.source_id, 1, &buffer);
     }
 
-    if(dataSizeToBuffer < BUFFER_SIZE)
-    {
+    if(dataSizeToBuffer < buffer_size) {
       std::cout << "Data missing" << std::endl;
     }
 
     ALint state;
-    alCall(alGetSourcei, audioData.source, AL_SOURCE_STATE, &state);
-    if(state != AL_PLAYING)
-    {
-      alCall(alSourceStop, audioData.source);
-      alCall(alSourcePlay, audioData.source);
+    AL_CALL(alGetSourcei, music_data.source_id, AL_SOURCE_STATE, &state);
+    if(state != AL_PLAYING) {
+      AL_CALL(alSourceStop, music_data.source_id);
+      AL_CALL(alSourcePlay, music_data.source_id);
     }
-
-    delete[] data;
   }
-}
-
-void AudioThreadPool::StopCurrent() {
-  alCall(alSourceStop, audioData.source);
 }
 
 

@@ -42,7 +42,7 @@ class Executor {
     task_queue_->Push(std::move(task));
   }
 
- private:
+ protected:
   queue::IQueueBase<Task>* task_queue_;
   State state_;
   // threads / fibers
@@ -50,7 +50,7 @@ class Executor {
 
 /// has fixed number of threads todo ______________
 template <int thread_count>
-class StaticExecutor {
+class StaticExecutor : public Executor {
  public:
   StaticExecutor() = default;
 
@@ -67,7 +67,7 @@ class StaticExecutor {
 };
 
 /// dynamic number of threads (for I/O loading operations) todo ______________
-class DynamicExecutor {
+class DynamicExecutor : public Executor {
  public:
   DynamicExecutor() = default;
 

@@ -4,9 +4,12 @@
 namespace faithful {
 namespace config {
 
-inline constexpr int openal_buffers_num_per_music = 4;
+inline constexpr int openal_buffers_per_music = 4;
 inline constexpr int openal_buffers_size = 65536;
 
+// TODO: explain why 6 total
+inline constexpr int openal_sound_num = 4;  // at least 1
+inline constexpr int openal_music_num = 2;  // at least 1
 
 } // config
 } // faithful

@@ -3,6 +3,7 @@
 
 #include "Executor.h"
 
+#include <array>
 #include <string>
 #include <type_traits>
 #include <iostream> // todo: replace
@@ -13,40 +14,18 @@
 #include <AL/alc.h>
 #include <ogg/ogg.h>
 
-#include <vorbis/vorbisfile.h>
-
 #include "queues/LifoBoundedMPSCBlockingQueue.h"
 
 #include "../../config/Loader.h"
 
+#include "../src/loader/AudioData.h"
+
 namespace faithful {
+
+class Sound;
+class Music;
+
 namespace details {
-
-namespace audio {
-
-struct StreamingAudioData {
-  ALuint buffers[faithful::config::openal_buffers_num_per_music];
-  std::string filename;
-  std::ifstream file;
-  std::uint8_t channels;
-  std::int32_t sampleRate;
-  std::uint8_t bitsPerSample;
-  ALsizei size;
-  ALuint source;
-  ALsizei sizeConsumed = 0;
-  ALenum format;
-  OggVorbis_File oggVorbisFile;
-  std::int_fast32_t oggCurrentSection = 0;
-  std::size_t duration;
-};
-
-std::size_t OggReadCallback(void* ptr, std::size_t size,
-                            std::size_t nmemb, void* datasource);
-int OggSeekCallback(void *datasource, ogg_int64_t offset, int whence);
-long OggTellCallback(void* datasource);
-
-} // namespace audio
-
 
 /** AudioThreadPool purpose:
  * - encapsulate OpenAL
@@ -61,16 +40,23 @@ long OggTellCallback(void* datasource);
 /// "1" - because we need only ONE openAL context
 class AudioThreadPool : public StaticExecutor<1> {
  public:
+  using Base = StaticExecutor<1>;
   AudioThreadPool() {
     if (!InitOpenALContext()) {
       std::cerr << "Can't create OpenAL context" << std::endl;
       std::abort(); // TODO: replace by Logger::LogIF OR FAITHFUL_TERMINATE
     }
+
+    // TODO: we need 6 sources, 12 buffers ???
+
   }
 
-  void PlayCurrent();
-  void UpdateCurrent();
-  void StopCurrent();
+  void Play(Sound sound);
+  void Play(Music music);
+
+  void SetBackground(Music music); // if already set -> smooth transmission
+
+  void Run() override;
 
   ~AudioThreadPool() {
     alcMakeContextCurrent(nullptr);
@@ -79,27 +65,34 @@ class AudioThreadPool : public StaticExecutor<1> {
   }
 
  private:
-  bool InitOpenALContext() {
-    ALCdevice* device = alcOpenDevice(nullptr);
-    if (!device) {
-      std::cerr << "Failed to initialize OpenAL device" << std::endl;
-      return false;
-    }
+  struct SoundSourceData {
+    ALuint buffer_id;
+    ALuint source_id;
+    SoundData data;
+    bool busy;
+  };
 
-    ALCcontext* context = alcCreateContext(device, nullptr);
-    if (!context) {
-      std::cerr << "Failed to create OpenAL context" << std::endl;
-      alcCloseDevice(device);
-      return false;
-    }
+  struct MusicSourceData {
+    std::array<ALuint, faithful::config::openal_buffers_per_music> buffers_id;
+    ALuint source_id;
+    MusicData data;
+    bool busy;
+  };
 
-    /// we have only one OpenAL context
-    alcMakeContextCurrent(context);
-    return true;
-  }
+  bool InitOpenALContext();
+
+  void UpdateMusicStream(MusicSourceData& music_data);
+
+  void SmoothlyStart(ALuint source);
+  void SmoothlyStop(ALuint source);
+
+
 
   ALCcontext* openal_context_;
   ALCdevice* openal_device_;
+
+  std::array<SoundSourceData, faithful::config::openal_sound_num> sound_sources_;
+  std::array<MusicSourceData, faithful::config::openal_music_num> music_sources_;
 };
 
 } // namespace details

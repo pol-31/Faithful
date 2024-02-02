@@ -12,7 +12,10 @@ namespace queue {
 template <typename Task>
 class IQueueBase {
  public:
-  IQueue() = default;
+  IQueueBase() = default;
+
+  virtual void Front() = 0;
+
   virtual void Pop() = 0;
   virtual void Push(Task&&) = 0;
  protected:

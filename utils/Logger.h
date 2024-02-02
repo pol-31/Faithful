@@ -86,30 +86,7 @@ class Logger {
   /// so we always writing to console (immediately in both cases):
   ///    in Debug: all types
   ///    in Release: kError, kWarning (BUT we can add command for showing kInfo)
-  void Log(LogType type, std::string&& error_info) {
-    switch (type) {
-      // TODO: FAITHFUL_MAIN_LOGGER
-#ifndef LOG_INFO_MESSAGES
-      case LogType::kInfo:
-        if (log_level_ == LogLevel::kAll)
-          WriteMessage(std::move(error_info), "Info: ");
-        break;
-#endif
-      case LogType::kWarning:
-        if (log_level_ != LogLevel::kOnlyFatal)
-          WriteMessage(std::move(error_info), "Warning: ");
-        break;
-      case LogType::kError:
-        if (log_level_ != LogLevel::kOnlyFatal)
-          WriteMessage(std::move(error_info), "Error: ");
-        break;
-      case LogType::kFatal:
-        HandleFatalError(error_info);
-        break;
-      default:
-        break;
-    }
-  }
+  void Log(LogType type, std::string&& error_info);
 
   void LogIf(LogType type, bool cond, std::string&& error_info) {
     if (cond)
@@ -136,32 +113,13 @@ class Logger {
   }
 
  protected:
-  virtual void HandleFatalError(const char* error_info) {
-    std::ofstream log_file(filename_, std::ofstream::out | std::ofstream::app);
-    log_file << "\nFatal error: ";
-    if (error_info)
-      log_file.write(error_info, std::strlen(error_info));
-    log_file.flush();
-    log_file.close();
-
-    // TODO: show error to screen
-    std::terminate();  // TODO: not Terminate, but safe_program_exit
-  }
-  virtual void HandleFatalError(const std::string& error_info) {
-    std::ofstream log_file(filename_, std::ofstream::out | std::ofstream::app);
-    log_file << "\nFatal error: " << error_info;
-    log_file.flush();
-    log_file.close();
-
-    // TODO: show error to screen
-    std::terminate();  // TODO: not Terminate, but safe_program_exit
-  }
+  virtual void HandleFatalError(std::string&& error_info);
 
   virtual void WriteMessage(std::string&& error_info,
                             const char* extra_error_info) = 0;
 
-  constexpr static int default_message_size = 64;
-  constexpr static char* default_filename = "log.txt";
+  constexpr static int default_message_size = 64; // TODO: ----------------------- config/Loader.h
+  constexpr static char* default_filename = "log.txt"; // TODO: ----------------------- config/Loader.h
 #ifdef DEBUG_BUILD
   /// in Release build buffering is always turned on
   static bool buffering_on;
@@ -182,42 +140,14 @@ class ConsoleLogger : public Logger {
     std::cout << std::flush;
   }
 
-  void WriteMessage(std::string&& error_info,
-                    const char* extra_error_info) override {
-    WriteMessageImpl(std::move(error_info), extra_error_info);
-  }
-
- private:
   /// we're using std::cout (not cerr/clog), because
   /// then we automatically std::flush output
   /// it seems we lose immediate error information, but corresponding
   /// IOThreadPool should handle it adequately in term of time
-  void WriteMessageImpl(std::string&& error_info, const char* extra_error_info) {
-    if (!busy_.test_and_set(std::memory_order_relaxed)) {
-      auto accumulated_data = buffer_.Read();
-      for (auto i : accumulated_data) {
-        if (*(i.Data()) == 0)
-          break;
-        std::cout.write(i.Data(), i.Size()) << '\n';
-      }
-      std::cout.write(extra_error_info, std::strlen(extra_error_info));
-      WriteConsoleMessage(error_info);
+  void WriteMessage(std::string&& error_info,
+                    const char* extra_error_info) override;
 
-      Flush();  // TODO: its too often, call FileLogger::Flush instead
-      busy_.clear();
-    } else {
-      utility::SpanBuffer<char> error_str;
-      error_str.Write(extra_error_info);
-      error_str.Write(error_info);
-      buffer_.Write(error_str);
-    }
-  }
-  void WriteConsoleMessage(const char* error_info) {
-    std::cout.write(error_info, std::strlen(error_info)) << '\n';
-  }
-  void WriteConsoleMessage(const std::string& error_info) {
-    std::cout.write(error_info.data(), error_info.length()) << '\n';
-  }
+ private:
 
   utility::SpanBufferPool<char> buffer_;
 };
@@ -240,85 +170,12 @@ class FileLogger : public Logger {
     log_file_.flush();
   }
 
-  void HandleFatalError(const char* error_info) override {
-    log_file_ << "\nFatal error: ";
-    if (error_info)
-      log_file_.write(error_info, std::strlen(error_info));
-    log_file_.flush();
-    log_file_.close();
-
-    // TODO: show error to screen
-    std::terminate();  // TODO: not Terminate, but safe_program_exit
-  }
-  void HandleFatalError(const std::string& error_info) override {
-    log_file_ << "\nFatal error: " << error_info;
-    log_file_.flush();
-    log_file_.close();
-
-    // TODO: show error to screen
-    std::terminate();  // TODO: not Terminate, but safe_program_exit
-  }
+  void HandleFatalError(std::string&& error_info) override;
 
   void WriteMessage(std::string&& error_info,
-                    const char* extra_error_info) override {
-    WriteMessageImpl(std::move(error_info), extra_error_info);
-  }
+                    const char* extra_error_info) override;
 
  private:
-  void WriteMessageImpl(std::string&& error_info, const char* extra_error_info) {
-#ifdef DEBUG_BUILD
-    if (!busy_.test_and_set(std::memory_order_relaxed)) {
-      if ((buffering_on && buffer_.Full()) || !buffering_on) {
-        auto accumulated_data = buffer_.Read();
-        for (auto i : accumulated_data.first) {
-          if (*(i.Data()) == 0)
-            break;
-          log_file_.write(i.Data(), i.Size()) << '\n';
-        }
-        for (auto i : accumulated_data.second) {
-          if (*(i.Data()) == 0)
-            break;
-          log_file_.write(i.Data(), i.Size()) << '\n';
-        }
-        log_file_ << extra_error_info << error_info << '\n';
-        Flush();  // TODO: its too often, call FileLogger::Flush instead
-        busy_.clear();
-        return;
-      }
-      busy_.clear();
-    }
-    utility::SpanBuffer<char> error_str;
-    error_str.Write(extra_error_info);
-    error_str.Write(error_info);
-    buffer_.Write(error_str);
-#else
-    if (!busy_.test_and_set(std::memory_order_relaxed)) {
-      if (buffer_.Full()) {
-        auto accumulated_data = buffer_.Read();
-        for (auto i : accumulated_data.first) {
-          if (*(i.Data()) == 0)
-            break;
-          log_file_.write(i.Data(), i.Size()) << '\n';
-        }
-        for (auto i : accumulated_data.second) {
-          if (*(i.Data()) == 0)
-            break;
-          log_file_.write(i.Data(), i.Size()) << '\n';
-        }
-        log_file_ << extra_error_info << error_info << '\n';
-        Flush();  // TODO: its too often, call FileLogger::Flush instead
-        busy_.clear();
-        return;
-      }
-      busy_.clear();
-    }
-    utility::SpanBuffer<char> error_str;
-    error_str.Write(extra_error_info);
-    error_str.Write(error_info);
-    buffer_.Write(error_str);
-#endif
-  }
-
   utility::SwitchSpanBufferPool<char> buffer_;
   std::ofstream log_file_;
 };
@@ -333,18 +190,15 @@ void CheckOpenGlfwError(std::string&& error_info);
 #define ALC_CALL(function, device, ...) AlcCallImpl(__FILE__, __LINE__, function, device, __VA_ARGS__)
 void CheckOpenAlError(std::string&& error_info);
 
+std::string GenErrorString(const char* meta, const char* filename, int line);
+
 template<typename Fn, typename... Args>
 auto GlCallImpl(const char* filename, int line, Fn fn, Args... args)
     ->typename std::enable_if<std::is_same<void, decltype(fn(args...))>::value,
                                decltype(fn(args...))>::type {
-  function(std::forward<Args>(args)...);
+  fn(std::forward<Args>(args)...);
 #ifndef FAITHFUL_DEBUG
-  std::string error_info;
-  error_info += "Error OpenGL (";
-  error_info += filename;
-  error_info += ": ";
-  error_info += line;
-  error_info += ") ";
+  std::string error_info = GenErrorString("OpenGL", filename, line);
   CheckOpenGlError(std::move(error_info));
 #endif
 }
@@ -353,14 +207,9 @@ template<typename Fn, typename... Args>
 auto GlfwCallImpl(const char* filename, int line, Fn fn, Args... args)
     ->typename std::enable_if<std::is_same<void, decltype(fn(args...))>::value,
                                decltype(fn(args...))>::type {
-  function(std::forward<Args>(args)...);
+  fn(std::forward<Args>(args)...);
 #ifndef FAITHFUL_DEBUG
-  std::string error_info;
-  error_info += "Error GLFW (";
-  error_info += filename;
-  error_info += ": ";
-  error_info += line;
-  error_info += ") ";
+  std::string error_info = GenErrorString("GLFW", filename, line);
   CheckOpenGlfwError(std::move(error_info));
 #endif
 }
@@ -369,14 +218,9 @@ template<typename Fn, typename... Args>
 auto AlCallImpl(const char* filename, int line, Fn fn, Args... args)
     ->typename std::enable_if<std::is_same<void, decltype(fn(args...))>::value,
                                decltype(fn(args...))>::type {
-  function(std::forward<Args>(args)...);
+  fn(std::forward<Args>(args)...);
 #ifndef FAITHFUL_DEBUG
-  std::string error_info;
-  error_info += "Error OpenAL (";
-  error_info += filename;
-  error_info += ": ";
-  error_info += line;
-  error_info += ") ";
+  std::string error_info = GenErrorString("OpenAL", filename, line);
   CheckOpenAlError(std::move(error_info));
 #endif
 }
@@ -386,21 +230,16 @@ auto AlcCallImpl(const char* filename, int line, Fn fn, Args... args)
     ->typename std::enable_if<!std::is_same<void, decltype(fn(args...))>::value,
                                decltype(fn(args...))>::type {
 #ifndef FAITHFUL_DEBUG
-  auto ret = function(std::forward<Args>(args)...);
-  std::string error_info;
-  error_info += "Error OpenAL (";
-  error_info += filename;
-  error_info += ": ";
-  error_info += line;
-  error_info += ") ";
+  auto ret = fn(std::forward<Args>(args)...);
+  std::string error_info = GenErrorString("OpenAL", filename, line);
   CheckOpenAlError(std::move(error_info));
   return ret;
 #else
-  return function(std::forward<Args>(args)...);
+  return fn(std::forward<Args>(args)...);
 #endif
 }
 
-#ifdef FAITHFUL_DEBUG
+#ifdef FAITHFUL_DEBUG // TODO: --------------------------------------------------< wtf is this
 bool Logger::buffering_on = true;
 #endif
 
