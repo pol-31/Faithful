@@ -1,25 +1,22 @@
 #ifndef FAITHFUL_SRC_LOADER_SOUND_H_
 #define FAITHFUL_SRC_LOADER_SOUND_H_
 
-
 #include <array>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream> // todo: replace by Logger
+#include <map>
 #include <string>
 #include <vector>
 
 #include <AL/al.h>
 #include <AL/alc.h>
-#include <ogg/ogg.h>
-
 #include <vorbis/vorbisfile.h>
-#include <cstring>
-
-
-#include "../config/AssetFormats.h"
 
 #include "IAsset.h"
+#include "../config/AssetFormats.h"
+#include "AudioData.h"
 
 namespace faithful {
 
@@ -35,17 +32,22 @@ class SoundManager
   using InstanceInfo = details::InstanceInfo;
 
   SoundManager() {
-    // TODO:
-    //  1) gen max_active_sounds OpenAL sources
-    //  2) load 1 default sound
-    //  3) init free_instances_ with indices: 1,2,3,....,max_active_sounds_num
+    for (int i = 0; i < max_active_sounds; ++i) {
+      active_instances_[i] = i;
+      free_instances_[i] = i;
+      data_[i] = {}; // TODO: optimize num of allocations
+    }
   }
 
   ~SoundManager() {
     for (auto& i : active_instances_) {
-      // TODO: remove source
-//      alDeleteSources(1, &source);
-//      alDeleteBuffers(1, &buffer);
+      if (i.ref_counter.Active()) {
+        std::cerr
+            << "MusicManager deleted, but ref_counter is still active for "
+            << i.opengl_id << std::endl;
+        // TODO: terminate?
+      }
+      delete i.ref_counter;
     }
   }
 
@@ -58,37 +60,104 @@ class SoundManager
   SoundManager& operator=(SoundManager&&) = default;
 
   // TODO: Is it blocking ? <<-- add thread-safety
-  int Load(std::string&& sound_path) {
-    for (auto& t : active_instances_) {
-      if (t.path == sound_path) {
-        ++t.ref_counter;
-        return t.opengl_id;
-      }
+  InstanceInfo Load(std::string&& sound_path) {
+    auto [sound_id, active_instances_id, is_new_id] = Base::AcquireId(sound_path); // structure binding
+    if (sound_id == 0) {
+      return {"", nullptr, default_sound_id_};
+    } else if (!is_new_id) {
+      return {sound_path, active_instances_[active_instances_id], sound_id};
     }
-    if (!Base::CleanInactive()) {
-      std::cerr << "Can't load texture: reserve more place for sounds; "
-                //                << max_active_texture_num << " is not enough;\n"
-                << "failure for: " << sound_path << std::endl;
-      return default_sound_id_;
+    if (!LoadSoundData(sound_id, sound_path)) {
+      return {"", nullptr, default_sound_id_};
     }
-    int id = free_instances_.Back();
-    free_instances_.PopBack();
-    auto& instance = active_instances_[id];
-    ++instance.ref_counter;
-    instance.path = std::move(sound_path);
-    LoadSoundData(id);
-    return id;
+    return {sound_path, active_instances_[active_instances_id], sound_id};
   }
 
  private:
 
-  void LoadSoundData(int active_instance_id) {
-    auto& instance = active_instances_[active_instance_id];
-    /// assets/textures contain only 6x6x1 astc, so there's no need
-    /// to check is for "ASTC" and block size.
-    /// but we still need to get texture resolution
-    std::ifstream texture_file(instance.path);
+  struct WavHeader {
+    char chunk_id[4];
+    uint32_t chunk_size;
+    char format[4];
+    char subchunk1_id[4];
+    uint32_t subchunk1_size;
+    uint16_t audio_format;
+    uint16_t num_channels;
+    uint32_t sample_rate;
+    uint32_t byte_rate;
+    uint16_t block_align;
+    uint16_t bits_per_sample;
+    char subchunk2_id[4];
+    uint32_t subchunk2_size;
+  };
+
+  bool LoadSoundData(int sound_id, const std::string& sound_path) {
+    auto found_element = data_.find(sound_id);
+    if (found_element == data_.end()) {
+      std::cerr << "SoundManager::data_ error: can't find id in LoadSoundData()"
+                << std::endl;
+      return false;
+    }
+
+    auto& found_data = found_element->second;
+
+    std::ifstream sound_file(sound_path, std::ios::binary);
+    if (!sound_file.is_open()) {
+      std::cerr << "Error: unable to open file: " << sound_path << std::endl;
+      return false;
+    }
+
+    WavHeader header;
+    sound_file.read(reinterpret_cast<char*>(&header), sizeof(WavHeader));
+
+    if (sound_file.gcount() != sizeof(WavHeader)) {
+      std::cerr << "Error: unable to read WAV header from file: " << sound_path << std::endl;
+      return false;
+    }
+
+    if (std::string(header.chunkId, 4) != "RIFF" || std::string(header.format, 4) != "WAVE") {
+      std::cerr << "Error: not a valid WAV file: " << sound_path << std::endl;
+      return false;
+    }
+
+    found_data.filename = sound_path;
+    found_data.channels = header.num_channels;
+    found_data.sample_rate = header.sample_rate;
+    found_data.bits_per_sample = header.bits_per_sample;
+    found_data.size = header.subchunk2_size;
+
+    ALenum format = DeduceSoundFormat(header);
+    if (format == AL_NONE) {
+      return false;
+    }
+    found_data.format = format;
+
+    sound_file.read(found_data.data, header.subchunk2_size);
+    return true;
   }
+
+  ALenum DeduceSoundFormat(const WavHeader& header) {
+    if (header.bits_per_sample == 8) {
+      if (header.num_channels == 1) {
+        return AL_FORMAT_MONO8;
+      } else if (header.num_channels == 2) {
+        return AL_FORMAT_STEREO8;
+      }
+    } else if (header.bits_per_sample == 16) {
+      if (header.num_channels == 1) {
+        return AL_FORMAT_MONO16;
+      } else if (header.num_channels == 2) {
+        return AL_FORMAT_STEREO16;
+      }
+    } else {
+      std::cerr
+          << "SoundManager::DeduceSoundFormat error: unable to deduce format"
+          << std::endl;
+      return AL_NONE;
+    }
+  }
+
+  std::map<int, SoundData> data_;
 
   using Base::active_instances_;
   using Base::free_instances_;
@@ -104,8 +173,7 @@ class Sound : public details::IAsset {
   using Base::Base;
   using Base::operator=;
 
-    //  void Bind(GLenum target);
-
+  // TODO: add protected section; friend AudioThreadPool; protected SoundData
  private:
   using Base::opengl_id_;
 };

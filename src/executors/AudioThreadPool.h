@@ -21,10 +21,8 @@
 #include "../src/loader/AudioData.h"
 
 namespace faithful {
-
 class Sound;
 class Music;
-
 namespace details {
 
 /** AudioThreadPool purpose:
@@ -41,15 +39,9 @@ namespace details {
 class AudioThreadPool : public StaticExecutor<1> {
  public:
   using Base = StaticExecutor<1>;
-  AudioThreadPool() {
-    if (!InitOpenALContext()) {
-      std::cerr << "Can't create OpenAL context" << std::endl;
-      std::abort(); // TODO: replace by Logger::LogIF OR FAITHFUL_TERMINATE
-    }
 
-    // TODO: we need 6 sources, 12 buffers ???
-
-  }
+  AudioThreadPool();
+  ~AudioThreadPool();
 
   void Play(Sound sound);
   void Play(Music music);
@@ -58,41 +50,42 @@ class AudioThreadPool : public StaticExecutor<1> {
 
   void Run() override;
 
-  ~AudioThreadPool() {
-    alcMakeContextCurrent(nullptr);
-    alcDestroyContext(openal_context_);
-    alcCloseDevice(openal_device_);
-  }
-
  private:
+  /// Sound: .wav
   struct SoundSourceData {
+    faithful::Sound* data;
     ALuint buffer_id;
     ALuint source_id;
-    SoundData data;
     bool busy;
   };
 
   struct MusicSourceData {
     std::array<ALuint, faithful::config::openal_buffers_per_music> buffers_id;
+    faithful::Music* data;
     ALuint source_id;
-    MusicData data;
     bool busy;
   };
 
-  bool InitOpenALContext();
+  void InitOpenALContext();
+  void DeinitOpenALContext();
+
+  void InitOpenALBuffersAndSources();
+  void DeinitOpenALBuffersAndSources();
 
   void UpdateMusicStream(MusicSourceData& music_data);
 
   void SmoothlyStart(ALuint source);
   void SmoothlyStop(ALuint source);
 
-
+  bool CheckOggOvErrors(int code, int buffer_id);
 
   ALCcontext* openal_context_;
   ALCdevice* openal_device_;
 
   std::array<SoundSourceData, faithful::config::openal_sound_num> sound_sources_;
   std::array<MusicSourceData, faithful::config::openal_music_num> music_sources_;
+
+  bool openal_initialized_ = false;
 };
 
 } // namespace details

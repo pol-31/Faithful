@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream> // todo: replace by Logger
+#include <map>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,8 @@
 #include <vorbis/vorbisfile.h>
 
 #include "AudioData.h"
+
+#include "../../utils/Logger.h"
 
 
 namespace faithful {
@@ -28,13 +31,15 @@ std::size_t OggReadCallback(void* ptr, std::size_t size,
   auto audio = reinterpret_cast<MusicData*>(datasource);
   ALsizei length = size * nmemb;
 
-  if(audio->sizeConsumed + length > audio->size) {
-    length = audio->size - audio->sizeConsumed;
+  if(audio->size_consumed + length > audio->size) {
+    length = audio->size - audio->size_consumed;
   }
 
-  if(!audio->file.is_open()) {
-    audio->file.open(audio->filename, std::ios::binary);
-    if(!audio->file.is_open()) {
+  auto& music_fstream = audio->fstream;
+
+  if(!music_fstream.is_open()) {
+    music_fstream.open(audio->filename, std::ios::binary);
+    if(!music_fstream.is_open()) {
       std::cerr << "Error: Can't open streaming file: "
                 << audio->filename << std::endl;
       return 0;
@@ -43,22 +48,24 @@ std::size_t OggReadCallback(void* ptr, std::size_t size,
 
   auto buffer = std::make_unique<char>(length);
 
-  audio->file.clear();
-  audio->file.seekg(audio->sizeConsumed);
-  if(!audio->file.read(buffer.get(), length)) {
-    if (audio->file.eof()) {
-      audio->file.clear();
-    } else if(audio->file.fail()) {
-      std::cerr << "Error libogg: fail / bad stream" << audio->filename << std::endl;
-      audio->file.clear();
+
+  music_fstream.clear();
+  music_fstream.seekg(audio->size_consumed);
+  if(!music_fstream.read(buffer.get(), length)) {
+    if (music_fstream.eof()) {
+      music_fstream.clear();
+    } else if(music_fstream.fail()) {
+      std::cerr << "Error libogg: fail / bad stream" << audio->filename
+                << std::endl;
+      music_fstream.clear();
       return 0;
     }
   }
-  audio->sizeConsumed += length;
+  audio->size_consumed = audio->size_consumed + length;
 
   std::memcpy(ptr, buffer.get(), length);
 
-  audio->file.clear();
+  music_fstream.clear();
 
   return length;
 }
@@ -67,22 +74,22 @@ int OggSeekCallback(void *datasource, ogg_int64_t offset, int whence) {
   auto audio = reinterpret_cast<MusicData*>(datasource);
 
   if(whence == SEEK_CUR) {
-    audio->sizeConsumed += offset;
+    audio->size_consumed = audio->size_consumed + offset;
   } else if(whence == SEEK_END) {
-    audio->sizeConsumed = audio->size - offset;
+    audio->size_consumed = audio->size - offset;
   } else if(whence == SEEK_SET) {
-    audio->sizeConsumed = offset;
+    audio->size_consumed = offset;
   } else {
     return -1;
   }
 
-  if(audio->sizeConsumed < 0) {
-    audio->sizeConsumed = 0;
+  if(audio->size_consumed < 0) {
+    audio->size_consumed = 0;
     return -1;
   }
 
-  if(audio->sizeConsumed > audio->size) {
-    audio->sizeConsumed = audio->size;
+  if(audio->size_consumed > audio->size) {
+    audio->size_consumed = audio->size;
     return -1;
   }
 
@@ -91,7 +98,7 @@ int OggSeekCallback(void *datasource, ogg_int64_t offset, int whence) {
 
 long OggTellCallback(void* datasource) {
   auto audio = reinterpret_cast<MusicData*>(datasource);
-  return audio->sizeConsumed;
+  return audio->size_consumed;
 }
 
 
@@ -104,23 +111,23 @@ class MusicManager
   using Base = faithful::details::IAssetManager<max_active_music>;
   using InstanceInfo = details::InstanceInfo;
 
-  enum class TextureCategory {
-    kLdr,
-    kHdr,
-    kNmap
-  };
   MusicManager() {
-    // TODO:
-    //  1) call glGenTextures for __num__ textures
-    //  2) load 1 default texture
-    //  3) init free_instances_ with indices: 1,2,3,....,max_active_texture_num
+    for (int i = 0; i < max_active_music; ++i) {
+      active_instances_[i] = i;
+      free_instances_[i] = i;
+      data_[i] = {}; // TODO: optimize num of allocations
+    }
   }
 
   ~MusicManager() {
     for (auto& i : active_instances_) {
-      // TODO: remove source
-      //      alDeleteSources(1, &source);
-      //      alDeleteBuffers(1, &buffer);
+      if (i.ref_counter.Active()) {
+        std::cerr
+            << "MusicManager deleted, but ref_counter is still active for "
+            << i.opengl_id << std::endl;
+        // TODO: terminate?
+      }
+      delete i.ref_counter;
     }
   }
 
@@ -134,157 +141,118 @@ class MusicManager
 
   // TODO: Is it blocking ? <<-- add thread-safety
   InstanceInfo Load(std::string&& music_path) {
-    for (auto& t : active_instances_) {
-      if (t.path == music_path) {
-        ++t.ref_counter;
-        return t.opengl_id;
-      }
+    auto [sound_id, active_instances_id, is_new_id] = Base::AcquireId(music_path); // structure binding
+    if (sound_id == 0) {
+      return {"", nullptr, default_music_id_};
+    } else if (!is_new_id) {
+      return {music_path, active_instances_[active_instances_id], sound_id};
     }
-    if (!Base::CleanInactive()) {
-      std::cerr << "Can't load texture: reserve more place for textures; "
-//                << max_active_texture_num << " is not enough;\n"
-                << "failure for: " << music_path << std::endl;
-      return {};//default_music_id_;
+    if (!LoadMusicData(sound_id, music_path)) {
+      return {"", nullptr, default_music_id_};
     }
-    int id = free_instances_.Back();
-    free_instances_.PopBack();
-    auto& instance = active_instances_[id];
-    ++instance.ref_counter;
-    instance.path = std::move(music_path);
-    LoadTextureData(id);
-    return {};//id;
+    return {music_path, active_instances_[active_instances_id], sound_id};
   }
 
  private:
-
-  void LoadTextureData(int active_instance_id) {
-    auto& instance = active_instances_[active_instance_id];
-    /// assets/textures contain only 6x6x1 astc, so there's no need
-    /// to check is for "ASTC" and block size.
-    /// but we still need to get texture resolution
-    std::ifstream texture_file(instance.path);
-  }
-
-  bool create_stream_from_file(const std::string& filename,
-                               StreamingAudioData& audioData) {
-    audioData.filename = filename;
-    audioData.file.open(filename, std::ios::binary);
-    if(!audioData.file.is_open())
-    {
-      std::cerr << "ERROR: couldn't open file" << std::endl;
-      return 0;
+  bool LoadMusicData(int music_id, const std::string& music_path) {
+    auto found_element = data_.find(music_id);
+    if (found_element == data_.end()) {
+      std::cerr << "MusicManager::data_ error: can't find id in LoadMusicData()"
+                << std::endl;
+      return false;
     }
 
-    audioData.file.seekg(0, std::ios_base::beg);
-    audioData.file.ignore(std::numeric_limits<std::streamsize>::max());
-    audioData.size = audioData.file.gcount();
-    audioData.file.clear();
-    audioData.file.seekg(0,std::ios_base::beg);
-    audioData.sizeConsumed = 0;
+    auto& found_data = found_element->second;
+    auto& music_stream = *&found_data.fstream;
 
-    ov_callbacks oggCallbacks;
-    oggCallbacks.read_func = read_ogg_callback;
-    oggCallbacks.close_func = nullptr;
-    oggCallbacks.seek_func = seek_ogg_callback;
-    oggCallbacks.tell_func = tell_ogg_callback;
+    found_data.filename = music_path;
+    music_stream.open(music_path, std::ios::binary);
+    if(!music_stream.is_open()) {
+      std::cerr << "MusicManager::LoadMusicData error: couldn't open file"
+                << std::endl;
+      return false;
+    }
 
-    if(ov_open_callbacks(reinterpret_cast<void*>(&audioData),
-                          &audioData.oggVorbisFile, nullptr, -1,
-                          oggCallbacks) < 0)
-    {
+    ResetStream(music_stream, found_data);
+
+    if(ov_open_callbacks(reinterpret_cast<void*>(&found_data),
+                          &found_data.ogg_vorbis_file, nullptr, -1,
+                          GetOggCallbacks()) < 0) {
       std::cerr << "ERROR: Could not ov_open_callbacks" << std::endl;
       return false;
     }
 
-    vorbis_info* vorbisInfo = ov_info(&audioData.oggVorbisFile, -1);
+    vorbis_info* vorbis_info = ov_info(&found_data.ogg_vorbis_file, -1);
 
-    audioData.channels = vorbisInfo->channels;
-    audioData.bitsPerSample = 16;
-    audioData.sampleRate = vorbisInfo->rate;
-    audioData.duration = ov_time_total(&audioData.oggVorbisFile, -1);
+    found_data.channels = vorbis_info->channels;
+    found_data.bits_per_sample = 16;
+    found_data.sample_rate = vorbis_info->rate;
 
-    alCall(alGenSources, 1, &audioData.source);
-    alCall(alSourcef, audioData.source, AL_PITCH, 1);
-    alCall(alSourcef, audioData.source, AL_GAIN, 0.5);//DEFAULT_GAIN);
-    alCall(alSource3f, audioData.source, AL_POSITION, 0, 0, 0);
-    alCall(alSource3f, audioData.source, AL_VELOCITY, 0, 0, 0);
-    alCall(alSourcei, audioData.source, AL_LOOPING, AL_FALSE);
-
-    alCall(alGenBuffers, NUM_BUFFERS, &audioData.buffers[0]);
-
-    if(audioData.file.eof())
-    {
-      std::cerr << "ERROR: Already reached EOF without loading data" << std::endl;
-      return false;
-    }
-    else if(audioData.file.fail())
-    {
-      std::cerr << "ERROR: Fail bit set" << std::endl;
-      return false;
-    }
-    else if(!audioData.file)
-    {
-      std::cerr << "ERROR: file is false" << std::endl;
+    if(!CheckStreamErrors(music_stream)) {
       return false;
     }
 
-    char* data = new char[BUFFER_SIZE];
-
-    for(std::uint8_t i = 0; i < NUM_BUFFERS; ++i)
-    {
-      std::int32_t dataSoFar = 0;
-      while(dataSoFar < BUFFER_SIZE)
-      {
-        std::int32_t result = ov_read(&audioData.oggVorbisFile, &data[dataSoFar], BUFFER_SIZE - dataSoFar, 0, 2, 1, reinterpret_cast<int*>(&audioData.oggCurrentSection));
-        if(result == OV_HOLE)
-        {
-          std::cerr << "ERROR: OV_HOLE found in initial read of buffer " << i << std::endl;
-          break;
-        }
-        else if(result == OV_EBADLINK)
-        {
-          std::cerr << "ERROR: OV_EBADLINK found in initial read of buffer " << i << std::endl;
-          break;
-        }
-        else if(result == OV_EINVAL)
-        {
-          std::cerr << "ERROR: OV_EINVAL found in initial read of buffer " << i << std::endl;
-          break;
-        }
-        else if(result == 0)
-        {
-          std::cerr << "ERROR: EOF found in initial read of buffer " << i << std::endl;
-          break;
-        }
-
-        dataSoFar += result;
-      }
-
-      if(audioData.channels == 1 && audioData.bitsPerSample == 8)
-        audioData.format = AL_FORMAT_MONO8;
-      else if(audioData.channels == 1 && audioData.bitsPerSample == 16)
-        audioData.format = AL_FORMAT_MONO16;
-      else if(audioData.channels == 2 && audioData.bitsPerSample == 8)
-        audioData.format = AL_FORMAT_STEREO8;
-      else if(audioData.channels == 2 && audioData.bitsPerSample == 16)
-        audioData.format = AL_FORMAT_STEREO16;
-      else
-      {
-        std::cerr << "ERROR: unrecognised ogg format: " << audioData.channels << " channels, " << audioData.bitsPerSample << " bps" << std::endl;
-        delete[] data;
-        return false;
-      }
-
-      alCall(alBufferData, audioData.buffers[i], audioData.format, data, dataSoFar, audioData.sampleRate);
+    ALenum format = DeduceMusicFormat(found_data);
+    if (format == AL_NONE) {
+      return false;
+    } else {
+      found_data.format = format;
     }
-
-    alCall(alSourceQueueBuffers, audioData.source, NUM_BUFFERS, &audioData.buffers[0]);
-
-    delete[] data;
-
     return true;
   }
 
+  bool CheckStreamErrors(std::ifstream& stream) {
+    if(stream.eof()) {
+      std::cerr << "ERROR: Already reached EOF without loading data" << std::endl;
+    } else if(stream.fail()) {
+      std::cerr << "ERROR: Fail bit set" << std::endl;
+    } else if(!stream) {
+      std::cerr << "ERROR: file is false" << std::endl;
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  void ResetStream(std::ifstream& stream, MusicData& music_data) {
+    stream.seekg(0, std::ios_base::beg);
+    stream.ignore(std::numeric_limits<std::streamsize>::max());
+    music_data.size = stream.gcount();
+    stream.clear();
+    stream.seekg(0,std::ios_base::beg);
+    music_data.size_consumed = 0;
+  }
+
+  ov_callbacks GetOggCallbacks() {
+    ov_callbacks ogg_callbacks;
+    ogg_callbacks.read_func = OggReadCallback;
+    ogg_callbacks.close_func = nullptr; // closing on our own
+    ogg_callbacks.seek_func = OggSeekCallback;
+    ogg_callbacks.tell_func = OggTellCallback;
+    return ogg_callbacks;
+  }
+
+  ALenum DeduceMusicFormat(const MusicData& music_data) {
+    int channels = music_data.channels;
+    int bits_per_sample = music_data.bits_per_sample;
+
+    if(channels == 1 && bits_per_sample == 8) {
+      return AL_FORMAT_MONO8;
+    } else if(channels == 1 && bits_per_sample == 16) {
+      return AL_FORMAT_MONO16;
+    } else if(channels == 2 && bits_per_sample == 8) {
+      return AL_FORMAT_STEREO8;
+    } else if(channels == 2 && bits_per_sample == 16) {
+      return AL_FORMAT_STEREO16;
+    } else {
+      std::cerr
+          << "MusicManager::DeduceMusicFormat error: unable to deduce format"
+          << std::endl;
+      return AL_NONE;
+    }
+  }
+
+  std::map<int, MusicData> data_;
 
   using Base::active_instances_;
   using Base::free_instances_;
@@ -300,21 +268,10 @@ class Music : public details::IAsset {
   using Base::Base;
   using Base::operator=;
 
-  void Play() {
-    //
-  }
-
-  void PlayForce() {
-    //
-  }
-
+  // TODO: add protected section; friend AudioThreadPool; protected MusicData
  private:
   using Base::opengl_id_;
 };
-
-// TODO: we need std::unique_ptr binary with data
-
-
 
 } // namespace faithful
 

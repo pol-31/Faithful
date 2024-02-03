@@ -51,9 +51,15 @@ class AssetManagerRefCounter {
 
 struct InstanceInfo {
   InstanceInfo() : ref_counter(new AssetManagerRefCounter) {};
+  InstanceInfo(std::string&& src_path, AssetManagerRefCounter* ref_cnt, int id)
+      : path(src_path), ref_counter(ref_cnt), opengl_id(id) {};
   std::string path{}; // TODO: does _hash() make sense?
   AssetManagerRefCounter* ref_counter;
-  int opengl_id = -1;
+
+  /// for OpenGL objects (shaders, textures) data is stored by OpenGl,
+  /// so our id directly translated into internal OpenGL ids;
+  /// for audio - data stored on the HEAP by (e.g.) SoundManager::data_ std::map
+  int opengl_id = -1; // TODO: not only OpenGL (see Sound.h, Music.h)
 };
 
 /** Base class for ShaderProgramManager, ShaderObjectManager, TextureManager, etc
@@ -93,16 +99,22 @@ class IAssetManager {
     return free_instances_.Size() == 0 ? false : true;
   }
 
-  /// returns opengl id and active_instances id
-  std::tuple<int, int> AcquireId() {
+  /// returns opengl id, active_instances id, is "new" (object new, id reused)
+  std::tuple<int, int, bool> AcquireId(const std::string& path) {
+    for (int i = 0; i < active_instances_.size(); ++i) {
+      if (active_instances_[i].path == path) {
+//        ++active_instances_[i].ref_counter;
+        return {active_instances_[i].opengl_id, i, true}; // "new" object
+      }
+    }
     if (free_instances_.Empty()) {
       if (!CleanInactive()) {
-        return {0, 0};
+        return {0, 0, false};
       }
     }
     int active_instances_id = free_instances_.Back();
     free_instances_.PopBack();
-    return {active_instances_[active_instances_id], active_instances_id};
+    return {active_instances_[active_instances_id], active_instances_id, false};
   }
 
  protected:
@@ -129,7 +141,10 @@ class IAsset {
 
   IAsset(const InstanceInfo& instance_info) {
     opengl_id_ = instance_info.opengl_id;
-    ref_counter_ = &*instance_info.ref_counter;
+    if (ref_counter_) {
+      ref_counter_ = &*instance_info.ref_counter;
+      ref_counter_->Increment();
+    }
   }
 
   IAsset(const IAsset& other) {

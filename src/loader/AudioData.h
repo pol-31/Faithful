@@ -10,21 +10,30 @@
 namespace faithful {
 namespace details {
 
-struct SoundData {
+/** We've separated SoundData from Sound.h / Music.h to avoid data
+ * duplication and also avoid inheritance from Music to Sound classes
+ * (we don't need such relationships between them - there would be
+ * only overhead due to overriding / hiding)
+ * */
+
+struct AudioDataBase {
   std::string filename;
-  std::uint8_t channels;
-  std::int32_t sampleRate;
-  std::uint8_t bitsPerSample;
-  ALsizei size;
+  int channels;
+  int sample_rate;
+  int bits_per_sample;
+  ALsizei size = 0; // explicitly specifying uninitialized data
   ALenum format;
-  std::size_t duration;
 };
 
-struct MusicData : public SoundData {
-  std::ifstream file;
-  ALsizei sizeConsumed = 0;
-  OggVorbis_File oggVorbisFile;
-  int oggCurrentSection = 0;
+struct SoundData : public AudioDataBase {
+  std::shared_ptr<char> data;
+};
+
+struct MusicData : public AudioDataBase {
+  std::ifstream fstream;
+  ALsizei size_consumed = 0;
+  OggVorbis_File ogg_vorbis_file;
+  int ogg_cur_section = 0;
 };
 
 }  // namespace details
