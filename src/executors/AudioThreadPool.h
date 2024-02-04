@@ -4,11 +4,12 @@
 #include "Executor.h"
 
 #include <array>
+#include <cstring>
+#include <fstream>
+#include <map>
 #include <string>
 #include <type_traits>
 #include <iostream> // todo: replace
-#include <fstream>
-#include <cstring>
 
 #include <AL/al.h>
 #include <AL/alc.h>
@@ -21,9 +22,18 @@
 #include "../src/loader/AudioData.h"
 
 namespace faithful {
-class Sound;
+
 class Music;
+class Sound;
+
 namespace details {
+
+namespace audio {
+
+extern std::array<MusicData, faithful::config::max_active_music_num> music_heap_data_;
+extern std::array<SoundData, faithful::config::max_active_sound_num> sound_heap_data_;
+
+} // namespace audio
 
 /** AudioThreadPool purpose:
  * - encapsulate OpenAL
@@ -46,7 +56,7 @@ class AudioThreadPool : public StaticExecutor<1> {
   void Play(Sound sound);
   void Play(Music music);
 
-  void SetBackground(Music music); // if already set -> smooth transmission
+  void SetBackground(Music* music); // if already set -> smooth transmission
 
   void Run() override;
 

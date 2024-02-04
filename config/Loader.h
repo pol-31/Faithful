@@ -11,6 +11,10 @@ inline constexpr int openal_buffers_size = 65536;
 inline constexpr int openal_sound_num = 4;  // at least 1
 inline constexpr int openal_music_num = 2;  // at least 1
 
+inline constexpr int max_active_music_num = 2;
+inline constexpr int max_active_sound_num = 4;
+inline constexpr int max_active_textures_num = 10;
+
 } // config
 } // faithful
 

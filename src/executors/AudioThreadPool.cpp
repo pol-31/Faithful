@@ -5,9 +5,10 @@
 #include "../loader/Music.h"
 #include "../loader/Sound.h"
 
+#include "queues/LifoBoundedMPSCBlockingQueue.h"
+
 namespace faithful {
 namespace details {
-
 
 AudioThreadPool::AudioThreadPool() {
   InitOpenALContext();
@@ -17,7 +18,7 @@ AudioThreadPool::AudioThreadPool() {
   }
   InitOpenALBuffersAndSources();
 
-  // TODO: somehow we need obtain ptr/ref to MusicManager/SoundManager ::data_
+  task_queue_ = new queue::LifoBoundedMPSCBlockingQueue<Task>;
 }
 
 
@@ -56,29 +57,24 @@ void AudioThreadPool::InitOpenALBuffersAndSources() {
   for (int i = 0; i < sound_sources_.size(); ++i) {
     sound_sources_[i].source_id = source_ids[i];
     sound_sources_[i].buffer_id = buffer_ids[i];
+    /// pitch, gain, position, velocity, etc - by default
+    AL_CALL(alSourcei, sound_sources_[i].source_id, AL_LOOPING, AL_FALSE);
   }
 
   for (int i = 0; i < music_sources_.size(); ++i) {
-    music_sources_[i].source_id = source_ids[i];
+    music_sources_[i].source_id = source_ids[i + sound_sources_.size()];
     for (int j = 0; j < faithful::config::openal_buffers_per_music; ++j) {
-      music_sources_[i].buffers_id[j] = buffer_ids[i]; // TODO: need offset
+      music_sources_[i].buffers_id[j] = buffer_ids[i * j + j + sound_sources_.size()];
     }
+    /// pitch, gain, position, velocity, etc - by default
+    AL_CALL(alSourcei, music_sources_[i].source_id, AL_LOOPING, AL_TRUE);
   }
   openal_initialized_ = true;
-
-  // TODO:
-  //    AL_CALL(alGenSources, 1, &audioData.source);
-  //    AL_CALL(alSourcef, audioData.source, AL_PITCH, 1);
-  //    AL_CALL(alSourcef, audioData.source, AL_GAIN, 0.5);//DEFAULT_GAIN);
-  //    AL_CALL(alSource3f, audioData.source, AL_POSITION, 0, 0, 0);
-  //    AL_CALL(alSource3f, audioData.source, AL_VELOCITY, 0, 0, 0);
-  //    AL_CALL(alSourcei, audioData.source, AL_LOOPING, AL_FALSE);
-  //    AL_CALL(alGenBuffers, buffers_size, &audioData.buffers[0]);
 }
 
 
 AudioThreadPool::~AudioThreadPool() {
-  InitOpenALBuffersAndSources();
+  DeinitOpenALBuffersAndSources();
   DeinitOpenALContext();
 }
 
@@ -107,9 +103,9 @@ void AudioThreadPool::DeinitOpenALBuffersAndSources() {
   }
 
   for (int i = 0; i < music_sources_.size(); ++i) {
-    source_ids[i] = music_sources_[i].source_id;
+    source_ids[i + sound_sources_.size()] = music_sources_[i].source_id;
     for (int j = 0; j < faithful::config::openal_buffers_per_music; ++j) {
-      buffer_ids[i] = music_sources_[i].buffers_id[j]; // TODO: need offset
+      buffer_ids[i * j + j + sound_sources_.size()] = music_sources_[i].buffers_id[j];
     }
   }
 
@@ -124,12 +120,12 @@ void AudioThreadPool::Run() {
     return;
   }
   state_ = State::kRunning;
-  while (state_ != State::kJoined &&
+  while(state_ != State::kJoined &&
          state_ != State::kSuspended) {
-      //TODO: sound tasks
-      // task_queue_->Front();
-      // task_queue_->Pop();
-    for (auto& music : music_sources_) {
+    if (!task_queue_->Empty()) {
+      (task_queue_->Front())();
+    }
+    for(auto& music : music_sources_) {
       UpdateMusicStream(music);
     }
   }
@@ -147,23 +143,26 @@ void AudioThreadPool::Play(Music music) {
   auto buffer_size = faithful::config::openal_buffers_size;
   auto buffers_num = faithful::config::openal_buffers_per_music;
 
-  /*auto data = std::make_unique<char>(buffer_size);
+  auto& audio_info = audio::music_heap_data_[music.OpenglId()];
+
+  auto data = std::make_unique<char>(buffer_size);
 
   for(std::uint8_t i = 0; i < buffers_num; ++i) {
     int dataSoFar = 0;
     while(dataSoFar < buffer_size) {
       int result = ov_read(
-          &audioData.oggVorbisFile, data.get() + dataSoFar,
-          buffer_size - dataSoFar, 0, 2, 1, &audioData.oggCurrentSection);
+          &audio_info.ogg_vorbis_file, data.get() + dataSoFar,
+          buffer_size - dataSoFar, 0, 2, 1, &audio_info.ogg_cur_section);
       if(CheckOggOvErrors(result, i)) {
         std::cerr << "AudioThreadPool::Play(Music) error" << std::endl;
         break;
       }
       dataSoFar += result;
     }
-    AL_CALL(alBufferData, audioData.buffers[i], audioData.format, data,
-            dataSoFar, audioData.sampleRate);
-  }*/
+    // TODO: there need to set "source/buffers" --> __busy__
+    AL_CALL(alBufferData, audio_info.buffers[i], audio_info.format, data,
+            dataSoFar, audio_info.sample_rate);
+  }
 
 
 //  AL_CALL(alBufferData, audioData.buffers[i], audioData.format,
@@ -171,7 +170,7 @@ void AudioThreadPool::Play(Music music) {
 //  AL_CALL(alSourceQueueBuffers, audioData.source, buffers_size, &audioData.buffers[0]);
 }
 
-void AudioThreadPool::SetBackground(faithful::Music music) {
+void AudioThreadPool::SetBackground(faithful::Music* music) {
   SmoothlyStop(music_sources_[0].source_id);
   music_sources_[0].data = music;
   // TODO: switch background_update_data
