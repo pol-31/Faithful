@@ -3,6 +3,7 @@
 
 #include <string>
 #include <fstream>
+#include <memory>
 
 #include <AL/al.h>
 #include <vorbis/vorbisfile.h>
@@ -26,7 +27,7 @@ struct AudioDataBase {
 };
 
 struct SoundData : public AudioDataBase {
-  std::shared_ptr<char> data;
+  std::unique_ptr<char> data;
 };
 
 struct MusicData : public AudioDataBase {

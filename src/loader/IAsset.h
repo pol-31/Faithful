@@ -100,21 +100,26 @@ class IAssetManager {
   }
 
   /// returns opengl id, active_instances id, is "new" (object new, id reused)
-  std::tuple<int, int, bool> AcquireId(const std::string& path) {
+  std::tuple<int, AssetManagerRefCounter*, bool> AcquireId(const std::string& path) {
     for (int i = 0; i < active_instances_.size(); ++i) {
       if (active_instances_[i].path == path) {
 //        ++active_instances_[i].ref_counter;
-        return {active_instances_[i].opengl_id, i, true}; // "new" object
+        return {active_instances_[i].opengl_id,
+                active_instances_[i].ref_counter,
+                false}; // "new" object
       }
     }
     if (free_instances_.Empty()) {
       if (!CleanInactive()) {
-        return {0, 0, false};
+        return {-1, nullptr, false};
       }
     }
     int active_instances_id = free_instances_.Back();
     free_instances_.PopBack();
-    return {active_instances_[active_instances_id], active_instances_id, false};
+    active_instances_[active_instances_id].path = path;
+    return {active_instances_[active_instances_id].opengl_id,
+            active_instances_[active_instances_id].ref_counter,
+            true};
   }
 
  protected:

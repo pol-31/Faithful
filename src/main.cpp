@@ -354,6 +354,8 @@ int main() {
 
 
 #include "executors/AudioThreadPool.h"
+#include "loader/Sound.h"
+#include "loader/Music.h"
 
 //TODO:
 // 1) Init AudioThreadPool (OpenAL context & devices & extensions)
@@ -362,8 +364,40 @@ int main() {
 // n)...
 
 int main() {
+  faithful::details::AudioThreadPool audio_thread;
+  faithful::details::audio::SoundManager sound_manager;
+  faithful::details::audio::MusicManager music_manager;
 
+  faithful::Music music = music_manager.Load("/home/pavlo/Desktop/faithful_assets/audio/Pantera - Hard Lines Sunken Cheeks ( 160kbps ).ogg");
+
+  faithful::Sound sound = sound_manager.Load("/home/pavlo/Desktop/ahem_x.wav");
+  faithful::Sound sound1 = sound_manager.Load("/home/pavlo/Downloads/air_raid.wav");
+  faithful::Sound sound2 = sound_manager.Load("/home/pavlo/Downloads/arrow_x.wav");
+//  faithful::Sound sound3 = sound_manager.Load("/home/pavlo/Downloads/airplane_chime_x.wav");
+
+  audio_thread.Play(sound);
+  audio_thread.Run();
+  audio_thread.Play(music);
+
+  /*audio_thread.Play(sound1);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  std::thread{[&](){
+    for (int i = 0; i < 10; ++i) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      audio_thread.Play(sound);
+    }
+  }}.detach();
+  std::thread{[&](){
+    for (int i = 0; i < 10; ++i) {
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+      audio_thread.Play(sound2);
+    }
+  }}.detach();
+
+  audio_thread.Play(sound2);*/
   std::cerr << "Hello, World?" << std::endl;
+  std::cout << "Sleep 60 sec" << std::endl;
+  std::this_thread::sleep_for(std::chrono::seconds(60));
   return 0;
 }
 

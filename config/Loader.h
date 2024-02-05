@@ -15,6 +15,9 @@ inline constexpr int max_active_music_num = 2;
 inline constexpr int max_active_sound_num = 4;
 inline constexpr int max_active_textures_num = 10;
 
+// see src/loader/AudioThreadPool.h/.cpp
+inline constexpr float default_background_gain_step = 0.005f;
+
 } // config
 } // faithful
 

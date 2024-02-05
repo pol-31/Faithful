@@ -53,28 +53,30 @@ class AudioThreadPool : public StaticExecutor<1> {
   AudioThreadPool();
   ~AudioThreadPool();
 
-  void Play(Sound sound);
-  void Play(Music music);
+  void Play(const Sound& sound);
+  void Play(const Music& music);
 
   void SetBackground(Music* music); // if already set -> smooth transmission
 
   void Run() override;
+  void Join() override;
 
  private:
   /// Sound: .wav
   struct SoundSourceData {
-    faithful::Sound* data;
     ALuint buffer_id;
     ALuint source_id;
-    bool busy;
+    bool busy = false;
   };
 
   struct MusicSourceData {
     std::array<ALuint, faithful::config::openal_buffers_per_music> buffers_id;
     faithful::Music* data;
     ALuint source_id;
-    bool busy;
+    bool busy = false;
   };
+
+  void ReleaseSources(); // TODO: rename
 
   void InitOpenALContext();
   void DeinitOpenALContext();
@@ -82,18 +84,30 @@ class AudioThreadPool : public StaticExecutor<1> {
   void InitOpenALBuffersAndSources();
   void DeinitOpenALBuffersAndSources();
 
+  /// return id in sound_sources_ / music_sources_, NOT directly OpenAL id <--- todo: to documentation
+  int GetAvailableSoundSourceId();
+  int GetAvailableMusicSourceId();
+
+  void BackgroundSmoothTransition();
+
   void UpdateMusicStream(MusicSourceData& music_data);
 
-  void SmoothlyStart(ALuint source);
-  void SmoothlyStop(ALuint source);
-
   bool CheckOggOvErrors(int code, int buffer_id);
+  bool CheckOggOvLoopErrors(int code);
 
   ALCcontext* openal_context_;
   ALCdevice* openal_device_;
 
   std::array<SoundSourceData, faithful::config::openal_sound_num> sound_sources_;
+
+  /// music_sources_[0] <- main background music
+  /// (where BackgroundSmoothTransition works)
   std::array<MusicSourceData, faithful::config::openal_music_num> music_sources_;
+
+  faithful::Music* next_background_music_ = nullptr;
+
+  float background_gain_ = 1.0f;
+  float background_gain_step_ = 0.0f; // for smooth transition between two streams
 
   bool openal_initialized_ = false;
 };

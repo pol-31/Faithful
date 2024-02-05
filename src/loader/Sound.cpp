@@ -5,7 +5,7 @@
 #include <iostream> // todo: replace by Logger
 #include <string>
 
-#include <AL/al.h>
+#include <AL/alext.h>
 
 #include "AudioData.h"
 #include "IAsset.h"
@@ -20,7 +20,8 @@ std::array<SoundData, faithful::config::max_active_sound_num> sound_heap_data_;
 
 SoundManager::SoundManager() {
   for (int i = 0; i < faithful::config::max_active_sound_num; ++i) {
-    free_instances_[i] = i;
+    active_instances_[i].opengl_id = i;
+    free_instances_.PushBack(i);
   }
 }
 
@@ -38,7 +39,7 @@ SoundManager::~SoundManager() {
 
 InstanceInfo SoundManager::Load(std::string&& sound_path) {
   auto [sound_id, ref_counter, is_new_id] = Base::AcquireId(sound_path);
-  if (sound_id == 0) {
+  if (sound_id == -1) {
     return {"", nullptr, default_sound_id_};
   } else if (!is_new_id) {
     return {std::move(sound_path), ref_counter, sound_id};
@@ -83,29 +84,53 @@ bool SoundManager::LoadSoundData(int sound_id, const std::string& sound_path) {
   }
   found_data.format = format;
 
+  found_data.data.reset(new char[header.subchunk2_size]);
   sound_file.read(found_data.data.get(), header.subchunk2_size);
   return true;
 }
 
 ALenum SoundManager::DeduceSoundFormat(const WavHeader& header) {
-  if (header.bits_per_sample == 8) {
-    if (header.num_channels == 1) {
-      return AL_FORMAT_MONO8;
-    } else if (header.num_channels == 2) {
-      return AL_FORMAT_STEREO8;
-    }
-  } else if (header.bits_per_sample == 16) {
-    if (header.num_channels == 1) {
-      return AL_FORMAT_MONO16;
-    } else if (header.num_channels == 2) {
-      return AL_FORMAT_STEREO16;
+  // Vorbis format use float natively, so load as
+  // float to avoid clipping when possible
+  bool float_ext_supported = false;
+  if (alIsExtensionPresent("AL_EXT_FLOAT32")) {
+    float_ext_supported = true;
+  }
+
+  if (float_ext_supported) {
+    if (header.bits_per_sample == 8) {
+      if (header.num_channels == 1) {
+        return AL_FORMAT_MONO_FLOAT32;
+      } else if (header.num_channels == 2) {
+        return AL_FORMAT_STEREO_FLOAT32;
+      }
+    } else if (header.bits_per_sample == 16) {
+      if (header.num_channels == 1) {
+        return AL_FORMAT_MONO_FLOAT32;
+      } else if (header.num_channels == 2) {
+        return AL_FORMAT_STEREO_FLOAT32;
+      }
     }
   } else {
-    std::cerr
-        << "SoundManager::DeduceSoundFormat error: unable to deduce format"
-        << std::endl;
-    return AL_NONE;
+    if (header.bits_per_sample == 8) {
+      if (header.num_channels == 1) {
+        return AL_FORMAT_MONO8;
+      } else if (header.num_channels == 2) {
+        return AL_FORMAT_STEREO8;
+      }
+    } else if (header.bits_per_sample == 16) {
+      if (header.num_channels == 1) {
+        return AL_FORMAT_MONO16;
+      } else if (header.num_channels == 2) {
+        return AL_FORMAT_STEREO16;
+      }
+    }
   }
+
+  std::cerr
+      << "SoundManager::DeduceSoundFormat error: unable to deduce format"
+      << std::endl;
+  return AL_NONE;
 }
 
 
