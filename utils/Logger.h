@@ -240,7 +240,7 @@ auto AlcCallImpl(const char* filename, int line, Fn fn, Args... args)
 }
 
 #ifdef FAITHFUL_DEBUG // TODO: --------------------------------------------------< wtf is this
-bool Logger::buffering_on = true;
+//bool Logger::buffering_on = true;
 #endif
 
 }  // namespace faithful

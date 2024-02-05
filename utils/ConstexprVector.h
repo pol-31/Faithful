@@ -130,7 +130,7 @@ class ConstexprVector {
 
   template <typename U>
   constexpr void PushBack(U&& element) {
-    if (last_element_idx + 1 == data_.size()) {
+    if (last_element_idx == data_.size()) {
       throw std::out_of_range("ConstexprVector: size overflow");
     }
     ++last_element_idx;

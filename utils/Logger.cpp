@@ -197,7 +197,7 @@ void CheckOpenGlfwError(std::string&& error_info) {
 }
 
 void CheckOpenAlError(std::string&& error_info) {
-  GLenum error = glGetError();
+  GLenum error = alGetError();
   switch (error) {
     case GL_NO_ERROR:
       return;
@@ -230,7 +230,7 @@ std::string GenErrorString(const char* meta, const char* filename, int line) {
   error_string += " (";
   error_string += filename;
   error_string += ": ";
-  error_string += line;
+  error_string += std::to_string(line);
   error_string += ") ";
   return std::move(error_string);
 }
