@@ -1,6 +1,8 @@
 #ifndef FAITHFUL_THREADPOOLCALL_H
 #define FAITHFUL_THREADPOOLCALL_H
 
+#include "../Engine.h"
+
 #include "ThreadPools.h"
 #include <iostream>  // TODO: replace by logger
 
@@ -12,12 +14,33 @@ class ImmediateTag {};
 // can be chained but there is no warranty of order
 class SingleSemiDeferredCall {
  public:
-  SingleSemiDeferredCall();
+  SingleSemiDeferredCall() {
+    executor_ = CurrentRenderThreadPool();
+  }
   SingleSemiDeferredCall(class Executor* executor)
       : executor_(executor) {
   }
 
-  SingleSemiDeferredCall& Executor(ExecutorType type);
+  SingleSemiDeferredCall& Executor(ExecutorType type) {
+    switch (type) {
+      case ExecutorType::GLFWThread:
+        executor_ = CurrentRenderThreadPool();
+        break;
+      case ExecutorType::OpenGLThread:
+        executor_ = CurrentRenderThreadPool();
+        break;
+      case ExecutorType::LoadThreadPool:
+        executor_ = CurrentLoadThreadPool();
+        break;
+      case ExecutorType::SoundThreadPool:
+        executor_ = CurrentSoundThreadPool();
+        break;
+      case ExecutorType::ObjectProcessingThreadPool:
+        executor_ = CurrentObjectThreadPool();
+        break;
+    }
+    return *this;
+  }
 
   template <typename Callable>
   SingleSemiDeferredCall& Do(Callable&& fn) {
