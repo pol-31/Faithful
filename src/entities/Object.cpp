@@ -1,399 +1,343 @@
 #include "Object.h"
 
-#include <glm/gtc/type_ptr.hpp>
-#include <utility>
-
-#include "Mesh.h"
-#include "common/RunningAnimation.h"
-#include "../loader/ShaderProgram.h"
-#include "../loader/Sprite.h"
-#include "../loader/Texture.h"
-#include "../Engine.h"
-
 namespace faithful {
 
-void TrivialObjectImplBase::Configurate1(unsigned int ebo_idx_num) {
-  global_id_ = NewGlobalId();
-  ebo_idx_num_ = ebo_idx_num;
-  glGenVertexArrays(1, &vao_);
-  glGenBuffers(1, &vbo_);
-  glGenBuffers(1, &ebo_);
-  ready_instantiate_ = true;
+/// Transformable2D
+
+glm::vec2 Transformable2D::GetPosition() const {
+  return glm::vec2(transform_[2]);
 }
 
-TrivialObject2DImpl::TrivialObject2DImpl() {
-  shader_program_ = utility::DefaultShaderProgram::object2d_;
+glm::quat Transformable2D::GetRotationQuat() const {
+  return glm::quat_cast(transform_);
+}
+float Transformable2D::GetRotationRad() const {
+  return std::atan2(transform_[1][0], transform_[0][0]);
 }
 
-std::tuple<glm::mat3*, int, int> TrivialObject2DImpl::CreateInstance() {
-  assert(ready_instantiate_);
-  auto new_instance_transform = new glm::mat3(1.0f);
-  drawable_instances_.insert(
-      {++last_local_id_, {new_instance_transform, DefaultSprites::ids_[1]}});
-  return {new_instance_transform, global_id_, last_local_id_};
+glm::vec2 Transformable2D::GetScale() const {
+  return {transform_[0][0], transform_[1][1]};
 }
 
-void TrivialObject2DImpl::Draw(ObjectRenderPhase phase) const {
-  // TODO: draw regard to phase
-  shader_program_->Use();
-  shader_program_->AdjustVar("texture1", 0);
-  glBindVertexArray(vao_);
-  glActiveTexture(GL_TEXTURE0);
 
-  for (auto inst : drawable_instances_) {
-    glBindTexture(GL_TEXTURE_2D, inst.second.texture_id);
-    shader_program_->AdjustMat3v("transform", 1, GL_FALSE,
-                                 glm::value_ptr(*inst.second.transform));
-    glDrawArrays(GL_TRIANGLE_FAN, 0, ebo_idx_num_);
-  }
+void Transformable2D::TranslateTo(float x, float y) {
+  transform_[2] = glm::vec3(x, y, 1.0f);
+}
+void Transformable2D::TranslateTo(const glm::vec2& pos) {
+  transform_[2] = glm::vec3(pos, 1.0f);
 }
 
-void TrivialObject2DImpl::MakeDrawable(unsigned int local_id) {
-  drawable_instances_.insert(
-      std::move(undrawable_instances_.extract(local_id)));
+void Transformable2D::TranslateOn(float x, float y) {
+  transform_[2] += glm::vec3(x, y, 1.0f);
+}
+void Transformable2D::TranslateOn(const glm::vec2& delta) {
+  transform_[2] += glm::vec3(delta, 1.0f);
 }
 
-void TrivialObject2DImpl::MakeUndrawable(unsigned int local_id) {
-  undrawable_instances_.insert(
-      std::move(drawable_instances_.extract(local_id)));
+void Transformable2D::TranslateOnRelated(
+    float len, float origin_x, float origin_y) {
+  glm::vec2 direction = GetPosition() - glm::vec2(origin_x, origin_y);
+  transform_[2] = glm::vec3(len * direction, 1.0f);
+}
+void Transformable2D::TranslateOnRelated(
+    float len, const glm::vec2& origin_pos) {
+  glm::vec2 direction = GetPosition() - origin_pos;
+  transform_[2] = glm::vec3(len * direction, 1.0f);
 }
 
-glm::mat3* TrivialObject2DImpl::get_transform(unsigned int local_id) const {
-  auto found_transform = drawable_instances_.find(local_id);
-  if (found_transform != drawable_instances_.end())
-    return found_transform->second.transform;
 
-  found_transform = undrawable_instances_.find(local_id);
-  if (found_transform != undrawable_instances_.end())
-    return found_transform->second.transform;
+void Transformable2D::RotateTo(float radians) {
+  glm::vec2 scale = GetScale();
+  glm::vec2 pos = GetPosition();
 
-  return nullptr;
+  float radians_cos = glm::cos(radians);
+  float radians_sin = glm::sin(radians);
+
+  transform_ = glm::mat3(radians_cos, -radians_sin, 0.0f,
+                         radians_sin, radians_cos,  0.0f,
+                         0.0f,        0.0f,         1.0f);
+  ScaleTo(scale);
+  TranslateTo(pos);
+}
+void Transformable2D::RotateTo(const glm::quat& rot) {
+  glm::vec2 scale = GetScale();
+  glm::vec2 pos = GetPosition();
+
+  transform_ = glm::mat3_cast(rot);
+  ScaleTo(scale);
+  TranslateTo(pos);
 }
 
-TrivialObject3DImpl::TrivialObject3DImpl() {
-  shader_program_ = utility::DefaultShaderProgram::object3d_;
+void Transformable2D::RotateOn(float radians) {
+  float new_angle = GetRotationRad() + radians;
+  RotateTo(new_angle);
+}
+void Transformable2D::RotateOn(const glm::quat& rot) {
+  RotateTo(GetRotationQuat() + rot);
 }
 
-////////////////////////////______MATERIAL_______/////////////////////////
-////////////////////////////______MATERIAL_______/////////////////////////
-////////////////////////////______MATERIAL_______/////////////////////////
-////////////////////////////______MATERIAL_______/////////////////////////
-std::tuple<glm::mat4*, int, int> TrivialObject3DImpl::CreateInstance() {
-  assert(ready_instantiate_);
-  auto new_instance_transform = new glm::mat4(1.0f);
-  drawable_instances_.insert(  // TODO: NOT tex_id, BUT material
-      {++last_local_id_, {new_instance_transform, DefaultTextures::ids_[4]}});
-  return {new_instance_transform, global_id_, last_local_id_};
+void Transformable2D::RotateOnRelated(
+    float radians, float origin_x, float origin_y) {
+  RotateOn(radians);
+  RotateOnRelatedTranslation(radians, {origin_x, origin_y});
+}
+void Transformable2D::RotateOnRelated(
+    float radians, const glm::vec2& origin_pos) {
+  RotateOn(radians);
+  RotateOnRelatedTranslation(radians, origin_pos);
+}
+void Transformable2D::RotateOnRelated(
+    const glm::quat& rot, float origin_x, float origin_y) {
+  RotateOn(rot);
+  RotateOnRelatedTranslation(rot, {origin_x, origin_y});
+}
+void Transformable2D::RotateOnRelated(
+    const glm::quat& rot, const glm::vec2& origin_pos) {
+  RotateOn(rot);
+  RotateOnRelatedTranslation(rot, origin_pos);
 }
 
-void TrivialObject3DImpl::Draw(ObjectRenderPhase phase) const {
-  // TODO: draw regard to phase
-  shader_program_->Use();
-  glBindVertexArray(vao_);
 
-  for (auto inst : drawable_instances_) {
-    glActiveTexture(GL_TEXTURE0);
-    shader_program_->AdjustVar("texture_albedo", 0);
-    glBindTexture(GL_TEXTURE_2D, inst.second.material.tex_albedo_);
-    glActiveTexture(GL_TEXTURE1);
-    shader_program_->AdjustVar("texture_roughness", 1);
-    glBindTexture(GL_TEXTURE_2D, inst.second.material.tex_roughness_);
-    glActiveTexture(GL_TEXTURE2);
-    shader_program_->AdjustVar("texture_metallic", 2);
-    glBindTexture(GL_TEXTURE_2D, inst.second.material.tex_metallic_);
-    glActiveTexture(GL_TEXTURE3);
-    shader_program_->AdjustVar("texture_normal", 3);
-    glBindTexture(GL_TEXTURE_2D, inst.second.material.tex_normal_);
-    glActiveTexture(GL_TEXTURE4);
-    shader_program_->AdjustVar("texture_height", 4);
-    glBindTexture(GL_TEXTURE_2D, inst.second.material.tex_height_);
-
-    shader_program_->AdjustMat4v("transform", 1, GL_FALSE,
-                                 glm::value_ptr(*inst.second.transform));
-
-    glDrawElements(GL_TRIANGLES, ebo_idx_num_, GL_UNSIGNED_INT, 0);
-  }
-
-  glBindVertexArray(0);
+void Transformable2D::ScaleTo(float factor) {
+  transform_[0][0] = factor;
+  transform_[1][1] = factor;
+}
+void Transformable2D::ScaleTo(float x, float y) {
+  transform_[0][0] = x;
+  transform_[1][1] = y;
+}
+void Transformable2D::ScaleTo(const glm::vec2& scale) {
+  transform_[0][0] = scale.x;
+  transform_[1][1] = scale.y;
 }
 
-void TrivialObject3DImpl::MakeDrawable(unsigned int local_id) {
-  drawable_instances_.insert(
-      std::move(undrawable_instances_.extract(local_id)));
+void Transformable2D::ScaleOn(float diff) {
+  transform_[0][0] += diff;
+  transform_[1][1] += diff;
 }
-void TrivialObject3DImpl::MakeUndrawable(unsigned int local_id) {
-  undrawable_instances_.insert(
-      std::move(drawable_instances_.extract(local_id)));
+void Transformable2D::ScaleOn(float x, float y) {
+  transform_[0][0] += x;
+  transform_[1][1] += y;
 }
-
-glm::mat4* TrivialObject3DImpl::get_transform(unsigned int local_id) const {
-  auto found_transform = drawable_instances_.find(local_id);
-  if (found_transform != drawable_instances_.end())
-    return found_transform->second.transform;
-
-  found_transform = undrawable_instances_.find(local_id);
-  if (found_transform != undrawable_instances_.end())
-    return found_transform->second.transform;
-
-  return nullptr;
+void Transformable2D::ScaleOn(const glm::vec2& scale) {
+  transform_[0][0] += scale.x;
+  transform_[1][1] += scale.y;
 }
 
-void MultimeshObject3DImpl::Configurate1(unsigned int num) {
-  global_id_ = NewGlobalId();
-  GLuint buffer_ids[num];
-  glGenVertexArrays(num, buffer_ids);
-  vao_ = buffer_ids[0];
-  glGenBuffers(num, buffer_ids);
-  vbo_ = buffer_ids[0];
-  glGenBuffers(num, buffer_ids);
-  ebo_ = buffer_ids[0];
+void Transformable2D::ScaleOnRelated(
+    float factor, float origin_x, float origin_y) {
+  TranslateOnRelated(factor, origin_x, origin_y);
+  ScaleOn(factor);
+}
+void Transformable2D::ScaleOnRelated(
+    float factor, const glm::vec2& origin_pos) {
+  TranslateOnRelated(factor, origin_pos);
+  ScaleOn(factor);
 }
 
-void MultimeshObject3DImpl::Configurate2(utility::Span<Mesh*> meshes,
-                                         ObjectRenderCategory category) {
-  meshes_ = std::move(meshes);
-  switch (category) {
-    case ObjectRenderCategory::kDefault:
-      shader_program_ = utility::DefaultShaderProgram::object3d_;
-      break;
-    case ObjectRenderCategory::kHeightMap:
-      shader_program_ = utility::DefaultShaderProgram::object3d_light_;
-      break;
-    case ObjectRenderCategory::kHeightParallaxMap:
-      shader_program_ = utility::DefaultShaderProgram::object3d_light_parallax_;
-      break;
-  }
-  ready_instantiate_ = true;
+
+void Transformable2D::RotateOnRelatedTranslation(
+    float radians, const glm::vec2& origin_pos) {
+  glm::vec2 direction = glm::abs(GetPosition() - origin_pos);
+  float len = glm::length(direction);
+
+  /// cos theorem for our isosceles triangle
+  float beta = (glm::pi<float>() - radians) / 2;
+  float hypotenuse = 2 * len * len * (1 - glm::cos(radians));
+
+  TranslateTo({origin_pos.x + hypotenuse * glm::sin(beta),
+               origin_pos.y + hypotenuse * glm::cos(beta)});
 }
 
-std::tuple<glm::mat4*, int, int> MultimeshObject3DImpl::CreateInstance() {
-  assert(ready_instantiate_);
-  auto new_instance_transform = new glm::mat4(1.0f);
-  drawable_instances_transform_.insert(
-      {++last_local_id_, new_instance_transform});
-  return {new_instance_transform, global_id_, last_local_id_};
+void Transformable2D::RotateOnRelatedTranslation(
+    const glm::quat& rot, const glm::vec2& origin_pos) {
+  glm::vec3 direction {GetPosition() - origin_pos, 0.0f};
+  glm::vec3 rotated_direction = glm::mat3_cast(rot) * direction;
+
+  float len = glm::length(rotated_direction);
+  float beta = glm::pi<float>() - glm::acos(rotated_direction.x / len);
+
+  float beta_cos = glm::cos(beta);
+  float beta_sin = glm::sin(beta);
+
+  float hypotenuse = 2 * len * len * (1 - beta_cos);
+
+  TranslateTo({origin_pos.x + hypotenuse * beta_sin,
+               origin_pos.y + hypotenuse * beta_cos});
 }
 
-void MultimeshObject3DImpl::Draw(ObjectRenderPhase phase) const {
-  // TODO: draw regard to phase
-  shader_program_->Use();
-  for (auto transform : drawable_instances_transform_) {
-    for (unsigned int i = 0; i < meshes_.get_size(); ++i) {
-      auto cur_mesh = meshes_[i];
-      auto cur_index_num = cur_mesh->get_index_num();
+/// Transformable3D
 
-      // TODO: wait until Model is ready (check mesh::ebo_num)
-      if (cur_index_num == 0)
-        return;
-
-      auto cur_mat = cur_mesh->get_material();
-      glActiveTexture(GL_TEXTURE0);
-      shader_program_->AdjustVar("texture_albedo", 0);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_albedo_);
-      glActiveTexture(GL_TEXTURE1);
-      shader_program_->AdjustVar("texture_roughness", 1);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_roughness_);
-      glActiveTexture(GL_TEXTURE2);
-      shader_program_->AdjustVar("texture_metallic", 2);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_metallic_);
-      glActiveTexture(GL_TEXTURE3);
-      shader_program_->AdjustVar("texture_normal", 3);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_normal_);
-      glActiveTexture(GL_TEXTURE4);
-      shader_program_->AdjustVar("texture_height", 4);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_height_);
-
-      shader_program_->AdjustMat4v("model", 1, GL_FALSE,
-                                   glm::value_ptr(*(transform.second)));
-
-      glBindVertexArray(vao_ + i);
-      glDrawElements(GL_TRIANGLES, cur_index_num, GL_UNSIGNED_INT, 0);
-    }
-  }
+glm::vec3 Transformable3D::GetPosition() const {
+  return glm::vec3(transform_[2]);
 }
 
-void MultimeshObject3DImpl::MakeDrawable(unsigned int local_id) {
-  drawable_instances_transform_.insert(
-      std::move(undrawable_instances_transform_.extract(local_id)));
-}
-void MultimeshObject3DImpl::MakeUndrawable(unsigned int local_id) {
-  undrawable_instances_transform_.insert(
-      std::move(drawable_instances_transform_.extract(local_id)));
+glm::quat Transformable3D::GetRotationQuat() const {
+  return glm::quat_cast(transform_);
 }
 
-glm::mat4* MultimeshObject3DImpl::get_transform(unsigned int local_id) const {
-  auto found_transform = drawable_instances_transform_.find(local_id);
-  if (found_transform != drawable_instances_transform_.end())
-    return found_transform->second;
-
-  found_transform = undrawable_instances_transform_.find(local_id);
-  if (found_transform != undrawable_instances_transform_.end())
-    return found_transform->second;
-
-  return nullptr;
+glm::vec3 Transformable3D::GetRotationRad() const {
+  float angle_x = std::atan2(-transform_[2][1],
+                             std::sqrt(transform_[2][0] * transform_[2][0] +
+                                       transform_[2][2] * transform_[2][2]));
+  float angle_y = std::atan2(transform_[2][0], transform_[2][2]);
+  float angle_z = std::atan2(transform_[1][0], transform_[0][0]);
+  return {angle_x, angle_y, angle_z};
 }
 
-// the same implementation as in MultimeshObject3DImpl::Configurate1
-void SkinnedObject3DImpl::Configurate1(unsigned int num) {
-  global_id_ = NewGlobalId();
-  // TODO: ubo related to shader_program;
-  GLuint buffer_ids[num];
-  glGenVertexArrays(num, buffer_ids);
-  vao_ = buffer_ids[0];
-  glGenBuffers(num, buffer_ids);
-  vbo_ = buffer_ids[0];
-  glGenBuffers(num, buffer_ids);
-  ebo_ = buffer_ids[0];
+glm::vec3 Transformable3D::GetScale() const {
+  return {transform_[0][0], transform_[1][1], transform_[2][2]};
 }
 
-/// intentionally hides TODO: what?
-void SkinnedObject3DImpl::Configurate2(
-    utility::Span<Mesh*> meshes, ObjectRenderCategory category,
-    unsigned int bone_num, utility::Span<AnimationNode*> animation_nodes,
-    glm::mat4 global_inverse_transform) {
-  bone_num_ = bone_num;
-  meshes_ = std::move(meshes);
-  // TODO:
-  /*switch (category) {
-    case ObjectRenderCategory::kDefault:
-      shader_program_ = utility::DefaultShaderProgram::object3d_skinned_;
-      break;
-    case ObjectRenderCategory::kHeightMap:
-      shader_program_ = utility::DefaultShaderProgram::object3d_skinned_light_;
-      break;
-    case ObjectRenderCategory::kHeightParallaxMap:
-      shader_program_ =
-  utility::DefaultShaderProgram::object3d_skinned_light_parallax_; break;
-  }*/
-  animation_nodes_ = std::move(animation_nodes);
-  global_inverse_transform_ = global_inverse_transform;
-  ready_instantiate_ = true;
+/// positioning
+void Transformable3D::TranslateTo(float x, float y, float z) {
+  transform_[2] = glm::vec4(x, y, z, 1.0f);
+}
+void Transformable3D::TranslateTo(const glm::vec3& pos) {
+  transform_[2] = glm::vec4(pos, 1.0f);
 }
 
-std::tuple<glm::mat4*, int, int> SkinnedObject3DImpl::CreateInstance() {
-  assert(ready_instantiate_);
-  unsigned int new_ubo;
-  glGenBuffers(1, &new_ubo);
-  auto new_shader_program = utility::DefaultShaderProgram::CreateBoneProgram();
-  auto new_instance_transform = new glm::mat4(1.0f);
-  drawable_instances_.insert(
-      {++last_local_id_,
-       {new_instance_transform, new_shader_program, new_ubo}});
-
-  glBindBuffer(GL_UNIFORM_BUFFER, new_ubo);
-  glBufferData(GL_UNIFORM_BUFFER, 200 * sizeof(glm::mat4), nullptr,
-               GL_DYNAMIC_DRAW);
-
-  GLuint bindingPoint = ++last_ubo_bind_point_;
-  glUniformBlockBinding(
-      new_shader_program->Id(),
-      glGetUniformBlockIndex(new_shader_program->Id(), "BoneData"),
-      bindingPoint);
-  glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, new_ubo);
-
-  // TODO: EITHER related to instance OR to class (then there's no
-  // parallelizing)
-  cur_pose_ = utility::Span<glm::mat4>(bone_num_);
-
-  DefaultPose(new_ubo);
-
-  return {new_instance_transform, global_id_, last_local_id_};
+void Transformable3D::TranslateOn(float x, float y, float z) {
+  transform_ = glm::translate(transform_, {x, y, z});
+}
+void Transformable3D::TranslateOn(const glm::vec3& delta) {
+  transform_ = glm::translate(transform_, delta);
 }
 
-void SkinnedObject3DImpl::Draw(ObjectRenderPhase phase) const {
-  // TODO: draw regard to phase
-  for (auto inst : drawable_instances_) {
-    auto cur_shader_program = inst.second.shader_program;
-    cur_shader_program->Use();
-    for (unsigned int i = 0; i < meshes_.get_size(); ++i) {
-      auto cur_mesh = meshes_[i];
-
-      // TODO: wait until Model is ready (check mesh::ebo_num)
-      if (cur_mesh->get_index_num() == 0)
-        return;
-
-      auto cur_index_num = cur_mesh->get_index_num();
-      auto cur_mat = cur_mesh->get_material();
-      glActiveTexture(GL_TEXTURE0);
-      cur_shader_program->AdjustVar("texture_albedo", 0);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_albedo_);
-      glActiveTexture(GL_TEXTURE1);
-      cur_shader_program->AdjustVar("texture_roughness", 1);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_roughness_);
-      glActiveTexture(GL_TEXTURE2);
-      cur_shader_program->AdjustVar("texture_metallic", 2);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_metallic_);
-      glActiveTexture(GL_TEXTURE3);
-      cur_shader_program->AdjustVar("texture_normal", 3);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_normal_);
-      glActiveTexture(GL_TEXTURE4);
-      cur_shader_program->AdjustVar("texture_height", 4);
-      glBindTexture(GL_TEXTURE_2D, cur_mat.tex_height_);
-
-      cur_shader_program->AdjustMat4v("model", 1, GL_FALSE,
-                                      glm::value_ptr(*(inst.second.transform)));
-
-      glBindVertexArray(vao_ + i);
-      glDrawElements(GL_TRIANGLES, cur_index_num, GL_UNSIGNED_INT, 0);
-    }
-  }
+void Transformable3D::TranslateOnRelated(float len, float origin_x,
+                        float origin_y, float origin_z) {
+  glm::vec3 direction = GetPosition() - glm::vec3(origin_x, origin_y, origin_z);
+  transform_[2] = glm::vec4(len * direction, 1.0f);
+}
+void Transformable3D::TranslateOnRelated(float len, const glm::vec3& origin_pos) {
+  glm::vec3 direction = GetPosition() - origin_pos;
+  transform_[2] = glm::vec4(len * direction, 1.0f);
 }
 
-void SkinnedObject3DImpl::DefaultPose(unsigned int ubo) {
-  animation_nodes_[0]->ProcessAnimationKey(0, glm::mat4(1.0f), cur_pose_,
-                                           global_inverse_transform_);
-  glBindBuffer(GL_UNIFORM_BUFFER, ubo);
-  glBufferSubData(GL_UNIFORM_BUFFER, 0, bone_num_ * sizeof(glm::mat4),
-                  glm::value_ptr(cur_pose_[0]));
+/// rotation
+void Transformable3D::RotateTo(float radians, const glm::vec3& axis) {
+  glm::vec3 scale = GetScale();
+  glm::vec3 pos = GetPosition();
+  transform_ = glm::rotate(glm::mat4(1.0f), radians, axis);
+  ScaleTo(scale);
+  TranslateTo(pos);
+}
+void Transformable3D::RotateTo(const glm::quat& rot, const glm::vec3& axis) {
+  glm::vec3 scale = GetScale();
+  glm::vec3 pos = GetPosition();
+  glm::mat4 rotation_matrix = glm::mat4_cast(rot);
+  transform_ = glm::rotate(transform_, glm::angle(rot), axis);
+  ScaleTo(scale);
+  TranslateTo(pos);
 }
 
-void SkinnedObject3DImpl::MakeDrawable(unsigned int local_id) {
-  drawable_instances_.insert(
-      std::move(undrawable_instances_.extract(local_id)));
+void Transformable3D::RotateOn(float radians, const glm::vec3& axis) {
+  transform_ = glm::rotate(transform_, radians, axis);
 }
-void SkinnedObject3DImpl::MakeUndrawable(unsigned int local_id) {
-  undrawable_instances_.insert(
-      std::move(drawable_instances_.extract(local_id)));
-}
-
-glm::mat4* SkinnedObject3DImpl::get_transform(unsigned int local_id) const {
-  auto found_transform = drawable_instances_.find(local_id);
-  if (found_transform != drawable_instances_.end())
-    return found_transform->second.transform;
-
-  found_transform = undrawable_instances_.find(local_id);
-  if (found_transform != undrawable_instances_.end())
-    return found_transform->second.transform;
-
-  return nullptr;
+void Transformable3D::RotateOn(const glm::quat& rot, const glm::vec3& axis) {
+  glm::mat4 rotation_matrix = glm::mat4_cast(rot);
+  transform_ = glm::rotate(transform_, glm::angle(rot), axis);
 }
 
-void SkinnedObject3DImpl::RunAnimation(unsigned int local_id, int anim_id,
-                                       bool repeat) {
-  auto found_instance = drawable_instances_.find(local_id);
-  if (found_instance == drawable_instances_.end()) {
-    found_instance = undrawable_instances_.find(local_id);
-    if (found_instance == drawable_instances_.end())
-      return;  // TODO: in general it's not possible because it manages by Me
-               // (dev)
-  }
-  animated_objects_.emplace_front(this, anim_id, found_instance->second.ubo,
-                                  repeat);
+void Transformable3D::RotateOnRelated(const glm::quat& rot, float origin_x,
+                     float origin_y, float origin_z) {
+  RotateOn(rot, {1.0f, 1.0f, 1.0f});
+  RotateOnRelatedTranslation(rot, {origin_x, origin_y, origin_z});
+}
+void Transformable3D::RotateOnRelated(const glm::quat& rot, const glm::vec3& origin_pos) {
+  RotateOn(rot, {1.0f, 1.0f, 1.0f});
+  RotateOnRelatedTranslation(rot, origin_pos);
 }
 
-void SkinnedObject3DImpl::Update(double framerate) {
-  animated_objects_.remove_if([framerate](RunningAnimation& obj) {
-    if (obj.Done())
-      return true;
-    obj.UpdateFrame(framerate);
-    return false;
-  });
+/// scale
+void Transformable3D::ScaleTo(float factor) {
+  transform_[0][0] = factor;
+  transform_[1][1] = factor;
+  transform_[2][2] = factor;
+}
+void Transformable3D::ScaleTo(float x, float y, float z) {
+  transform_[0][0] = x;
+  transform_[1][1] = y;
+  transform_[2][2] = z;
+}
+void Transformable3D::ScaleTo(const glm::vec3& scale) {
+  transform_[0][0] = scale.x;
+  transform_[1][1] = scale.y;
+  transform_[2][2] = scale.z;
 }
 
-unsigned int ObjectImplBase::last_global_id_ = 0;
+void Transformable3D::ScaleOn(float diff) {
+  transform_ = glm::scale(transform_, {diff, diff, diff});
+}
+void Transformable3D::ScaleOn(float x, float y, float z) {
+  transform_ = glm::scale(transform_, {x, y, z});
+}
+void Transformable3D::ScaleOn(const glm::vec3& scale) {
+  transform_ = glm::scale(transform_, scale);
+}
 
-/// preserve 16 binding points for further usage
-///   (not 15 but 14 is because we use pre-increment)
-unsigned int SkinnedObject3DImpl::last_ubo_bind_point_ = 14;
+void Transformable3D::ScaleOnRelated(float factor, float origin_x,
+                    float origin_y, float origin_z) {
+  TranslateOnRelated(factor, origin_x, origin_y, origin_z);
+  ScaleOn(factor);
+}
+void Transformable3D::ScaleOnRelated(float factor, const glm::vec3& origin_pos) {
+  TranslateOnRelated(factor, origin_pos);
+  ScaleOn(factor);
+}
 
-}  // namespace faithful
+
+void Transformable3D::RotateOnRelatedTranslation(const glm::quat& rot,
+                                const glm::vec3& origin_pos) {
+  glm::vec3 direction = GetPosition() - origin_pos;
+  glm::vec3 rotated_direction = glm::mat3_cast(rot) * direction;
+
+  float len = glm::length(rotated_direction);
+  float beta = glm::pi<float>() - glm::acos(rotated_direction.x / len);
+
+  float beta_cos = glm::cos(beta);
+  float beta_sin = glm::sin(beta);
+
+  float hypotenuse = 2 * len * len * (1 - beta_cos);
+  glm::vec3 new_position = origin_pos + glm::vec3(hypotenuse * beta_sin,
+                                                  0.0f, hypotenuse * beta_cos);
+  TranslateTo(new_position);
+}
+
+/// Animatable
+
+void Animatable::RunAnimation(int animation_id) {
+  animation_.SetNext(animation_id);
+}
+
+void Animatable::RunAnimationForce(int animation_id) {
+  animation_.Run(animation_id);
+}
+
+void Animatable::UpdateAnimation(int time) {
+  // load interpolated data to cur_pose and then update ubo_
+}
+
+void Animatable::StopAnimation() {
+  animation_.Stop();
+}
+
+/// Collidable
+
+Collidable::Collidable() {} // TODO: DrawManager
+
+void Collidable::EnableCollision() {}
+void Collidable::DisableCollision() {}
+
+/// Drawable
+
+Drawable::Drawable() {} // TODO: DrawManager
+
+void Drawable::EnableVisibility() {}
+void Drawable::DisableVisibility() {}
+
+/// SoundEmittable
+
+void SoundEmittable::PlaySound(int sound_id) {}
+
+} // namespace faithful
