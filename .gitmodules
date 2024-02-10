@@ -14,10 +14,6 @@
 	path = external/vorbis
 	url = https://github.com/xiph/vorbis.git
 	branch = master
-[submodule "external/rapidjson"]
-	path = external/rapidjson
-	url = https://github.com/Tencent/rapidjson.git
-	branch = master
 [submodule "external/mimalloc"]
 	path = external/mimalloc
 	url = https://github.com/microsoft/mimalloc.git

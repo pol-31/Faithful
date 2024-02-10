@@ -12,6 +12,11 @@ add_executable(faithful-core
         ../utils/Logger.cpp
         loader/Music.cpp
         loader/Sound.cpp
+        loader/Shader.cpp
+        loader/Texture2D.cpp
+        loader/Texture1D.cpp
+        loader/Model.cpp
+        common/Object.cpp
         ${FAITHFUL_MAIN_SOURCES})
 
 target_compile_options(faithful-core PRIVATE ${FAITHFUL_COMPILE_OPTIONS})
@@ -34,7 +39,6 @@ target_link_libraries(faithful-core
         PRIVATE vorbis
         PRIVATE ogg
         PRIVATE OpenAL
-        PRIVATE RapidJSON
         PRIVATE tinygltf
 )
 if(NOT FAITHFUL_GL_SUPPORTS_ASTC)
@@ -50,7 +54,7 @@ target_include_directories(faithful-core
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/ogg/include
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/mimalloc/include
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/openal-soft/include
-        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include/rapidjson
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/tinygltf
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/vorbis/include
 )

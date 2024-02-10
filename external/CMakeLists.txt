@@ -165,20 +165,7 @@ endif()
 #    rapidjson (Faithful: json-parser for tinygltf
 #               AssetProcessor: safely extract embedded textures for further
 #                               .astc copmression)
-
-if(FAITHFUL_BUILD_EXTERNAL_ALL OR
-      (FAITHFUL_BUILD_EXTERNAL AND NOT RAPIDJSON_FOUND))
-    message(STATUS "---> rapidjson building")
-    set(RAPIDJSON_BUILD_DOC OFF)
-    set(RAPIDJSON_BUILD_EXAMPLES OFF)
-    set(RAPIDJSON_BUILD_TESTS OFF)
-    set(RAPIDJSON_BUILD_THIRDPARTY_GTEST OFF)
-    set(RAPIDJSON_BUILD_CXX11 OFF)
-    set(RAPIDJSON_BUILD_CXX17 ON)
-    set(RAPIDJSON_ENABLE_INSTRUMENTATION_OPT ON)
-    add_subdirectory(rapidjson EXCLUDE_FROM_ALL)
-endif()
-
+#    only one header, so included directly
 
 #    --------------------------------------------------------------------
 #    stb_image, stb_image_write (Faithful: texture loading for further
@@ -199,7 +186,7 @@ target_include_directories(stb PRIVATE ${FAITHFUL_SOURCE_DIR}/external/stb)
 message(STATUS "---> tinygltf building")
 configure_file(tinygltf/tiny_gltf.h tiny_gltf.cpp COPYONLY)
 add_library(tinygltf STATIC tiny_gltf.cpp)
-target_compile_definitions(tinygltf PUBLIC
+#[[target_compile_definitions(tinygltf PUBLIC
         TINYGLTF_IMPLEMENTATION
         TINYGLTF_NOEXCEPTION
         JSON_NOEXCEPTION
@@ -208,10 +195,10 @@ target_compile_definitions(tinygltf PUBLIC
         TINYGLTF_NO_STB_IMAGE_WRITE
         TINYGLTF_USE_RAPIDJSON
         TINYGLTF_USE_CPP14
-)
+)]]
 target_include_directories(tinygltf
-        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include/rapidjson
-        tinygltf PRIVATE ${FAITHFUL_SOURCE_DIR}/external/tinygltf
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/tinygltf
 )
 
 #    --------------------------------------------------------------------
