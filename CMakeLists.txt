@@ -22,23 +22,7 @@ set(FAITHFUL_BINARY_DIR "${CMAKE_BINARY_DIR}")
 # official documentation it doesn't provide a 100% guarantee)
 set(CMAKE_INSTALL_PREFIX "${FAITHFUL_BINARY_DIR}/installed_libs")
 
-set(FAITHFUL_FREEZE_DIR "${FAITHFUL_SOURCE_DIR}/Faithful" CACHE STRING
-        "The subdirectory where to FreezeBuild")
-
 set(CMAKE_MODULE_PATH "${FAITHFUL_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-
-# For FREEZE_BUILD there's 2 stages of compilation:
-# 1) Freeze - all external libs, compiling of AssetProcessor, AssetDownloader
-#      - only once (Release mode). It works like installing:
-#      all static/dynamic libraries, licenses, assets
-#      simply copied to some folder (FAITHFUL_FREEZE_DIR).
-# 2) Then you don't have any ... but TODO: idk how to call it
-# TODO: commits only to certain Git Work-tree
-
-option(FAITHFUL_FREEZE_BUILD
-        "Build & compile external libs, AssetProcessor, AssetDownloader only once (RELEASE)
-        (further build/compiling depends solely on Faithful code)" ON
-)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(FAITHFUL_RELEASE OFF)
@@ -80,8 +64,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(${FAITHFUL_SOURCE_DIR}/cmake/PrintInfo.cmake)
 print_system_and_cmake_info()
 
-include(cmake/ConfigAssetsPaths.cmake)
-config_asset_paths()
+set(FAITHFUL_CONFIG_PATH "${FAITHFUL_SOURCE_DIR}/config")
+set(FAITHFUL_ASSET_PATH "${FAITHFUL_SOURCE_DIR}/assets")
+set(FAITHFUL_ASSET_INFO_FILE "${FAITHFUL_ASSET_PATH}/assets_info.txt")
 
 configure_file(${FAITHFUL_SOURCE_DIR}/config/paths.h.in ${FAITHFUL_SOURCE_DIR}/config/Paths.h)
 
@@ -132,10 +117,6 @@ if(FAITHFUL_DEPS_FOUND OR FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL
         include(${FAITHFUL_SOURCE_DIR}/cmake/ConfigClangTidy.cmake)
     endif ()
 
-    if(FAITHFUL_FREEZE_BUILD)
-#        include (${FAITHFUL_SOURCE_DIR}/cmake/FreezeBuild.cmake)
-        message(STATUS "+> Faithful has been frozen")
-    endif()
     include(${FAITHFUL_SOURCE_DIR}/cmake/CopyExternalLicenses.cmake)
 else()
     message(STATUS "+> Building of Faithful has failed: some externals missing")

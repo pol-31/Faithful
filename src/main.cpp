@@ -56,6 +56,9 @@ int MainGameSceneSetup() {
 }
 
 #include "executors/RenderThreadPool.h"
+#include "loader/Model.h"
+
+#include "common/CollisionManager.h"
 
 int main() {
   faithful::details::RenderThreadPool render_tp_;
@@ -68,10 +71,10 @@ int main() {
 }
 
 void TestAudioThreadPool() {
-  faithful::details::AudioThreadPool audio_thread;
+  faithful::details::assets::SoundPool sound_manager;
+  faithful::details::assets::MusicPool music_manager;
+  faithful::details::AudioThreadPool audio_thread(&music_manager, &sound_manager);
 
-  faithful::details::audio::SoundManager sound_manager;
-  faithful::details::audio::MusicManager music_manager;
 
   faithful::Music music = music_manager.Load("/home/pavlo/Desktop/faithful_assets/audio/Pantera - Hard Lines Sunken Cheeks ( 160kbps ).ogg");
 
@@ -104,5 +107,43 @@ void TestAudioThreadPool() {
   std::cout << "Sleep 60 sec" << std::endl;
   std::this_thread::sleep_for(std::chrono::seconds(60));
 }
+
+// tinygltf changes list:
+// preferences:
+//   solely RapidJSON, cpp14
+// remove: audio, lights, cameras, PositionalEmitter
+//   extensions, extras
+//   no DRACO, no ANDROID, no STB_IMAGE_WRITE
+//   remove jsonhpp: C++ JSON library.
+//   UpdateImageObject <- we handle it only by url property
+//   "todo" and "ifdef 0"
+
+
+
+// TODO: inside the game: TINYGLTF_NO_EXTERNAL_IMAGE
+// TODO: inside the game: TINYGLTF_USE_RAPIDJSON_CRTALLOCATOR
+//                    (in AssetProcessor we have only one json at a time)
+
+
+
+
+
+/**TODO-list:
+ *  - STB_IMAGE_WRITE inside the tinygltf.h
+ *  - Total Managers Initialization in main.h (or not in main.h)
+ *  - folly::Function, folly::Future & combinators implementation --> TextureProcessing
+ *  - model linkage optimization (utility for linking texture/json directly to src code
+ *     - for models/textures/gui which will be used throughout the game - like configurations)
+ *  - Font?
+ *  - ModelManager
+ *  - Animation processing, interpolation
+ *  - fir music streaming
+ * */
+
+
+
+
+
+
 
 

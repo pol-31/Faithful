@@ -51,12 +51,6 @@ else()
     message(FATAL_ERROR "OPENGL: __not_found__")
 endif()
 
-# --- find RapidJSON ---
-
-find_path(RAPIDJSON_INCLUDE_DIR NAMES rapidjson/rapidjson.h)
-header_found_info(RAPIDJSON RAPIDJSON_INCLUDE_DIR)
-mark_as_advanced(RAPIDJSON_INCLUDE_DIR)
-
 # --- find libvorbis (vorbis, vorbisenc, vorbisfile) ---
 
 find_path(VORBIS_INCLUDE_DIR NAMES vorbis/codec.h)
