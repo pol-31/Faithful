@@ -5,6 +5,3 @@ build
 cmake-build-*
 /out
 CMakeSettings.json
-
-/utils/AssetProcessor/cmake-build-*/
-/utils/AssetProcessor/.idea/

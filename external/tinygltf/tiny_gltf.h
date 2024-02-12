@@ -1391,7 +1391,8 @@ class TinyGLTF {
 namespace tinygltf {
 namespace detail {
 
-// RapidJSON CRTAllocator.  It is thread safe and multiple
+#ifdef TINYGLTF_USE_RAPIDJSON_CRTALLOCATOR
+// This uses the RapidJSON CRTAllocator.  It is thread safe and multiple
 // documents may be active at once.
 using json =
     rapidjson::GenericValue<rapidjson::UTF8<>, rapidjson::CrtAllocator>;
@@ -1402,6 +1403,55 @@ using JsonDocument =
     rapidjson::GenericDocument<rapidjson::UTF8<>, rapidjson::CrtAllocator>;
 rapidjson::CrtAllocator s_CrtAllocator;  // stateless and thread safe
 rapidjson::CrtAllocator &GetAllocator() { return s_CrtAllocator; }
+#else
+// This uses the default RapidJSON MemoryPoolAllocator.  It is very fast, but
+// not thread safe. Only a single JsonDocument may be active at any one time,
+// meaning only a single gltf load/save can be active any one time.
+using json = rapidjson::Value;
+using json_iterator = json::MemberIterator;
+using json_const_iterator = json::ConstMemberIterator;
+using json_const_array_iterator = json const *;
+rapidjson::Document *s_pActiveDocument = nullptr;
+rapidjson::Document::AllocatorType &GetAllocator() {
+  assert(s_pActiveDocument);  // Root json node must be JsonDocument type
+  return s_pActiveDocument->GetAllocator();
+}
+
+#ifdef __clang__
+#pragma clang diagnostic push
+// Suppress JsonDocument(JsonDocument &&rhs) noexcept
+#pragma clang diagnostic ignored "-Wunused-member-function"
+#endif
+
+struct JsonDocument : public rapidjson::Document {
+  JsonDocument() {
+    assert(s_pActiveDocument ==
+           nullptr);  // When using default allocator, only one document can be
+                      // active at a time, if you need multiple active at once,
+                      // define TINYGLTF_USE_RAPIDJSON_CRTALLOCATOR
+    s_pActiveDocument = this;
+  }
+  JsonDocument(const JsonDocument &) = delete;
+  JsonDocument(JsonDocument &&rhs) noexcept
+      : rapidjson::Document(std::move(rhs)) {
+    s_pActiveDocument = this;
+    rhs.isNil = true;
+  }
+  ~JsonDocument() {
+    if (!isNil) {
+      s_pActiveDocument = nullptr;
+    }
+  }
+
+ private:
+  bool isNil = false;
+};
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
+#endif  // TINYGLTF_USE_RAPIDJSON_CRTALLOCATOR
 
 void JsonParse(JsonDocument &doc, const char *str, size_t length,
                bool throwExc = false) {
@@ -2533,55 +2583,6 @@ static std::string MimeToExt(const std::string &mimeType) {
   }
 
   return "";
-}
-
-static bool UpdateImageObject(const Image &image, std::string &baseDir,
-                              int index, bool embedImages,
-                              const URICallbacks *uri_cb,
-                              WriteImageDataFunction *WriteImageData,
-                              void *user_data, std::string *out_uri) {
-  std::string filename;
-  std::string ext;
-  // If image has uri, use it as a filename
-  if (image.uri.size()) {
-    std::string decoded_uri;
-    if (!uri_cb->decode(image.uri, &decoded_uri, uri_cb->user_data)) {
-      // A decode failure results in a failure to write the gltf.
-      return false;
-    }
-    filename = GetBaseFilename(decoded_uri);
-    ext = GetFilePathExtension(filename);
-  } else if (image.bufferView != -1) {
-    // If there's no URI and the data exists in a buffer,
-    // don't change properties or write images
-  } else if (image.name.size()) {
-    ext = MimeToExt(image.mimeType);
-    // Otherwise use name as filename
-    filename = image.name + "." + ext;
-  } else {
-    ext = MimeToExt(image.mimeType);
-    // Fallback to index of image as filename
-    filename = std::to_string(index) + "." + ext;
-  }
-
-  // If callback is set and image data exists, modify image data object. If
-  // image data does not exist, this is not considered a failure and the
-  // original uri should be maintained.
-  bool imageWritten = false;
-  if (*WriteImageData != nullptr && !filename.empty() && !image.image.empty()) {
-    imageWritten = (*WriteImageData)(&baseDir, &filename, &image, embedImages,
-                                     uri_cb, out_uri, user_data);
-    if (!imageWritten) {
-      return false;
-    }
-  }
-
-  // Use the original uri if the image was not written.
-  if (!imageWritten) {
-    *out_uri = image.uri;
-  }
-
-  return true;
 }
 
 bool IsDataURI(const std::string &in) {
@@ -6071,17 +6072,6 @@ bool TinyGLTF::WriteGltfSceneToStream(const Model *model, std::ostream &stream,
     detail::JsonReserveArray(images, model->images.size());
     for (unsigned int i = 0; i < model->images.size(); ++i) {
       detail::json image;
-
-      std::string dummystring;
-      // UpdateImageObject need baseDir but only uses it if embeddedImages is
-      // enabled, since we won't write separate images when writing to a stream
-      // we
-      std::string uri;
-      if (!UpdateImageObject(model->images[i], dummystring, int(i), true,
-                             &uri_cb, &this->WriteImageData,
-                             this->write_image_user_data_, &uri)) {
-        return false;
-      }
       SerializeGltfImage(model->images[i], uri, image);
       detail::JsonPushBack(images, std::move(image));
     }
@@ -6183,13 +6173,6 @@ bool TinyGLTF::WriteGltfSceneToFile(const Model *model,
     detail::JsonReserveArray(images, model->images.size());
     for (unsigned int i = 0; i < model->images.size(); ++i) {
       detail::json image;
-
-      std::string uri;
-      if (!UpdateImageObject(model->images[i], baseDir, int(i), embedImages,
-                             &uri_cb, &this->WriteImageData,
-                             this->write_image_user_data_, &uri)) {
-        return false;
-      }
       SerializeGltfImage(model->images[i], uri, image);
       detail::JsonPushBack(images, std::move(image));
     }
