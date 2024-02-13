@@ -1,0 +1,6 @@
+#ifndef FAITHFUL_SRC_ENTITIES_ENEMY_H_
+#define FAITHFUL_SRC_ENTITIES_ENEMY_H_
+
+class Enemy {};
+
+#endif  // FAITHFUL_SRC_ENTITIES_ENEMY_H_

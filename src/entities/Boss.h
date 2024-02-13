@@ -1,0 +1,6 @@
+#ifndef FAITHFUL_SRC_ENTITIES_BOSS_H_
+#define FAITHFUL_SRC_ENTITIES_BOSS_H_
+
+class Boss {};
+
+#endif  // FAITHFUL_SRC_ENTITIES_BOSS_H_
