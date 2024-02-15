@@ -1,7 +1,7 @@
 #ifndef FAITHFUL_RIGIDBODY_H
 #define FAITHFUL_RIGIDBODY_H
 
-#include "../entities/Object.h"
+#include "../common/Object.h"
 
 namespace simurgh {
 

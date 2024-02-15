@@ -6,20 +6,11 @@
 
 #include "../../config/AssetFormats.h"
 
-bool DetectEncodeTexHdr(const std::filesystem::path& filename) {
+bool DetectTexHdrExtension(const std::filesystem::path& filename) {
   return (filename.extension() == ".hdr" || filename.extension() == ".exr");
 }
-bool DetectEncodeTexNormalMap(const std::filesystem::path& filename) {
-  const std::string& stem_string(filename.stem().string());
-  // len of "_nmap" + at least 1 char for actual name
-  if (stem_string.length() < 6) {
-    return false;
-  }
-  size_t suffixPos = stem_string.length() - 5;
-  return stem_string.compare(suffixPos, std::string::npos, "_nmap") == 0;
-}
 
-bool DetectDecodeTexHdr(const std::filesystem::path& filename) {
+bool DetectTexHdrSuffix(const std::filesystem::path& filename) {
   const std::string& stem_string(filename.stem().string());
   // len of "_hdr" + at least 1 char for actual name
   if (stem_string.length() < 5) {
@@ -28,14 +19,14 @@ bool DetectDecodeTexHdr(const std::filesystem::path& filename) {
   size_t suffixPos = stem_string.length() - 4;
   return stem_string.compare(suffixPos, std::string::npos, "_hdr") == 0;
 }
-bool DetectDecodeTexNormalMap(const std::filesystem::path& filename) {
+bool DetectTexRGSuffix(const std::filesystem::path& filename) {
   const std::string& stem_string(filename.stem().string());
-  // len of "_nmap" + at least 1 char for actual name
+  // len of "_rrrg" + at least 1 char for actual name
   if (stem_string.length() < 6) {
     return false;
   }
   size_t suffixPos = stem_string.length() - 5;
-  return stem_string.compare(suffixPos, std::string::npos, "_nmap") == 0;
+  return stem_string.compare(suffixPos, std::string::npos, "_rrrg") == 0;
 }
 
 AssetCategory DeduceAssetEncodeCategory(const std::filesystem::path& filename) {
@@ -55,10 +46,10 @@ AssetCategory DeduceAssetEncodeCategory(const std::filesystem::path& filename) {
   }
   for (const auto& image_format : config::tex_comp_formats) {
     if (filename.extension().string() == image_format) {
-      if (DetectEncodeTexHdr(filename)) {
+      if (DetectTexHdrExtension(filename)) {
         return AssetCategory::kTextureHdr;
-      } else if (DetectEncodeTexNormalMap(filename)) {
-        return AssetCategory::kTextureNmap;
+      } else if (DetectTexRGSuffix(filename)) {
+        return AssetCategory::kTextureRG;
       } else {
         return AssetCategory::kTextureLdr;
       }
@@ -77,16 +68,23 @@ AssetCategory DeduceAssetDecodeCategory(const std::filesystem::path& filename) {
   } else if (file_extension == ".gltf") {
     return AssetCategory::kModel;
   } else if (file_extension == ".astc") {
-    if (DetectDecodeTexHdr(filename)) {
+    if (DetectTexHdrSuffix(filename)) {
       return AssetCategory::kTextureHdr;
-    } else if (DetectDecodeTexNormalMap(filename)) {
-      return AssetCategory::kTextureNmap;
+    } else if (DetectTexRGSuffix(filename)) {
+      return AssetCategory::kTextureRG;
     } else {
       return AssetCategory::kTextureLdr;
     }
-  } else if (file_extension == ".bin") {
-    return AssetCategory::kBinary;
   } else {
     return AssetCategory::kUnknown;
+  }
+}
+
+AssetCategory DeduceAssetCategory(const std::filesystem::path& filename,
+                                  bool encode) {
+  if (encode) {
+    return DeduceAssetEncodeCategory(filename);
+  } else {
+    return DeduceAssetDecodeCategory(filename);
   }
 }

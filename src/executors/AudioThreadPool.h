@@ -15,11 +15,7 @@
 #include <AL/alc.h>
 #include <ogg/ogg.h>
 
-#include "queues/LifoBoundedMPSCBlockingQueue.h"
-
 #include "../../config/Loader.h"
-
-#include "../src/loader/AudioData.h"
 
 namespace faithful {
 
@@ -28,12 +24,12 @@ class Sound;
 
 namespace details {
 
-namespace audio {
+namespace assets {
 
-extern std::array<MusicData, faithful::config::max_active_music_num> music_heap_data_;
-extern std::array<SoundData, faithful::config::max_active_sound_num> sound_heap_data_;
+class MusicPool;
+class SoundPool;
 
-} // namespace audio
+} // namespace details
 
 /** AudioThreadPool purpose:
  * - encapsulate OpenAL
@@ -50,7 +46,11 @@ class AudioThreadPool : public StaticExecutor<1> {
  public:
   using Base = StaticExecutor<1>;
 
-  AudioThreadPool();
+  AudioThreadPool() = delete;
+
+  AudioThreadPool(assets::MusicPool* music_manager,
+                  assets::SoundPool* sound_manager);
+
   ~AudioThreadPool();
 
   void Play(const Sound& sound);
@@ -69,6 +69,7 @@ class AudioThreadPool : public StaticExecutor<1> {
     bool busy = false;
   };
 
+  /// Music: .ogg
   struct MusicSourceData {
     std::array<ALuint, faithful::config::openal_buffers_per_music> buffers_id;
     faithful::Music* data;
@@ -105,6 +106,9 @@ class AudioThreadPool : public StaticExecutor<1> {
   std::array<MusicSourceData, faithful::config::openal_music_num> music_sources_;
 
   faithful::Music* next_background_music_ = nullptr;
+
+  details::assets::MusicPool* music_manager_ = nullptr;
+  details::assets::SoundPool* sound_manager_ = nullptr;
 
   float background_gain_ = 1.0f;
   float background_gain_step_ = 0.0f; // for smooth transition between two streams

@@ -12,7 +12,7 @@ namespace details {
 
 class Executor {
  public:
-  using Task = folly::Function<void>;
+  using Task = folly::Function<void()>;
 
   enum class State {
     kNotStarted,
@@ -23,6 +23,7 @@ class Executor {
   };
 
   Executor() = default;
+  virtual ~Executor() = default;
 
   /// not copyable
   Executor(const Executor&) = delete;
@@ -33,6 +34,7 @@ class Executor {
   Executor& operator=(Executor&&) = default;
 
   virtual void Run() = 0;
+  virtual void Join() = 0;
 
   void Pop() {
     task_queue_->Pop();
@@ -62,7 +64,7 @@ class StaticExecutor : public Executor {
   StaticExecutor(StaticExecutor&&) = default;
   StaticExecutor& operator=(StaticExecutor&&) = default;
 
- private:
+ protected:
   std::array<std::thread, thread_count> threads_;
 };
 
@@ -79,7 +81,7 @@ class DynamicExecutor : public Executor {
   DynamicExecutor(DynamicExecutor&&) = default;
   DynamicExecutor& operator=(DynamicExecutor&&) = default;
 
- private:
+ protected:
   std::vector<std::thread> threads_;
 };
 

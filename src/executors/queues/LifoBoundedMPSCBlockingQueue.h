@@ -36,7 +36,7 @@ namespace queue {
 ///   - Blocking
 
 // TODO: lock-free
-template <typename Task>
+template <typename Task = folly::Function<void()>>
 class LifoBoundedMPSCBlockingQueue : public IQueueBase<Task> {
  public:
   using Base = IQueueBase<Task>;
@@ -44,15 +44,34 @@ class LifoBoundedMPSCBlockingQueue : public IQueueBase<Task> {
   LifoBoundedMPSCBlockingQueue() = default;
 
   void Pop() override {
-    // TODO: lock
+    std::unique_lock guard(mutex_);
+    queue_busy_.wait(guard, [queue = &task_queue_]() {
+      return queue->empty();
+    });
     task_queue_.pop();
   }
 
   void Push(Task&& task) override {
-    std::unique_lock guard(mutex_);
-    queue_busy_.wait(guard/*, [](){}*/);
-    task_queue_.Push(std::move(task));
+    {
+      std::lock_guard guard(mutex_);
+      task_queue_.push(std::move(task));
+    }
+    std::cerr << "notifying" << std::endl;
     queue_busy_.notify_one();
+  }
+
+  Task Front() override {
+    std::unique_lock guard(mutex_);
+    if (task_queue_.empty()) {
+      std::cout << "wait again" << std::endl;
+      queue_busy_.wait(guard, [queue = &task_queue_]() {
+        return queue->empty();
+      });
+    }
+    auto task = std::move(task_queue_.front());
+    task_queue_.pop();
+//    std::cout << "size " << task_queue_.size() << std::endl;
+    return std::move(task);
   }
 
  private:

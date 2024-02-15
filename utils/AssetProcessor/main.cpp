@@ -20,6 +20,14 @@
  * Currently there is no shader processing (no reason to do this)
  * */
 
+
+/// NOTE: model textures can't be Hdr (according to gltf 2.0)
+
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION// defined in tiny_gltf.h
+//#define TINYGLTF_USE_RAPIDJSON
+
 #include <iostream>  // TODO: replace by Logger.h
 #include <cstring>
 #include <filesystem>
@@ -63,10 +71,8 @@ int main(int argc, char** argv) {
   bool asset_processing = true;
   bool process_all = true;
   bool encode = true;
+  bool force = false;
   int thread_count = std::thread::hardware_concurrency();
-  std::string audio_decomp_path = FAITHFUL_ASSET_AUDIO_PATH;
-  std::string models_decomp_path = FAITHFUL_ASSET_MODEL_PATH;
-  std::string textures_decomp_path = FAITHFUL_ASSET_TEXTURE_PATH;
 
   // TODO: rewrite (incorrect flags parsing, looks disgraceful)
   for (int i = 1; i < argc; ++i) {
@@ -86,6 +92,8 @@ int main(int argc, char** argv) {
         } else if (std::strcmp(argv[j], "-m") == 0) {
           process_all = false;
           asset_controller.models = true;
+        } else if (std::strcmp(argv[j], "-f") == 0) {
+          force = true;
         } else if (std::strcmp(argv[j], "-h") == 0) {
           PrintHelpInfo();
           asset_processing = false;
@@ -119,17 +127,18 @@ int main(int argc, char** argv) {
   }
 
   PrintConfigs(encode, asset_controller);
-  AssetProcessor processor(thread_count - 1, FAITHFUL_ASSET_PATH);
+
+  // TODO: need to check is directory not "active" (not used by Faithful):
+  //    dest==src
+  //    lexicographical_relative dest <=> src
+
+  AssetProcessor processor(std::thread::hardware_concurrency());
+//  AssetProcessor processor(encode, thread_count - 1, FAITHFUL_ASSET_PATH, force);
   std::cout << "user's path " << user_path << std::endl;
-  processor.ProcessEncoding(user_path);
+  processor.Process(encode, "/home/pavlo/Desktop/to",
+                    "/home/pavlo/Desktop/from", force);
 
-  /*if (encode) {
-    processor.ProcessEncoding(user_path);
-  } else {
-    processor.ProcessDecoding(user_path);
-  }*/
-
-  // LogProcessingResult(FAITHFUL_ASSET_INFO_FILE, encode);
+  // TODO: LogProcessingResult(FAITHFUL_ASSET_INFO_FILE, encode);
 
   return 0;
 }

@@ -1,12 +1,12 @@
 #include "Engine.h"
 #include "io/InputHandler.h"
-#include "../utils/ThreadPools.h"
-#include "loader/ShaderProgram.h"
+#include "executors/ThreadPools.h"
+#include "loader/Shader.h"
 #include "environment/CubeMap.h"
 #include "loader/Sprite.h"
 #include "entities/Objects_2d.h"
 
-#include "entities/Model.h"
+#include "entities/EntityTraits.h"
 
 namespace faithful {
 

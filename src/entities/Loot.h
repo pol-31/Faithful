@@ -1,0 +1,6 @@
+#ifndef FAITHFUL_SRC_ENTITIES_LOOT_H_
+#define FAITHFUL_SRC_ENTITIES_LOOT_H_
+
+class Loot {};
+
+#endif  // FAITHFUL_SRC_ENTITIES_LOOT_H_

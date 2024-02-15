@@ -1,20 +1,20 @@
-#ifndef FAITHFUL_MODEL_H
-#define FAITHFUL_MODEL_H
+#ifndef FAITHFUL_SRC_ENTITIES_ENTITYTRAITS_H
+#define FAITHFUL_SRC_ENTITIES_ENTITYTRAITS_H
 
 namespace faithful {
 
 enum class EntityType {
+  kAmbient,
   kBoss,
-  kDestructibleObject,
   kEnemy,
+  kFurniture,
+  kLoot,
   kNPC,
-  kPeacefulCreature,
-  kPickableItem,
-  kTerrainObject
+  kObstacle
 };
 
 // TODO: maybe add some other traits like hp/damage/speed/resistance/etc...
 
 }  // namespace faithful
 
-#endif  // FAITHFUL_MODEL_H
+#endif  // FAITHFUL_SRC_ENTITIES_ENTITYTRAITS_H

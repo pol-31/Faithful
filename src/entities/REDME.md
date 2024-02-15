@@ -1,0 +1,1 @@
+they all should be inherited from CreatureModel, FurnitureModel, ImmovableModel

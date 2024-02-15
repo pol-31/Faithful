@@ -1,122 +1,36 @@
-#ifndef FAITHFUL_SHADERPROGRAM_H
-#define FAITHFUL_SHADERPROGRAM_H
+#ifndef FAITHFUL_SRC_LOADER_SHADERPROGRAM_H_
+#define FAITHFUL_SRC_LOADER_SHADERPROGRAM_H_
 
-#define GLFW_INCLUDE_NONE
-#include "GLFW/glfw3.h"
 #include "glad/glad.h"
 
-#include <iostream>
-#include <memory>
-
 #include "IAsset.h"
+#include "../config/Loader.h"
 
 #include "ShaderObject.h"
-
-
-/* TODO: handle case:
- * typical scope failure scenario:
-   * { // scope # 1
-   *  ShaderProgram shp;
-   *
-   * { // scope # 2
-   *   ShaderObject sho(vertex_type, "shader path")
-   *   shp.AttachShader(sho);
-   * } // -- ~sho();
-   *  // --- there happened a lot of things, including Shader object Clearing
-   *  shp.Bake(); < -- there shader object already invalid
-   * }
-   * */
 
 namespace faithful {
 
 namespace details {
-namespace shader {
+namespace assets {
 
-/// should be only 1 instance for the entire program
-template <int max_active_shader_programs>
-class ShaderProgramManager : public faithful::details::IAssetManager<max_active_shader_programs> {
- public:
-  using Base = faithful::details::IAssetManager<max_active_shader_programs>;
-  using InstanceInfo = typename Base::InstanceInfo;
+class ShaderPool;
 
-  ShaderProgramManager() {
-    for (auto& program : active_instances_) {
-      program = {"", new details::AssetManagerRefCounter, glCreateProgram()};
-      if (program.opengl_id == 0) {
-        std::cerr << "shaderProgramManager() error in glCreateProgram()"
-                  << std::endl;
-        return;
-      }
-    }
-    // TODO: load default shader program
-    for (int i = 0; i < free_instances_.Size(); ++i) {
-      free_instances_[i] = i;
-    }
-  }
-  ~ShaderProgramManager() {
-    for (auto& i : active_instances_) {
-      glDeleteProgram(i.opengl_id_);
-    }
-  }
-
-  /// not copyable
-  ShaderProgramManager(const ShaderProgramManager&) = delete;
-  ShaderProgramManager& operator=(const ShaderProgramManager&) = delete;
-
-  /// movable
-  ShaderProgramManager(ShaderProgramManager&&) = default;
-  ShaderProgramManager& operator=(ShaderProgramManager&&) = default;
-
-  InstanceInfo Load(std::string&&) {}
-
- private:
-  using Base::active_instances_;
-  using Base::free_instances_;
-
-  int default_shader_program_id_ = 0; // adjust
-};
-
-} // namespace shader
+} // namespace assets
 } // namespace details
 
-
-class ShaderProgram : public details::IAsset {
+class ShaderProgram : public details::assets::IAsset {
  public:
-  using Base = details::IAsset;
+  using Base = details::assets::IAsset;
   using Base::Base;
   using Base::operator=;
 
-  /// Base::Bind(GLenum) intentionally hided
-  void Bind(GLenum target) {
-    if (!baked_) {
-      glLinkProgram(opengl_id_);
-      // TODO: <---------------------
-//      if (!IsValidProgram()) {
-//        glDeleteProgram(program_);
-//        program_ = 0;
-//      }
-      baked_ = true;
-    }
-    glUseProgram(opengl_id_);
-  }
+  ShaderProgram(details::RefCounter* ref_counter, GLuint id,
+                details::assets::ShaderPool* shader_manager);
 
-  void AttachShader(GLenum shader_type, const ShaderObject& shader_obj) {
-    int shader_object_info_id = ShaderIdByShaderType(shader_type);
-    if (shader_object_info_id == -1) return;
-    // TODO: should delete previous data <----------------------------------------
-    ShaderObjectInfo& instance = shader_object_info_[shader_object_info_id];
-    instance.ref_counter = shader_obj.GetRefCounter();
-    instance.opengl_id = shader_obj.OpenglId();
-    baked_ = false;
-    glAttachShader(opengl_id_, shader_obj.OpenglId());
-  }
-  void DetachShader(GLenum shader_type, const ShaderObject& shader_obj) {
-    int shader_object_info_id = ShaderIdByShaderType(shader_type);
-    if (shader_object_info_id == -1) return;
-    baked_ = false;
-    glDetachShader(opengl_id_,
-                   shader_object_info_[shader_object_info_id].opengl_id);
-  }
+  void Bind();
+
+  void AttachShader(const ShaderObject& shader_obj);
+  void DetachShader(const ShaderObject& shader_obj);
 
   inline void SetUniform(const GLchar* name, GLboolean v0);
 
@@ -211,63 +125,25 @@ class ShaderProgram : public details::IAsset {
   inline void SetUniformMat4x3v(const GLchar* name, GLsizei count,
                                 GLboolean transpose, const GLfloat* value);
 
-
  private:
-  int ShaderIdByShaderType(GLenum shader_type) {
-    switch (shader_type) {
-      case GL_VERTEX_SHADER:
-        return 0;
-      case GL_FRAGMENT_SHADER:
-        return 1;
-      case GL_GEOMETRY_SHADER:
-        return 2;
-      case GL_TESS_CONTROL_SHADER:
-        return 3;
-      case GL_TESS_EVALUATION_SHADER:
-        return 4;
-      case GL_COMPUTE_SHADER:
-        return 5;
-      default:
-        std::cerr << "ShaderProgram::ShaderIdByShaderType error in shader_type"
-                  << std::endl;
-        return -1;
-    }
-  }
-
-  bool IsValidProgram() noexcept {
-    if (!opengl_id_) {
-      return false;
-    }
-
-    //   TODO: am i sure for text below?
-    /// we're using mimalloc, so such allocation won't harm too much
-    int buffer_size = 512;
-    std::string buffer;
-    buffer.reserve(buffer_size);
-    
-    int success;
-
-    glGetProgramiv(opengl_id_, GL_LINK_STATUS, &success);
-
-    // TODO:  glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (!success) {
-      glGetProgramInfoLog(global_id_, buffer_size, nullptr, buffer.data());
-      std::cout << "Program linking error: " << buffer << "\n";
-      return false;
-    }
-    return true;
-  }
-
-  using Base::opengl_id_;
-
-  struct ShaderObjectInfo {
-    GLuint opengl_id;
-    details::AssetManagerRefCounter* ref_counter;
+  struct ProgramShaders {
+    ShaderObject vertex;
+    ShaderObject fragment;
+    ShaderObject geometry;
+    ShaderObject tessellation_control;
+    ShaderObject tessellation_evaluation;
+    ShaderObject compute;
   };
+
+  bool IsValidProgram() noexcept;
+
+  using Base::internal_id_;
+
+  details::assets::ShaderPool* shader_manager_;
 
   /// there is possible only 6 types of shader by now
   /// they comes in such order: vert, frag, geom, tess_control, tess_eval, comp
-  std::array<ShaderObjectInfo, 6> shader_object_info_;
+  ProgramShaders shaders_;
 
   /// if baked we can't attach shader objects
   bool baked_ = false;
@@ -275,6 +151,6 @@ class ShaderProgram : public details::IAsset {
 
 }  // namespace faithful
 
-#include "ShaderProgram-inl.h"
+#include "Shader-inl.h"
 
-#endif  // FAITHFUL_SHADERPROGRAM_H
+#endif  // FAITHFUL_SRC_LOADER_SHADERPROGRAM_H_

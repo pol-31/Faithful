@@ -4,64 +4,76 @@
 #include <filesystem>
 #include <string>
 
-#include <rapidjson/document.h>
-
+#include "AssetCategory.h"
 #include "../../config/Paths.h"
 
-class AssetsAnalyzer;
-enum class AssetCategory;
+class TextureProcessor;
+
+//#define STB_IMAGE_IMPLEMENTATION defined in tiny_gltf.h
+#include "tinygltf/tiny_gltf.h"
+
+// TODO: for HDR we still need prefix, still using u8 only
+// TODO: function SafeDelete() which will delete model / Scan
+//     all textures and check are they still used --> NOT DELETE BUT
+//     AT LEAST PROVIDE INFO
+// TODO: in case of tilemap make intend 6x6 on borders of textures
+// TODO: explicitly say about not supporting of float16 / short int types
+//     - we use only 8bit
 
 
-// 1 model <-> 1 class instance
-
+// blocking, not thread-safe (crt not used in current RapidJSON "version")
 class ModelProcessor {
  public:
+  // used in TextureProcessor to know does the images was already processed
+  struct ProcessedImage {
+    std::string path;
+    int id;
+  };
+
   ModelProcessor(
-      bool encode, AssetsAnalyzer* assets_analyzer,
-      const std::filesystem::path& user_asset_root_dir,
+      bool encode,
       const std::filesystem::path& asset_destination,
-      const std::filesystem::path& temp_dir = FAITHFUL_ASSET_TEMP_TEXTURES_PATH)
-      : assets_analyzer_(assets_analyzer),
-        asset_destination_(asset_destination),
-        user_asset_root_dir_(user_asset_root_dir),
-        encode_(encode) {
+      const std::filesystem::path& user_asset_root_dir,
+      TextureProcessor* texture_processor);
+
+  void Process(std::filesystem::path model_path);
+
+  const std::vector<ProcessedImage>& GetProcessedImagesList() const {
+    return processed_images_;
   }
 
-  void Process(const std::filesystem::path& model_path,
-               const std::filesystem::path& path_suffix);
+  private:
+  bool Read();
+  bool Write(const std::string& destination);
 
-  bool ConvertGlbToGltf(
-      const std::filesystem::path& model_path,
-      const std::filesystem::path& path_suffix);
+  void CompressTextures();
+  void DecompressTextures();
 
-  bool ExtractBuffers();
-  bool ExtractTextures();
+  // for assets/{external, embedded}
+  void FindLastTextureId();
 
-  std::string DecodeBase64(const std::string& base64_data);
+  int MarkImageAsAProcessed(const std::string& image_path);
+  AssetCategory DeduceTextureCategory(int image_id);
 
-  bool ExtractGltfModelTextures(const std::filesystem::path& model_path);
+  bool OptimizeModel(const std::string& destination);
 
-  bool EncodeGltfModelTextures(const std::filesystem::path& model_path);
-  bool DecodeTextures(const std::filesystem::path& model_path,
-                      const std::filesystem::path& path_suffix);
+  mutable TextureProcessor* texture_processor_;
+  mutable std::filesystem::path asset_destination_;
 
-  bool OptimizeModel(const std::string& model_path);
+  mutable std::filesystem::path user_asset_root_dir_;
+  mutable bool encode_;
 
-  bool SaveModel(const rapidjson::Document& document,
-                 const std::string& model_path);
-  bool ReadGltfModel(const std::string& model_path);
+  // not thread-safe, not safe at calling from multiple instances
+  mutable int last_texture_id_ = 0;
 
- private:
-  AssetsAnalyzer* assets_analyzer_;
+  mutable std::vector<ProcessedImage> processed_images_;
 
-  std::filesystem::path asset_destination_;
+  mutable std::filesystem::path cur_model_path_;
 
-  /// useful when model has external texture to understand
-  /// has it been processed before
-  std::filesystem::path user_asset_root_dir_;
-
-  rapidjson::Document document;
-  bool encode_;
+  mutable tinygltf::Model model_;
+  mutable tinygltf::TinyGLTF loader_;
+  mutable std::string error_string_;
+  mutable std::string warning_string_;
 };
 
 #endif  // ASSETPROCESSOR_MODELPROCESSOR_H

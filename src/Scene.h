@@ -3,8 +3,8 @@
 
 #include <set>
 
-#include "entities/Object.h"
-#include "entities/Model.h"
+#include "common/Object.h"
+#include "entities/EntityTraits.h"
 #include "entities/Objects_3d.h";
 
 namespace faithful {

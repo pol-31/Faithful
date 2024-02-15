@@ -12,7 +12,9 @@ namespace details {
 
 // TODO: alSourceRewind(source); for Play(Sound) to pleyback from the beginning
 
-AudioThreadPool::AudioThreadPool() {
+AudioThreadPool::AudioThreadPool(assets::MusicPool* music_manager,
+                                 assets::SoundPool* sound_manager)
+    : music_manager_(music_manager), sound_manager_(sound_manager) {
   task_queue_ = new queue::LifoBoundedMPSCBlockingQueue<Task>;
 }
 AudioThreadPool::~AudioThreadPool() {
@@ -220,10 +222,10 @@ void AudioThreadPool::Play(const Sound& sound) {
     return; // all busy, can skip <-- todo; write to documentation
   }
 
-  int sound_opengl_id = sound.OpenglId();
+  int sound_opengl_id = sound.GetInternalId();
   task_queue_->Push([=]() {
     std::cout << "inside the task_queue_" << std::endl;
-    auto& audio_info = audio::sound_heap_data_[sound_opengl_id];
+    auto& audio_info = sound_manager_->sound_heap_data_[sound_opengl_id];
     AL_CALL(alBufferData, sound_sources_[source_id].buffer_id,
             audio_info.format, audio_info.data.get(),
             audio_info.size, audio_info.sample_rate);
@@ -244,10 +246,10 @@ void AudioThreadPool::Play(const Music& music) {
 
   auto buffer_size = faithful::config::openal_buffers_size;
   auto buffers_num = faithful::config::openal_buffers_per_music;
-  int music_opengl_id = music.OpenglId();
+  int music_opengl_id = music.GetInternalId();
 
   task_queue_->Push([=]() {
-    auto& audio_info = audio::music_heap_data_[music_opengl_id];
+    auto& audio_info = music_manager_->music_heap_data_[music_opengl_id];
     auto data = std::make_unique<char>(buffer_size);
     for (int i = 0; i < buffers_num; ++i) {
       int dataSoFar = 0;
@@ -285,7 +287,7 @@ void AudioThreadPool::UpdateMusicStream(MusicSourceData& music_data) {
     return;
   }
 
-  auto& audio_info = audio::music_heap_data_[music_data.data->OpenglId()];
+  auto& audio_info = music_manager_->music_heap_data_[music_data.data->GetInternalId()];
 
   while(buffersProcessed--) {
     ALuint buffer;

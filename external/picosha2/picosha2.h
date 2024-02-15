@@ -35,12 +35,10 @@ THE SOFTWARE.
 #include <iterator>
 #include <sstream>
 #include <vector>
-#include <fstream>
+
 namespace picosha2 {
 typedef unsigned long word_t;
 typedef unsigned char byte_t;
-
-static const size_t k_digest_size = 32;
 
 namespace detail {
 inline byte_t mask_8bit(byte_t x) { return x & 0xff; }
@@ -93,7 +91,7 @@ void hash256_block(RaIter1 message_digest, RaIter2 first, RaIter2 last) {
     assert(first + 64 == last);
     static_cast<void>(last);  // for avoiding unused-variable warning
     word_t w[64];
-    std::fill(w, w + 64, word_t(0));
+    std::fill(w, w + 64, 0);
     for (std::size_t i = 0; i < 16; ++i) {
         w[i] = (static_cast<word_t>(mask_8bit(*(first + i * 4))) << 24) |
                (static_cast<word_t>(mask_8bit(*(first + i * 4 + 1))) << 16) |
@@ -185,14 +183,14 @@ class hash256_one_by_one {
 
     void init() {
         buffer_.clear();
-        std::fill(data_length_digits_, data_length_digits_ + 4, word_t(0));
+        std::fill(data_length_digits_, data_length_digits_ + 4, 0);
         std::copy(detail::initial_message_digest,
                   detail::initial_message_digest + 8, h_);
     }
 
     template <typename RaIter>
     void process(RaIter first, RaIter last) {
-        add_to_data_length(static_cast<word_t>(std::distance(first, last)));
+        add_to_data_length(std::distance(first, last));
         std::copy(first, last, std::back_inserter(buffer_));
         std::size_t i = 0;
         for (; i + 64 <= buffer_.size(); i += 64) {
@@ -204,17 +202,17 @@ class hash256_one_by_one {
 
     void finish() {
         byte_t temp[64];
-        std::fill(temp, temp + 64, byte_t(0));
+        std::fill(temp, temp + 64, 0);
         std::size_t remains = buffer_.size();
         std::copy(buffer_.begin(), buffer_.end(), temp);
         temp[remains] = 0x80;
 
         if (remains > 55) {
-            std::fill(temp + remains + 1, temp + 64, byte_t(0));
+            std::fill(temp + remains + 1, temp + 64, 0);
             detail::hash256_block(h_, temp, temp + 64);
-            std::fill(temp, temp + 64 - 4, byte_t(0));
+            std::fill(temp, temp + 64 - 4, 0);
         } else {
-            std::fill(temp + remains + 1, temp + 64 - 4, byte_t(0));
+            std::fill(temp + remains + 1, temp + 64 - 4, 0);
         }
 
         write_data_bit_length(&(temp[56]));
@@ -273,9 +271,9 @@ class hash256_one_by_one {
 
 inline void get_hash_hex_string(const hash256_one_by_one& hasher,
                                 std::string& hex_str) {
-    byte_t hash[k_digest_size];
-    hasher.get_hash_bytes(hash, hash + k_digest_size);
-    return bytes_to_hex_string(hash, hash + k_digest_size, hex_str);
+    byte_t hash[32];
+    hasher.get_hash_bytes(hash, hash + 32);
+    return bytes_to_hex_string(hash, hash + 32, hex_str);
 }
 
 inline std::string get_hash_hex_string(const hash256_one_by_one& hasher) {
@@ -342,10 +340,10 @@ void hash256(const InContainer& src, OutContainer& dst) {
 
 template <typename InIter>
 void hash256_hex_string(InIter first, InIter last, std::string& hex_str) {
-    byte_t hashed[k_digest_size];
-    hash256(first, last, hashed, hashed + k_digest_size);
+    byte_t hashed[32];
+    hash256(first, last, hashed, hashed + 32);
     std::ostringstream oss;
-    output_hex(hashed, hashed + k_digest_size, oss);
+    output_hex(hashed, hashed + 32, oss);
     hex_str.assign(oss.str());
 }
 
@@ -369,9 +367,7 @@ template <typename InContainer>
 std::string hash256_hex_string(const InContainer& src) {
     return hash256_hex_string(src.begin(), src.end());
 }
-template<typename OutIter>void hash256(std::ifstream& f, OutIter first, OutIter last){
-    hash256(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>(), first,last);
 
-}
-}// namespace picosha2
+}  // namespace picosha2
+
 #endif  // PICOSHA2_H

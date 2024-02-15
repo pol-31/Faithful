@@ -49,18 +49,10 @@ inline const int thread_max = std::thread::hardware_concurrency();
 inline constexpr int audio_comp_thread_threshold = 0; // TODO: is it kb? (if yes, float --> int)
 inline constexpr int tex_comp_thread_threshold = 2000; // TODO: is it kb? (if yes, float --> int)
 
-/// decompression:
-inline constexpr char audio_music_decomp_format[] = "ogg";
-inline constexpr char audio_sound_decomp_format[] = "wav";
-inline constexpr char tex_ldr_decomp_format[] = "png";
-inline constexpr char tex_hdr_decomp_format[] = "hdr";
-inline constexpr char tex_nmap_decomp_format[] = "png";
-inline constexpr char models_decomp_format[] = "gltf";
-
 /// audio compression
-inline constexpr float audio_comp_quality = 0.4; // [0.1; 1]
-inline constexpr int audio_comp_buffer_size = 4096000;
-inline constexpr int audio_comp_chunk_size = 4096;
+inline constexpr float audio_comp_quality = 0.1; // [0.1; 1]
+inline constexpr int audio_comp_buffer_size = 4096000 / 8;
+inline constexpr int audio_comp_chunk_size = 8096;
 
 /// models compression:
 // TODO: Model parameters:

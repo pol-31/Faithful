@@ -9,15 +9,24 @@ namespace faithful {
 namespace details {
 namespace queue {
 
-template <typename Task>
+template <typename Task = folly::Function<void()>>
 class IQueueBase {
  public:
   IQueueBase() = default;
+  virtual ~IQueueBase() = default;
 
-  virtual void Front() = 0;
+  virtual Task Front() = 0;
 
   virtual void Pop() = 0;
   virtual void Push(Task&&) = 0;
+
+
+  /// we don't use lock_guard, cause we don't need reliability there, this
+  /// function should be used only in previous checking for loop optimization
+  bool Empty() {
+    return task_queue_.empty();
+  }
+
  protected:
   std::queue<Task> task_queue_;
 };

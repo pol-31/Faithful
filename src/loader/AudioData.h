@@ -6,6 +6,7 @@
 #include <memory>
 
 #include <AL/al.h>
+#include <vorbis/codec.h>
 #include <vorbis/vorbisfile.h>
 
 namespace faithful {
@@ -22,7 +23,7 @@ struct AudioDataBase {
   int channels;
   int sample_rate;
   int bits_per_sample;
-  ALsizei size = 0; // explicitly specifying uninitialized data
+  ALsizei size; // explicitly specifying uninitialized data
   ALenum format;
 };
 

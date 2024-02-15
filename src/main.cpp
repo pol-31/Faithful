@@ -11,11 +11,13 @@
 #include <cmath>
 #include <iostream>
 
+#include <glad/glad.h>
 
 #include "executors/AudioThreadPool.h"
+#include "loader/SoundPool.h"
 #include "loader/Sound.h"
+#include "loader/MusicPool.h"
 #include "loader/Music.h"
-#include "loader/Shader.h"
 
 //TODO:
 // 1) init OpenGL context inside the RenderThreadPool
@@ -59,6 +61,12 @@ int MainGameSceneSetup() {
 #include "loader/Model.h"
 
 #include "common/CollisionManager.h"
+
+// TODO: fix all #pragma & class names, cause we have some troubles now
+
+// TODO 4: glEnable(GL_CULLING) enable/disable
+
+// TODO: loader/ModelPool.h
 
 int main() {
   faithful::details::RenderThreadPool render_tp_;

@@ -4,12 +4,44 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "../entities/Object.h"
+#include "../common/Object.h"
 #include "InputHandler.h"
 
 namespace faithful {
 
 enum class SceneMode;
+
+
+// --- --- --- --- --- --- --- --- ---
+// --- --- --- --- --- --- --- --- ---
+// --- --- --- --- --- --- --- --- ---
+glm::mat4 genView(glm::vec3 pos, glm::vec3 lookat) {
+  // Camera matrix
+  glm::mat4 view = glm::lookAt(
+      pos,                // Camera in World Space
+      lookat,             // and looks at the origin
+      glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
+  );
+
+  return view;
+}
+// --- --- --- --- --- --- --- --- ---
+glm::mat4 genMVP(glm::mat4 view_mat, glm::mat4 model_mat, float fov, int w,
+                 int h) {
+  glm::mat4 Projection =
+      glm::perspective(glm::radians(fov), (float)w / (float)h, 0.01f, 1000.0f);
+
+  // Or, for an ortho camera :
+  // glm::mat4 Projection = glm::ortho(-10.0f,10.0f,-10.0f,10.0f,0.0f,100.0f);
+  // // In world coordinates
+
+  glm::mat4 mvp = Projection * view_mat * model_mat;
+
+  return mvp;
+}
+// --- --- --- --- --- --- --- --- ---
+// --- --- --- --- --- --- --- --- ---
+// --- --- --- --- --- --- --- --- ---
 
 // TODO: my own GLM library (constexpr + noexcept)
 //        because GLM is not constexpr

@@ -5,22 +5,23 @@
 
 enum class AssetCategory {
   kAudioMusic,
-  kAudioSound,  /// tiny files for 1-2 seconds playback
-  kBinary,      /// for models buffer data
+  kAudioSound,
   kModel,
   kTextureLdr,
   kTextureHdr,
-  kTextureNmap,
+  kTextureRG, // 2-channel textures
   kUnknown
 };
 
-bool DetectEncodeTexHdr(const std::filesystem::path& filename);
-bool DetectEncodeTexNormalMap(const std::filesystem::path& filename);
+bool DetectTexHdrExtension(const std::filesystem::path& filename);
 
-bool DetectDecodeTexHdr(const std::filesystem::path& filename);
-bool DetectDecodeTexNormalMap(const std::filesystem::path& filename);
+bool DetectTexHdrSuffix(const std::filesystem::path& filename);
+bool DetectTexRGSuffix(const std::filesystem::path& filename);
 
 AssetCategory DeduceAssetEncodeCategory(const std::filesystem::path& filename);
 AssetCategory DeduceAssetDecodeCategory(const std::filesystem::path& filename);
+
+AssetCategory DeduceAssetCategory(const std::filesystem::path& filename,
+                                  bool encode);
 
 #endif  // FAITHFUL_ASSETCATEGORY_H

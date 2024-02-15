@@ -3,7 +3,7 @@
 #include "environment/Environment.h"
 
 #include "Engine.h"
-#include "collision/CollisionManager.h"
+#include "common/CollisionManager.h"
 
 namespace faithful {
 
