@@ -145,7 +145,7 @@ class Animatable {
   /// clears all set animations
   void StopAnimation();
 
- private:
+ protected:
   Animation animation_;
 
   /// used as intermediate buffer between interpolated data and ubo
@@ -164,7 +164,7 @@ class Collidable {
     return collision_;
   }
 
- private:
+ protected:
   Collision* collision_;
 };
 
@@ -174,7 +174,7 @@ class Drawable {
 
   virtual bool Draw() = 0;
 
- private:
+ protected:
   struct Materials {
     Texture2D albedo;
     Texture2D rough_metal;
@@ -219,7 +219,7 @@ class SoundEmittable {
     audio_thread_pool_ = audio_thread_pool;
   }
 
- private:
+ protected:
   details::AudioThreadPool* audio_thread_pool_ = nullptr;
   utils::ConstexprVector<Sound, 5> sounds_;
 };

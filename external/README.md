@@ -127,4 +127,9 @@ ___
 - Include method: git submodule
 - Release version: 1.3.7
 ___
+## facebook/folly
+- GitHub: https://github.com/facebook/folly.git
+- License: Apache-2.0 license
+- Release version: v2024.02.12.00
+- Files: Future, Executor
 

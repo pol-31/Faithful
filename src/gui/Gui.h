@@ -1,10 +1,15 @@
-#ifndef FAITHFUL_GUI_H
-#define FAITHFUL_GUI_H
+#ifndef FAITHFUL_SRC_GUI_GUI_H
+#define FAITHFUL_SRC_GUI_GUI_H
+
+#include "../common/Object.h"
 
 namespace faithful {
 
-class IGui {};
+class IGui :
+    public Transformable2D,
+    public Collidable,
+    public Drawable {};
 
 }  // namespace faithful
 
-#endif  // FAITHFUL_GUI_H
+#endif  // FAITHFUL_SRC_GUI_GUI_H

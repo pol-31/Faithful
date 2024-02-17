@@ -1,5 +1,5 @@
 #include "Camera.h"
-#include "../Engine.h"
+#include "../MainRunLoop.h"
 #include "../Scene.h"
 
 namespace faithful {

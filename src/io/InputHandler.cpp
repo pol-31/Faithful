@@ -2,7 +2,7 @@
 
 #include "../../utils/Logger.h"
 
-#include "../Engine.h"
+#include "../MainRunLoop.h"
 
 #define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
 #include <GLFW/glfw3.h>

@@ -2,7 +2,7 @@
 #include "environment/CubeMap.h"
 #include "environment/Environment.h"
 
-#include "Engine.h"
+#include "MainRunLoop.h"
 #include "common/CollisionManager.h"
 
 namespace faithful {
