@@ -4,237 +4,107 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "../common/Object.h"
-#include "InputHandler.h"
+#include "Window.h"
+
+#include "../../config/IO.h"
 
 namespace faithful {
 
-enum class SceneMode;
-
-
-// --- --- --- --- --- --- --- --- ---
-// --- --- --- --- --- --- --- --- ---
-// --- --- --- --- --- --- --- --- ---
-glm::mat4 genView(glm::vec3 pos, glm::vec3 lookat) {
-  // Camera matrix
-  glm::mat4 view = glm::lookAt(
-      pos,                // Camera in World Space
-      lookat,             // and looks at the origin
-      glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
-  );
-
-  return view;
-}
-// --- --- --- --- --- --- --- --- ---
-glm::mat4 genMVP(glm::mat4 view_mat, glm::mat4 model_mat, float fov, int w,
-                 int h) {
-  glm::mat4 Projection =
-      glm::perspective(glm::radians(fov), (float)w / (float)h, 0.01f, 1000.0f);
-
-  // Or, for an ortho camera :
-  // glm::mat4 Projection = glm::ortho(-10.0f,10.0f,-10.0f,10.0f,0.0f,100.0f);
-  // // In world coordinates
-
-  glm::mat4 mvp = Projection * view_mat * model_mat;
-
-  return mvp;
-}
-// --- --- --- --- --- --- --- --- ---
-// --- --- --- --- --- --- --- --- ---
-// --- --- --- --- --- --- --- --- ---
-
-// TODO: my own GLM library (constexpr + noexcept)
-//        because GLM is not constexpr
-
-/*
-
-  if (glfwRawMouseMotionSupported()) { // TODO: wtf is this
-    glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GL_TRUE);
-    // IDK what is this, so better to find out firstly
-  }
-  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-  // depends on Camera mode
-
-int lastX = 250; // depends on Camera mode
-int lastY = 250; // depends on Camera mode
-*/
-
-/**
- * ____________________DEFAULT CAMERA MODES
- * MOVE-types:
- * - WASD (front-left-back-right) << rpg\shooter\cosmos
- * - car (left/right impossible with zero velocity)
- * - 2d (may or may not depends on Scene, so Scene is friend class
- *      rectangle/circle in the centre of screen (then camera moves only when
- *      the centre of the screen is outside this scope))
- * LOOK-type:
- * - 1-th (camera pos = binded obj pos)
- * - 3-th (camera pos = binded obj pos + Radius)
- * - cursor
+/** Camera
+ * Basically always on the same position, only Look-At matrix changes.
+ * To change Look-At matrix we can Rotate() or Zoom(), where rotation
+ * affects only x/y coordinates and they both aware of:
+ * x : y : z always const.
  * */
 
-class Camera : public Object3D {
+/// It isn't inherited from Positionable3D although has single glm::mat4.
+/// We did it because it has slightly different purpose and mechanic
+
+/// speed of Zoom/Rotate/Move is managed externally, so
+/// there's only immediate transformations
+
+class Camera {
  public:
-  enum class MoveDirection {
-    Forward,
-    Back,
-    Left,
-    Right,
-    Up,
-    Down
-  };
-
-  Camera();
-
-  Camera(const Camera& camera) noexcept;
-  Camera(Camera&&) noexcept;
-
-  Camera(SceneMode mode);
-
-  Camera(glm::vec3 position, float pitch = 0.0f, float yaw = -90.0f) noexcept;
-
-  Camera& operator=(const Camera& camera) noexcept;
-  Camera& operator=(Camera&& camera) noexcept;
-
-  void Look(float offset_x, float offset_y) noexcept;
-  void Move(Camera::MoveDirection direction) noexcept;
-  void Zoom(float offset_y) noexcept;
-
-  /// CreateViewMatrix
-  // non-constexpr because of non-constexpresness of glm::LookAt
-  // In current context View matrix is the same as LookAt mathix
-  glm::mat4 CreateViewMatrix() const noexcept {
-    return glm::lookAt(get_position(), get_position() + direction_front_,
-                       direction_up_);
+  Camera() = delete;
+  Camera(faithful::details::io::Window* window) :
+        position_(faithful::config::camera_dir_position),
+        window_(window),
+        screen_resolution_(window->Resolution()),
+        yaw_(faithful::config::camera_yaw) {
+    UpdateMatrices();
   }
 
-  // TODO: make castomisable
-  /// CreateProjectionMatrix
-  glm::mat4 CreateProjectionMatrix() const noexcept {
-    return glm::perspective(glm::radians(get_zoom()), 1.0f, 0.1f, 100.0f);
-  };
+  Camera(const Camera&) = default;
+  Camera(Camera&&) = default;
 
-  void ProcessInput(Window* window);
+  Camera& operator=(const Camera& camera) = delete;
+  Camera& operator=(Camera&& camera) = delete;
 
-  KeyboardInputHandler* get_keyboard_handler() {
-    return keyboard_handler_;
+  void Zoom(float factor) {
+    position_ *= factor;
+    UpdateMatrices();
   }
-  MouseInputHandler* get_mouse_handler() {
-    return mouse_handler_;
+  void Rotate(float radians) {
+    yaw_ = radians;
+    UpdateMatrices();
   }
-
-  float get_move_speed() const noexcept {
-    return move_speed_;
-  }
-
-  void set_move_speed(float moveSpeed) noexcept {
-    move_speed_ = moveSpeed;
+  /// coord_y always stay at the same level (we want such Camera mechanic)
+  void Move(float coord_x, float coord_z) {
+    position_.x = coord_x;
+    position_.z = coord_z;
+    UpdateMatrices();
   }
 
-  float get_sensitivity() const noexcept {
-    return sensitivity_;
+  /// we return references, so don't need to retrieve it each frame
+  const glm::mat4& GetLookAtMatrix() const {
+    return look_at_matrix_;
+  }
+  const glm::mat4& GetProjectionMatrix() const {
+    return look_at_matrix_;
   }
 
-  void set_sensitivity(float sensitivity) noexcept {
-    sensitivity_ = sensitivity;
+  /// useful if resolution has been changed and we need to update our matrices
+  void Update() {
+    UpdateMatrices();
   }
 
-  float get_zoom() const noexcept {
-    return zoom_;
+ private:
+  void UpdateMatrices() {
+    glm::vec3 direction_front;
+    direction_front.x =
+        glm::cos(glm::radians(faithful::config::camera_yaw))
+        * glm::cos(glm::radians(faithful::config::camera_pitch));
+    direction_front.y = glm::sin(glm::radians(faithful::config::camera_pitch));
+    direction_front.z =
+        glm::sin(glm::radians(faithful::config::camera_yaw))
+        * glm::cos(glm::radians(faithful::config::camera_pitch));
+    direction_front_ = glm::normalize(direction_front);
+
+    glm::vec3 direction_right = glm::cross(faithful::config::camera_dir_world_up,
+                                           direction_front_);
+    glm::vec3 direction_up = glm::cross(direction_front_, direction_right);
+    direction_up_ = glm::normalize(direction_up);
+
+    look_at_matrix_ = glm::lookAt(position_, position_ + direction_front_,
+                                  direction_up_);
+    auto screen_resolution = window_->Resolution();
+    projection_matrix_ = glm::perspective(
+        faithful::config::camera_fov, screen_resolution.x / screen_resolution.y,
+        faithful::config::camera_perspective_near,
+        faithful::config::camera_perspective_far);
   }
 
-  void set_zoom(float zoom) noexcept {
-    zoom_ = zoom;
-  }
+  glm::mat4 look_at_matrix_;
+  glm::mat4 projection_matrix_;
 
-  float get_pitch() const noexcept {
-    return pitch_;
-  }
+  glm::vec3 position_;
+  glm::vec3 direction_front_;
+  glm::vec3 direction_up_;
 
-  void set_pitch(float pitch) noexcept {
-    pitch_ = pitch;
-  }
+  faithful::details::io::Window* window_ = nullptr;
+  const glm::vec2& screen_resolution_;
 
-  float get_yaw() const noexcept {
-    return yaw_;
-  }
-
-  void set_yaw(float yaw) noexcept {
-    yaw_ = yaw;
-  }
-
-  const glm::vec3& get_direction_front() const noexcept {
-    return direction_front_;
-  }
-
-  void set_direction_front(const glm::vec3& directionFront) noexcept {
-    direction_front_ = directionFront;
-  }
-
-  const glm::vec3& get_direction_right() const noexcept {
-    return direction_right_;
-  }
-
-  void set_direction_right(const glm::vec3& directionRight) noexcept {
-    direction_right_ = directionRight;
-  }
-
-  const glm::vec3& get_direction_up() const noexcept {
-    return direction_up_;
-  }
-
-  void set_direction_up(const glm::vec3& directionUp) noexcept {
-    direction_up_ = directionUp;
-  }
-
-  const glm::vec3& get_direction_world_up() const noexcept {
-    return direction_world_up_;
-  }
-
-  void set_direction_world_up(const glm::vec3& directionWorldUp) noexcept {
-    direction_world_up_ = directionWorldUp;
-  }
-
-  void set_handler(KeyboardInputHandler* input_handler) {
-    keyboard_handler_ = input_handler;
-  }
-  void set_handler(MouseInputHandler* input_handler) {
-    mouse_handler_ = input_handler;
-  }
-  void set_handler(KeyboardInputHandler* keyboard_handler,
-                   MouseInputHandler* mouse_handler) {
-    keyboard_handler_ = keyboard_handler;
-    mouse_handler_ = mouse_handler;
-  }
-  void set_handler(MouseInputHandler* mouse_handler,
-                   KeyboardInputHandler* keyboard_handler) {
-    keyboard_handler_ = keyboard_handler;
-    mouse_handler_ = mouse_handler;
-  }
-
-  void MakeActive();
-
-  int cur_id_;
-
- protected:
-  static int id_;
-
-  void UpdateVectors() noexcept;
-
-  float zoom_ = 45.0f;
-  float pitch_ = 0.0f;
-  float yaw_ = -90.0f;
-
-  glm::vec3 direction_front_ = glm::vec3(0.0f, 0.0f, -1.0f);
-  glm::vec3 direction_right_ = glm::vec3(-1.0f, 0.0f, 0.0f);
-  glm::vec3 direction_up_ = glm::vec3(0.0f, 1.0f, 0.0f);
-  glm::vec3 direction_world_up_ = glm::vec3(0.0f, 1.0f, 0.0f);
-
-  float move_speed_ = 5;
-  float sensitivity_ = 0.1f;
-
-  KeyboardInputHandler* keyboard_handler_ = nullptr;
-  MouseInputHandler* mouse_handler_ = nullptr;
+  float yaw_;
 };
 
 }  // namespace faithful

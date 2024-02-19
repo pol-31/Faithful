@@ -1,55 +1,71 @@
 #include "Cursor.h"
 
-#include <cstddef>
-
-#include "../../utils/Allocator.h"
-
 namespace faithful {
 namespace details {
 namespace io {
 
-Cursor::Cursor(GLFWwindow* glfw_window) {
-  glfw_window_ = glfw_window;
+Cursor::Cursor(Window* glfw_window) {
+  window_ = glfw_window;
+  glfw_cursor_ = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 }
 
-Cursor::Cursor(GLFWwindow* glfw_window, std::unique_ptr<uint8_t[]> data,
+Cursor::~Cursor() {
+  glfwDestroyCursor(glfw_cursor_);
+}
+
+Cursor::Cursor(Cursor&& other) {
+  window_ = other.window_;
+  glfw_cursor_ = other.glfw_cursor_;
+  other.glfw_cursor_ = nullptr;
+}
+Cursor& Cursor::operator=(Cursor&& other) {
+  glfwDestroyCursor(other.glfw_cursor_);
+  window_ = other.window_;
+  glfw_cursor_ = other.glfw_cursor_;
+  other.glfw_cursor_ = nullptr;
+}
+
+Cursor::Cursor(Window* window, const uint8_t* data,
                int width, int height) {
-  glfw_window_ = glfw_window;
+  window_ = window;
   if (!data) {
-    cursor_ = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+    glfw_cursor_ = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     return;
   }
   GLFWimage image;
   image.width = width;
   image.height = height;
-  image.pixels = data.get();
-  cursor_ = glfwCreateCursor(&image, 0, 0);
+  // glfwCreateCursor takes image as a const& and guarantee pixel data is copied:
+  // """
+  // Pointer lifetime:
+  //    The specified image data is copied before this function returns.
+  // """
+  // so we can use const cast here and data remains valid
+  image.pixels = const_cast<unsigned char*>(data);
+  glfw_cursor_ = glfwCreateCursor(&image, 0, 0);
 }
 
-Cursor::~Cursor() {
-  glfwDestroyCursor(cursor_);
-}
 
 void Cursor::MakeCursorVisible() {
   if (active_) {
-    glfwSetInputMode(glfw_window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(window_->Glfw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
   }
   visible_ = true;
 }
-void Cursor::MakeCursorUnvisible() {
+void Cursor::MakeCursorInvisible() {
   visible_ = false;
   if (active_) {
-    glfwSetInputMode(glfw_window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window_->Glfw(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   }
 }
 
 void Cursor::MakeActive() {
   if (visible_) {
-    glfwSetInputMode(glfw_window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(window_->Glfw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
   } else {
-    glfwSetInputMode(glfw_window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window_->Glfw(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   }
-  glfwSetCursor(glfw_window_, cursor_);
+  glfwSetCursor(window_->Glfw(), glfw_cursor_);
 }
 
 }  // namespace io

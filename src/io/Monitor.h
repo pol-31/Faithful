@@ -43,6 +43,11 @@ class Monitor {
   }
 
  private:
+  //TODO:
+  // Monitor should keep SOLELY pointers to data stored by GLFW
+  // we don't need allocate smt, just provide "cached storage" and
+  // convenient output
+
   faithful::utils::ConstexprVector<const GLFWvidmode*, 10> modes_;
   int cur_mode_id_;
   GLFWmonitor* glfw_monitor_;

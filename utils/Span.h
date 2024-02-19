@@ -4,46 +4,17 @@
 #include <type_traits>
 
 #include "Iterator.h"
-#include "Allocator.h"
 #include <cstring>
 
 namespace faithful {
-
-namespace details {
-namespace span {
+namespace utils {
 
 // TODO: constexpressness
-
-// SpanCleanerSuitable checks is:
-// 1) T static;
-// 2) takes pointer as a parameter;
-// 3) returns void.
-template <typename T, typename = void>
-struct SpanAllocatorSuitable : std::false_type {};
-
-template <typename T>
-struct SpanAllocatorSuitable<
-    T, std::conjunction<
-           std::is_same<typename T::ValueType, decltype(T::Allocate(0))>,
-           std::void_t<decltype(T::Deallocate(nullptr, 0))>>> : std::true_type {
-};
-
-}  // namespace span
-}  // namespace details
-
-namespace utility {
 
 // Does NOT allocate memory, but stores pointer with size
 // and provides access to _contiguous_ memory.
 // One-dimensional, copyable, movable
-// Cleaner type - struct with _static_void_Clean() method,
-// which is optional and do nothing by default (LazySpanCleaner)
-template <typename T,
-          typename UserAllocator = faithful::utility::SpanBufferAllocator<T>,
-          typename Allocator = std::conditional_t<
-              details::span::SpanAllocatorSuitable<UserAllocator>::value,
-              UserAllocator, faithful::utility::SpanBufferAllocator<T>>,
-          bool Nx = noexcept(Allocator::Allocate(0))>
+template <typename T>
 class Span {
  public:
   class Iterator {
@@ -52,7 +23,7 @@ class Span {
     using Pointer = T*;
     using Reference = T&;
     using DifferenceType = ptrdiff_t;
-    using IteratorCategory = RandomAccessIteratorTag;
+    using IteratorCategory = utility::RandomAccessIteratorTag;
 
     constexpr Iterator() noexcept
         : current_(nullptr),
@@ -185,10 +156,6 @@ class Span {
     Pointer end_;
   };
 
-  // in move-ctor and move-assignment we don't need Clear() for r-object
-  // so LazyTag states "there is no deleting"
-  struct LazyTag {};
-
   using ElementType = T;
   using ValueType = std::remove_cv_t<T>;
   using SizeType = size_t;
@@ -198,90 +165,28 @@ class Span {
   using Reference = T&;
   using ConstReference = const T&;
   using IteratorType = Iterator;
-  using ConstIteratorType = MakeConstIterator<Iterator>;
-  using ReverseIteratorType = MakeReverseIterator<Iterator>;
-  using ConstReverseIteratorType = MakeReverseIterator<ConstIteratorType>;
+  using ConstIteratorType = utility::MakeConstIterator<Iterator>;
+  using ReverseIteratorType = utility::MakeReverseIterator<Iterator>;
+  using ConstReverseIteratorType = utility::MakeReverseIterator<ConstIteratorType>;
 
   constexpr Span() noexcept = default;
 
-  Span(const Span& other)
-      : data_(other.get_data()),
-        size_and_owner_(other.get_size_and_owner()) {
-  }
+  constexpr Span(const Span& other) = default;
+  constexpr Span(Span&& other) = default;
 
-  constexpr Span(Span&& other) noexcept
-      : data_(other.get_data()),
-        size_and_owner_(other.get_size_and_owner()) {
-    other.set_owner(false);
-  }
-
-  constexpr Span(SizeType size, Pointer data, bool new_owner = true) noexcept
-      : data_(data) {
-    set_size(size);
-    set_owner(new_owner);
-  }
-
-  Span(SizeType size) {
-    if (size == 0)
-      return;
-    Allocator allocator;
-    data_ = allocator.Allocate(size);
-    set_owner(true);
-    set_size(size);
-  }
+  constexpr Span(SizeType size, Pointer data) noexcept
+      : data_(data), size_(size) {}
 
   operator Span<const T>() const {
     return Span<const T>(get_size(), data_);
   }
 
-  Span(std::nullptr_t) {
-  }
+  constexpr Span& operator=(const Span& other) = default;
 
-  Span& operator=(const Span& other) {
-    Clear();
-    data_ = other.get_data();
-    set_size(other.get_size());
-  }
-
-  constexpr Span& operator=(Span&& span) noexcept(Nx) {
-    if (data_ == span.get_data()) {
-      [[unlikely]] return *this;
-    }
-    Clear();
-    data_ = span.get_data();
-    size_and_owner_ = span.get_size_and_owner();
-    span.set_owner(false);
-    return *this;
-  }
-
-  constexpr Span& operator=(std::nullptr_t) {
-    Clear();
-  }
-
-  ~Span() noexcept(Nx) {
-    Clear();
-  }
-
-  constexpr void Clear() noexcept(Nx) {
-    if (get_owner()) {
-      Allocator allocator;
-      allocator.Deallocate(data_, get_size());
-    }
-    data_ = nullptr;
-    size_and_owner_ = 0;
-  }
+  constexpr Span& operator=(Span&& span) = default;
 
   constexpr bool Empty() const noexcept {
     return data_ == nullptr;
-  }
-
-  Span MakeCopy() {
-    if (data_ == nullptr)
-      return Span{};
-    auto size = get_size();
-    auto copy = Span(size);
-    std::memcpy(copy.get_data(), data_, size);
-    return copy;
   }
 
   constexpr friend bool operator==(const Span& sp, std::nullptr_t) noexcept {
@@ -292,24 +197,12 @@ class Span {
     return data_;
   }
 
-  constexpr bool get_owner() const noexcept {
-    return size_and_owner_ & 1U;
-  }
-
-  void set_owner(bool owner) {
-    size_and_owner_ = (size_and_owner_ & ~1U) | (owner ? 1 : 0);
-  }
-
   constexpr SizeType get_size() const noexcept {
-    return size_and_owner_ >> 1;
+    return size_;
   }
 
   void set_size(SizeType size) noexcept {
-    size_and_owner_ = (size << 1) | (size_and_owner_ & 1U);
-  }
-
-  constexpr SizeType get_size_and_owner() const noexcept {
-    return size_and_owner_;
+    size_ = size;
   }
 
   constexpr SizeType get_size_bytes() const noexcept {
@@ -372,18 +265,16 @@ class Span {
     return ConstReverseIteratorType(data_ + get_size(), data_ + get_size());
   }
 
-  template <typename U, typename V>
-  friend void swap(Span<U, V>& sp1, Span<U, V>& sp2) noexcept;
+  template <typename U>
+  friend void swap(Span<U>& sp1, Span<U>& sp2) noexcept;
 
  protected:
   Pointer data_ = nullptr;
-  // first (smaller) bit for owner/not_owner
-  // this is for the reducing memory usage - _16_bytes_ instead of 17
-  SizeType size_and_owner_ = 0;
+  SizeType size_ = 0;
 };
 
-template <typename U, typename V>
-void swap(Span<U, V>& sp1, Span<U, V>& sp2) noexcept {
+template <typename T>
+void swap(Span<T>& sp1, Span<T>& sp2) noexcept {
   Span temp(std::move(sp1));
   sp1 = std::move(sp2);
   sp2 = std::move(sp1);
@@ -397,7 +288,7 @@ struct SpanSizeComparator {
   }
 };
 
-}  // namespace utility
+}  // namespace utils
 }  // namespace faithful
 
 #endif  // FAITHFUL_SPAN_H

@@ -66,11 +66,19 @@ int MainGameSceneSetup() {
 
 // TODO: loader/ModelPool.h
 
-
+#include "GLFW/glfw3.h"
 
 #include <cstring>
 
 int main() {
+
+  glfwInit();
+
+  int count;
+  const GLFWvidmode* vid_modes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  for (int i = 0; i < count; ++i) {
+    std::cout << vid_modes[i].width << std::endl;
+  }
 
   std::cout << "Hello, World!" << std::endl;
 //  faithful::details::RenderThreadPool render_tp_;

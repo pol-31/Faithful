@@ -58,37 +58,36 @@ class Scene {
   details::io::Cursor cursor_;
 };
 
-class MainMenuScene : public Scene {
- public:
-  enum class State {
-    kLoadStartScreen, // TODO: for each state its own collision kd-tree
-    //                      but it's pregenerated, so can just load from memory
-    kLoadPlayScreen,
-    kConfigGeneral,
-    kConfigLocalization,
-    kConfigIO,
-    kConfigSound,
-    kConfigGraphic,
-    kKeys
-  };
- private:
+enum class MainMenuSceneState {
+  kLoadStartScreen, // TODO: for each state its own collision kd-tree
+  //                      but it's pregenerated, so can just load from memory
+  kLoadPlayScreen,
+  kConfigGeneral,
+  kConfigLocalization,
+  kConfigIO,
+  kConfigSound,
+  kConfigGraphic,
+  kKeys
+};
+
+enum class MainGameSceneState {
+  kGameLoadScreen,
+  kGameDefault,
+  kInventory1,
+  kInventory2,
+  kInventory3,
+  kInventory4,
+  kGamePause
 };
 
 // SO we have two: STATIC collision list and DYNAMIC collision list
 
-class MainGameScene : public Scene {
- public:
-  enum class State {
-    kLoadScreen,
-    kPlayDefault,
-    kInventory1,
-    kInventory2,
-    kInventory3,
-    kInventory4,
-    kPause
-  };
- private:
-};
+namespace details {
+namespace scene {
+
+
+} // namespace scene
+} // namespace details
 
 }  // namespace faithful
 

@@ -17,6 +17,8 @@
 #include "../../utils/ConstexprVector.h"
 #include "../../config/IO.h"
 
+#include "../../utils/Span.h"
+
 namespace faithful {
 namespace details {
 namespace io {
@@ -31,16 +33,18 @@ class MonitorInfo {
     int monitor_num;
     GLFWmonitor** monitors = glfwGetMonitors(&monitor_num);
     for (int i = 0; i < monitor_num; ++i) {
-      Monitor(
+//      Monitor(
       monitors_info_.PushBack(monitors[i]);
     }
   }
 
+  // TODO: we need mdSpan there ?
+  const faithful::utils::Span<const GLFWvidmode*>& GetMonitorsInfo() const {
+    return monitors_info_;
+  }
 
  private:
-  using MonitorsInfoType =
-      faithful::utils::ConstexprVector<Monitor, faithful::config::max_monitors>;
-  MonitorsInfoType monitors_info_;
+  faithful::utils::Span<const GLFWvidmode*> monitors_info_;
 };
 
 void monitor_callback(GLFWmonitor* monitor, int event) {

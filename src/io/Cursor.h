@@ -1,10 +1,6 @@
 #ifndef FAITHFUL_CURSOR_H
 #define FAITHFUL_CURSOR_H
 
-#include <memory>
-
-#include <glad/gl.h>
-
 #include "Window.h"
 
 namespace faithful {
@@ -15,31 +11,38 @@ class DefaultCursor;
 
 class Cursor {
  public:
-  Cursor(GLFWwindow* glfw_window);
+  Cursor() = delete;
+  Cursor(Window* window);
+
   ~Cursor();
 
-  Cursor(GLFWwindow* glfw_window, std::unique_ptr<uint8_t[]> data,
+  Cursor(const Cursor&) = delete;
+  Cursor& operator=(const Cursor&) = delete;
+
+  Cursor(Cursor&& other);
+  Cursor& operator=(Cursor&& other);
+
+  Cursor(Window* window, const uint8_t* data,
          int width, int height);
 
-  // conversion for  usage in GLFW-functions
   GLFWcursor* Glfw() {
-    return cursor_;
+    return glfw_cursor_;
   }
 
   void MakeCursorVisible();
-  void MakeCursorUnvisible();
+  void MakeCursorInvisible();
 
   void MakeActive();
 
  protected:
   friend class DefaultCursor;
   void set_cursor(GLFWcursor* cursor) {
-    cursor_ = cursor;
+    glfw_cursor_ = cursor;
   }
 
  private:
-  GLFWwindow* glfw_window_;
-  GLFWcursor* cursor_ = nullptr;
+  Window* window_ = nullptr;
+  GLFWcursor* glfw_cursor_ = nullptr;
   bool visible_ = true;
   bool active_ = false;
 };

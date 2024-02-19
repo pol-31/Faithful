@@ -23,6 +23,8 @@ class Window {
 
   bool Init();
 
+  const glm::vec2& Resolution(); // TODO: const ref resolution !!
+
   // TODO: set title, icon
 
   void Deinit();
@@ -50,9 +52,9 @@ class Window {
   glm::vec2 CalculateDefaultResolution();
 
   GLFWwindow* window_ = nullptr;
-  Monitor cur_monitor_ = nullptr;
-  MonitorController monitors_;
-  glm::vec2 resolution_;
+  Monitor cur_monitor_;
+//  MonitorController monitors_;
+  glm::vec2 resolution_{800, 600}; // TODO: replace default value
 };
 
 //TODO:

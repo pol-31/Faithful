@@ -48,6 +48,10 @@ Window::~Window() {
   glfwDestroyWindow(window_);
 }
 
+const glm::vec2& Window::Resolution() {
+  return resolution_;
+//  return cur_monitor_.GetResolution();
+}
 
 void Window::Resize() {
   GLint w, h;
