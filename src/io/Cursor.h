@@ -1,36 +1,30 @@
 #ifndef FAITHFUL_CURSOR_H
 #define FAITHFUL_CURSOR_H
 
-#define GLFW_INCLUDE_NONE  // for arbitrary OpenGL functions including order
-#include <GLFW/glfw3.h>
+#include <memory>
+
 #include <glad/gl.h>
-#include <GLFW/glfw3.h>
 
-#include <cstddef>
-
-#include "../Scene.h"
+#include "Window.h"
 
 namespace faithful {
+namespace details {
+namespace io {
 
 class DefaultCursor;
 
 class Cursor {
  public:
-  Cursor();
-  Cursor(Cursor&& other);
-  Cursor(SceneMode mode);
-
-  Cursor& operator=(Cursor&& other);
-
+  Cursor(GLFWwindow* glfw_window);
   ~Cursor();
+
+  Cursor(GLFWwindow* glfw_window, std::unique_ptr<uint8_t[]> data,
+         int width, int height);
 
   // conversion for  usage in GLFW-functions
   GLFWcursor* Glfw() {
     return cursor_;
   }
-
-  void MakeCursorVisibleImpl();
-  void MakeCursorUnvisibleImpl();
 
   void MakeCursorVisible();
   void MakeCursorUnvisible();
@@ -44,21 +38,14 @@ class Cursor {
   }
 
  private:
-  Window* related_window_ = nullptr;
+  GLFWwindow* glfw_window_;
   GLFWcursor* cursor_ = nullptr;
   bool visible_ = true;
+  bool active_ = false;
 };
 
-class DefaultCursor {
- public:
-  static void Init();
-  static Cursor* cursor_;
-  static Cursor* no_cursor_;
-
- private:
-  static bool initialized_;
-};
-
+}  // namespace io
+}  // namespace details
 }  // namespace faithful
 
 #endif  // FAITHFUL_CURSOR_H

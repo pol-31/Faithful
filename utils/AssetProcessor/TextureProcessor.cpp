@@ -162,7 +162,7 @@ void TextureProcessor::Process(const std::filesystem::path& texture_path,
 
 
 void TextureProcessor::Process(const std::filesystem::path& dest_path,
-                               std::unique_ptr<uint8_t> image_data,
+                               std::unique_ptr<uint8_t[]> image_data,
                                int width, int height,
                                AssetCategory category) {
   if (encode_) {
@@ -234,7 +234,7 @@ bool TextureProcessor::Encode(const std::filesystem::path& texture_path,
 }
 
 bool TextureProcessor::Encode(const std::filesystem::path& dest_path,
-                              std::unique_ptr<uint8_t> image_data,
+                              std::unique_ptr<uint8_t[]> image_data,
                               int width, int height,
                               AssetCategory category) {
 
@@ -256,7 +256,8 @@ bool TextureProcessor::Encode(const std::filesystem::path& dest_path,
   image.data_type = static_cast<astcenc_type>(config::tex_data_type);
 
   //  image.data = reinterpret_cast<void**>(&image_data);
-  image.data = reinterpret_cast<void**>(*image_data.get());
+  auto data_ptr = reinterpret_cast<void*>(image_data.get());
+  image.data = reinterpret_cast<void**>(&data_ptr);
 
   // no need to make it atomic, only "fail"-thread write
   bool encode_success = true;
@@ -442,7 +443,7 @@ bool TextureProcessor::Decode(const std::filesystem::path& texture_path,
 }
 
 bool TextureProcessor::Decode(const std::filesystem::path& dest_path,
-                              std::unique_ptr<uint8_t> image_data,
+                              std::unique_ptr<uint8_t[]> image_data,
                               int width, int height,
                               AssetCategory category) {
   std::cerr << "TextureProcessor::Decode from memory NOT IMPLEMENTED" << std::endl;

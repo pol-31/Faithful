@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.26)
 
 message(STATUS "meshoptimizer building")
 
+# we need external project here, because we need "BUILD_BYPRODUCTS"
+# we don't need meshoptimizer but gltfpack cli only, so we don't include it
+# to any target and CMake consider it as a useless and don't compile it
+
 include(ExternalProject)
 
 set(MESHOPTIMIZER_SOURCE_DIR ${FAITHFUL_SOURCE_DIR}/external/meshoptimizer/meshoptimizer)

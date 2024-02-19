@@ -47,7 +47,7 @@ class TextureProcessor {
   void Process(const std::filesystem::path& texture_path,
                AssetCategory category);
   void Process(const std::filesystem::path& dest_path,
-               std::unique_ptr<uint8_t> image_data,
+               std::unique_ptr<uint8_t[]> image_data,
                int width, int height,
                AssetCategory category);
 
@@ -59,7 +59,7 @@ class TextureProcessor {
   bool Encode(const std::filesystem::path& texture_path,
               AssetCategory category);
   bool Encode(const std::filesystem::path& dest_path,
-              std::unique_ptr<uint8_t> image_data,
+              std::unique_ptr<uint8_t[]> image_data,
               int width, int height,
               AssetCategory category);
 
@@ -70,7 +70,7 @@ class TextureProcessor {
               AssetCategory category);
   /// NOT IMPLEMENTED YET
   bool Decode(const std::filesystem::path& dest_path,
-              std::unique_ptr<uint8_t> image_data,
+              std::unique_ptr<uint8_t[]> image_data,
               int width, int height,
               AssetCategory category);
 

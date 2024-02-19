@@ -22,12 +22,6 @@
 
 
 /// NOTE: model textures can't be Hdr (according to gltf 2.0)
-
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION// defined in tiny_gltf.h
-//#define TINYGLTF_USE_RAPIDJSON
-
 #include <iostream>  // TODO: replace by Logger.h
 #include <cstring>
 #include <filesystem>

@@ -6,7 +6,7 @@
 #include <math.h>
 #include <string.h>
 
-#include "meshoptimizer/meshoptimizer/src/meshoptimizer.h"
+#include "../src/meshoptimizer.h"
 
 static float inverseTranspose(float* result, const float* transform)
 {

@@ -3,7 +3,7 @@
 #endif
 
 #define CGLTF_IMPLEMENTATION
-#include "meshoptimizer/meshoptimizer/extern/cgltf.h"
+#include "../extern/cgltf.h"
 
 #define FAST_OBJ_IMPLEMENTATION
-#include "meshoptimizer/meshoptimizer/extern/fast_obj.h"
+#include "../extern/fast_obj.h"

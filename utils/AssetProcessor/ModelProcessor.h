@@ -9,7 +9,6 @@
 
 class TextureProcessor;
 
-//#define STB_IMAGE_IMPLEMENTATION defined in tiny_gltf.h
 #include "tinygltf/tiny_gltf.h"
 
 // TODO: for HDR we still need prefix, still using u8 only

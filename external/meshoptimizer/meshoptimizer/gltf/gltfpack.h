@@ -15,7 +15,7 @@
 #define _CRT_NONSTDC_NO_WARNINGS
 #endif
 
-#include "meshoptimizer/meshoptimizer/extern/cgltf.h"
+#include "../extern/cgltf.h"
 
 #include <assert.h>
 

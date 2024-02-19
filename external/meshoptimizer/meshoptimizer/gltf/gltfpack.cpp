@@ -13,7 +13,7 @@
 #include <unistd.h>
 #endif
 
-#include "meshoptimizer/meshoptimizer/src/meshoptimizer.h"
+#include "../src/meshoptimizer.h"
 
 std::string getVersion()
 {

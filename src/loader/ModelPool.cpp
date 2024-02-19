@@ -10,10 +10,11 @@ ModelPool::ModelPool() {
   //  for (int i = 0; i < faithful::config::max_active_sound_num; ++i) {
   //    active_instances_[i].internal_id = i;
   //  }
+    // TODO: vao, vbo
 }
 
 ModelPool::~ModelPool() {
-  // TODO: idk, maybe smt
+  // TODO: release all vao, vbo
 }
 
 AssetInstanceInfo ModelPool::Load(std::string&& model_path,

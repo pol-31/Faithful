@@ -16,8 +16,7 @@ target_compile_options(AssetProcessor PRIVATE ${FAITHFUL_COMPILE_OPTIONS})
 target_link_options(AssetProcessor PRIVATE ${FAITHFUL_EXE_LINK_OPTIONS})
 
 target_link_libraries(AssetProcessor
-#        PRIVATE mimalloc-static
-#        PRIVATE stb
+        PRIVATE stb
         PRIVATE dr_libs
         PRIVATE vorbisenc
         PRIVATE vorbisfile
@@ -34,10 +33,9 @@ endif()
 add_dependencies(AssetProcessor meshoptimizer)
 
 target_include_directories(AssetProcessor
-#        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/mimalloc/include
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/stb
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/dr_libs
-        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson/include
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/tinygltf
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/vorbis/include
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/ogg/include

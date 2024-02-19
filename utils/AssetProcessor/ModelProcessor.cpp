@@ -1,6 +1,7 @@
 #include "ModelProcessor.h"
 
 #include <iostream>
+#include <filesystem>
 
 #include "TextureProcessor.h"
 
@@ -28,16 +29,16 @@ ModelProcessor::ModelProcessor(
 
 void ModelProcessor::Process(std::filesystem::path model_path) {
   cur_model_path_ = model_path;
-  std::cerr << cur_model_path_ << std::endl;
-  auto suffix = model_path.lexically_relative(user_asset_root_dir_);
-  auto destination = asset_destination_ / suffix;
-  destination.replace_extension("gltf");
+  std::cout << cur_model_path_ << " - Source path" << std::endl;
   Read();
   if (encode_) {
     CompressTextures();
   } else {
     DecompressTextures();
   }
+  auto suffix = model_path.lexically_relative(user_asset_root_dir_);
+  auto destination = asset_destination_ / suffix;
+  destination.replace_extension("gltf");
   if (Write(destination.string())) {
     return;
   }
@@ -84,7 +85,7 @@ void ModelProcessor::CompressTextures() {
   int cur_id;
   for (int i = 0; i < model_.images.size(); ++i) {
     tinygltf::Image& image = model_.images[i];
-    std::cout << image.uri << std::endl;
+    std::cout << image.uri << " - Image uri" << std::endl;
     if (!image.uri.empty()) {
       cur_id = MarkImageAsAProcessed(image.uri);
     } else {
@@ -97,11 +98,16 @@ void ModelProcessor::CompressTextures() {
     }
     out_texture_name += ".astc";
 
-    auto image_data = std::make_unique<uint8_t>(image.image.size());
+    std::cout << image.image.size() << " SIZE" << std::endl;
+
     int width = image.width;
     int height = image.height;
-    std::move(image.image.begin(), image.image.end(), image_data.get());
-    image.image.clear();
+    int total_len = width * height * 4;
+
+    auto image_data = std::make_unique<uint8_t[]>(total_len);
+    std::memcpy(image_data.get(), image.image.data(), total_len);
+//    std::move(image.image.begin(), image.image.end(), image_data.get());
+//    image.image.clear();
 
     std::cerr << cur_model_path_.string() << "--" << std::endl;
 //    std::filesystem::path texture_path = "/home/pavlo/Desktop/from/damaged_helmet/untitled.gltf";//cur_model_path_.string();
@@ -111,9 +117,9 @@ void ModelProcessor::CompressTextures() {
     texture_processor_->Process("/home/pavlo/Desktop/to/damaged_helmet/1.png", std::move(image_data),
                                 width, height, category);
 
-    image.uri = out_texture_name;
-    image.mimeType.clear();
-    image.name.clear();
+//    image.uri = out_texture_name;
+//    image.mimeType.clear();
+//    image.name.clear();
   }
 }
 
@@ -132,11 +138,15 @@ AssetCategory ModelProcessor::DeduceTextureCategory(int image_id) {
 }
 
 int ModelProcessor::MarkImageAsAProcessed(const std::string& image_path) {
+  std::cout << processed_images_.size() << std::endl;
   for (const auto& img : processed_images_) {
     if (img.path == image_path) {
       return img.id;
     }
   }
+  processed_images_.push_back({"", 1});
+  processed_images_.push_back({"", 1});
+  processed_images_.push_back({"", 1});
   int new_id = ++last_texture_id_;
   processed_images_.push_back({image_path, new_id});
   return new_id;

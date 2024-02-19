@@ -16,11 +16,6 @@ endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-option(GLFW_BUILD_EXAMPLES "Build the GLFW example programs" ON)
-option(GLFW_BUILD_TESTS "Build the GLFW test programs" ON)
-option(GLFW_BUILD_DOCS "Build the GLFW documentation" ON)
-option(GLFW_INSTALL "Generate installation target" ON)
 option(GLFW_VULKAN_STATIC "Assume the Vulkan loader is linked with the application" OFF)
 
 include(GNUInstallDirs)
@@ -35,35 +30,16 @@ cmake_dependent_option(GLFW_USE_WAYLAND "Use Wayland for window creation" OFF
 cmake_dependent_option(USE_MSVC_RUNTIME_LIBRARY_DLL "Use MSVC runtime library DLL" ON
                        "MSVC" OFF)
 
-if (BUILD_SHARED_LIBS)
-    set(_GLFW_BUILD_DLL 1)
-endif()
-
-if (BUILD_SHARED_LIBS AND UNIX)
-    # On Unix-like systems, shared libraries can use the soname system.
-    set(GLFW_LIB_NAME glfw)
-else()
-    set(GLFW_LIB_NAME glfw3)
-endif()
+set(GLFW_LIB_NAME glfw3)
 set(GLFW_LIB_NAME_SUFFIX "")
 
 if (GLFW_VULKAN_STATIC)
-    if (BUILD_SHARED_LIBS)
-        # If you absolutely must do this, remove this line and add the Vulkan
-        # loader static library via the CMAKE_SHARED_LINKER_FLAGS
-        message(FATAL_ERROR "You are trying to link the Vulkan loader static library into the GLFW shared library")
-    endif()
     set(_GLFW_VULKAN_STATIC 1)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${GLFW_SOURCE_DIR}/CMake/modules")
 
 find_package(Threads REQUIRED)
-
-if (GLFW_BUILD_DOCS)
-    set(DOXYGEN_SKIP_DOT TRUE)
-    find_package(Doxygen)
-endif()
 
 #--------------------------------------------------------------------
 # Apply Microsoft C runtime library option
@@ -196,10 +172,6 @@ if (_GLFW_WIN32)
 
     if (GLFW_USE_HYBRID_HPG)
         set(_GLFW_USE_HYBRID_HPG 1)
-    endif()
-
-    if (BUILD_SHARED_LIBS)
-        set (GLFW_LIB_NAME_SUFFIX "dll")
     endif()
 endif()
 
@@ -344,45 +316,8 @@ configure_file(src/glfw3.pc.in src/glfw3.pc @ONLY)
 #--------------------------------------------------------------------
 add_subdirectory(src)
 
-if (GLFW_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
-
-if (GLFW_BUILD_TESTS)
-    add_subdirectory(tests)
-endif()
-
-if (DOXYGEN_FOUND AND GLFW_BUILD_DOCS)
-    add_subdirectory(docs)
-endif()
-
 #--------------------------------------------------------------------
 # Install files other than the library
 # The library is installed by src/CMakeLists.txt
 #--------------------------------------------------------------------
-if (GLFW_INSTALL)
-    install(DIRECTORY include/GLFW DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN glfw3.h PATTERN glfw3native.h)
-
-    install(FILES "${GLFW_BINARY_DIR}/src/glfw3Config.cmake"
-                  "${GLFW_BINARY_DIR}/src/glfw3ConfigVersion.cmake"
-            DESTINATION "${GLFW_CONFIG_PATH}")
-
-    install(EXPORT glfwTargets FILE glfw3Targets.cmake
-            EXPORT_LINK_INTERFACE_LIBRARIES
-            DESTINATION "${GLFW_CONFIG_PATH}")
-    install(FILES "${GLFW_BINARY_DIR}/src/glfw3.pc"
-            DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
-
-    # Only generate this target if no higher-level project already has
-    if (NOT TARGET uninstall)
-        configure_file(cmake_uninstall.cmake.in
-                       cmake_uninstall.cmake IMMEDIATE @ONLY)
-
-        add_custom_target(uninstall
-                          "${CMAKE_COMMAND}" -P
-                          "${GLFW_BINARY_DIR}/cmake_uninstall.cmake")
-        set_target_properties(uninstall PROPERTIES FOLDER "GLFW3")
-    endif()
-endif()
-
+# --- deleted by Faithful ---

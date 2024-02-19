@@ -100,35 +100,11 @@ include(GNUInstallDirs)
 find_package(PkgConfig)
 find_package(SDL2 QUIET)
 
-
-option(ALSOFT_DLOPEN  "Check for the dlopen API for loading optional libs"  ON)
-
 option(ALSOFT_WERROR  "Treat compile warnings as errors"      OFF)
 
-option(ALSOFT_UTILS "Build utility programs"  ON)
 option(ALSOFT_NO_CONFIG_UTIL "Disable building the alsoft-config utility" OFF)
 
-option(ALSOFT_EXAMPLES  "Build example programs"  ON)
-
-option(ALSOFT_INSTALL "Install main library" ON)
-option(ALSOFT_INSTALL_CONFIG "Install alsoft.conf sample configuration file" ON)
-option(ALSOFT_INSTALL_HRTF_DATA "Install HRTF data files" ON)
-option(ALSOFT_INSTALL_AMBDEC_PRESETS "Install AmbDec preset files" ON)
-option(ALSOFT_INSTALL_EXAMPLES "Install example programs (alplay, alstream, ...)" ON)
-option(ALSOFT_INSTALL_UTILS "Install utility programs (openal-info, alsoft-config, ...)" ON)
-option(ALSOFT_UPDATE_BUILD_VERSION "Update git build version info" ON)
-
 option(ALSOFT_EAX "Enable legacy EAX extensions" ${WIN32})
-
-option(ALSOFT_SEARCH_INSTALL_DATADIR "Search the installation data directory" OFF)
-if(ALSOFT_SEARCH_INSTALL_DATADIR)
-    set(ALSOFT_INSTALL_DATADIR ${CMAKE_INSTALL_FULL_DATADIR})
-endif()
-
-if(DEFINED SHARE_INSTALL_DIR)
-    message(WARNING "SHARE_INSTALL_DIR is deprecated.  Use the variables provided by the GNUInstallDirs module instead")
-    set(CMAKE_INSTALL_DATADIR "${SHARE_INSTALL_DIR}")
-endif()
 
 if(DEFINED LIB_SUFFIX)
     message(WARNING "LIB_SUFFIX is deprecated.  Use the variables provided by the GNUInstallDirs module instead")
@@ -515,16 +491,6 @@ set(RT_LIB )
 check_library_exists(rt clock_gettime "" HAVE_LIBRT)
 if(HAVE_LIBRT)
     set(RT_LIB rt)
-endif()
-
-# Check for the dlopen API (for dynamicly loading backend libs)
-if(ALSOFT_DLOPEN)
-    check_include_file(dlfcn.h HAVE_DLFCN_H)
-    check_library_exists(dl dlopen "" HAVE_LIBDL)
-    if(HAVE_LIBDL)
-        set(EXTRA_LIBS dl ${EXTRA_LIBS})
-        set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} dl)
-    endif()
 endif()
 
 # Check for a cpuid intrinsic
@@ -1195,43 +1161,6 @@ endif()
 # This is always available
 set(BACKENDS  "${BACKENDS} Null")
 
-
-find_package(Git)
-if(ALSOFT_UPDATE_BUILD_VERSION AND GIT_FOUND AND EXISTS "${OpenAL_SOURCE_DIR}/.git")
-    set(GIT_DIR "${OpenAL_SOURCE_DIR}/.git")
-
-    # Check if this is a submodule, if it is then find the .git directory
-    if(NOT IS_DIRECTORY "${OpenAL_SOURCE_DIR}/.git")
-        file(READ ${GIT_DIR} submodule)
-        string(REGEX REPLACE "gitdir: (.*)$" "\\1" GIT_DIR_RELATIVE ${submodule})
-        string(STRIP ${GIT_DIR_RELATIVE} GIT_DIR_RELATIVE)
-        get_filename_component(SUBMODULE_DIR ${GIT_DIR} PATH)
-        get_filename_component(GIT_DIR ${SUBMODULE_DIR}/${GIT_DIR_RELATIVE} ABSOLUTE)
-    endif()
-
-    # Get the current working branch and its latest abbreviated commit hash
-    add_custom_command(OUTPUT "${OpenAL_BINARY_DIR}/version_witness.txt"
-        BYPRODUCTS "${OpenAL_BINARY_DIR}/version.h"
-        COMMAND ${CMAKE_COMMAND} -D GIT_EXECUTABLE=${GIT_EXECUTABLE} -D LIB_VERSION=${LIB_VERSION}
-            -D LIB_VERSION_NUM=${LIB_VERSION_NUM} -D SRC=${OpenAL_SOURCE_DIR}/version.h.in
-            -D DST=${OpenAL_BINARY_DIR}/version.h -P ${OpenAL_SOURCE_DIR}/version.cmake
-        COMMAND ${CMAKE_COMMAND} -E touch "${OpenAL_BINARY_DIR}/version_witness.txt"
-        WORKING_DIRECTORY "${OpenAL_SOURCE_DIR}"
-        MAIN_DEPENDENCY "${OpenAL_SOURCE_DIR}/version.h.in"
-        DEPENDS "${GIT_DIR}/index" "${OpenAL_SOURCE_DIR}/version.cmake"
-        VERBATIM
-    )
-
-    add_custom_target(build_version DEPENDS "${OpenAL_BINARY_DIR}/version_witness.txt")
-else()
-    set(GIT_BRANCH "UNKNOWN")
-    set(GIT_COMMIT_HASH "unknown")
-    configure_file(
-        "${OpenAL_SOURCE_DIR}/version.h.in"
-        "${OpenAL_BINARY_DIR}/version.h")
-endif()
-
-
 option(ALSOFT_EMBED_HRTF_DATA "Embed the HRTF data files (increases library footprint)" ON)
 if(ALSOFT_EMBED_HRTF_DATA)
     macro(make_hrtf_header FILENAME VARNAME)
@@ -1249,23 +1178,6 @@ if(ALSOFT_EMBED_HRTF_DATA)
     endmacro()
 
     make_hrtf_header("Default HRTF.mhr" "default_hrtf")
-endif()
-
-
-if(ALSOFT_UTILS)
-    find_package(MySOFA)
-    if(NOT ALSOFT_NO_CONFIG_UTIL)
-        find_package(Qt5Widgets QUIET)
-        if(NOT Qt5Widgets_FOUND)
-            message(STATUS "Could NOT find Qt5Widgets")
-        endif()
-    endif()
-endif()
-if(ALSOFT_UTILS OR ALSOFT_EXAMPLES)
-    find_package(SndFile)
-    if(SDL2_FOUND)
-        find_package(FFmpeg COMPONENTS AVFORMAT AVCODEC AVUTIL SWSCALE SWRESAMPLE)
-    endif()
 endif()
 
 if(NOT WIN32)
@@ -1509,139 +1421,13 @@ endif()
 add_library(OpenAL::OpenAL ALIAS OpenAL)
 
 # Install main library
-if(ALSOFT_INSTALL)
-    configure_package_config_file(OpenALConfig.cmake.in OpenALConfig.cmake
-        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/OpenAL)
-    install(TARGETS OpenAL EXPORT OpenAL
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} ${CMAKE_INSTALL_INCLUDEDIR}/AL)
-    export(TARGETS OpenAL
-        NAMESPACE OpenAL::
-        FILE OpenALTargets.cmake)
-    install(EXPORT OpenAL
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/OpenAL
-        NAMESPACE OpenAL::
-        FILE OpenALTargets.cmake)
-    install(DIRECTORY include/AL
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-    install(FILES "${OpenAL_BINARY_DIR}/openal.pc"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
-    install(FILES "${OpenAL_BINARY_DIR}/OpenALConfig.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/OpenAL")
-    if(TARGET soft_oal)
-        install(TARGETS soft_oal
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-    endif()
-    message(STATUS "Installing library and headers")
-else()
-    message(STATUS "NOT installing library and headers")
-endif()
-
-if(ALSOFT_INSTALL_CONFIG)
-    install(FILES alsoftrc.sample
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/openal)
-    message(STATUS "Installing sample configuration")
-endif()
-
-if(ALSOFT_INSTALL_HRTF_DATA)
-    install(DIRECTORY hrtf
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/openal)
-    message(STATUS "Installing HRTF data files")
-endif()
-
-if(ALSOFT_INSTALL_AMBDEC_PRESETS)
-    install(DIRECTORY presets
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/openal)
-    message(STATUS "Installing AmbDec presets")
-endif()
+# removed by Faithful
 message(STATUS "")
 
 set(UNICODE_FLAG )
 if(MINGW)
     set(UNICODE_FLAG ${UNICODE_FLAG} -municode)
 endif()
-set(EXTRA_INSTALLS )
-if(ALSOFT_UTILS)
-    add_executable(openal-info utils/openal-info.c)
-    target_include_directories(openal-info PRIVATE ${OpenAL_SOURCE_DIR}/common)
-    target_compile_options(openal-info PRIVATE ${C_FLAGS})
-    target_link_libraries(openal-info PRIVATE ${LINKER_FLAGS} OpenAL ${UNICODE_FLAG})
-    set_target_properties(openal-info PROPERTIES ${DEFAULT_TARGET_PROPS})
-    if(ALSOFT_INSTALL_EXAMPLES)
-        set(EXTRA_INSTALLS ${EXTRA_INSTALLS} openal-info)
-    endif()
-
-    if(SNDFILE_FOUND)
-        add_executable(uhjdecoder utils/uhjdecoder.cpp)
-        target_compile_definitions(uhjdecoder PRIVATE ${CPP_DEFS})
-        target_include_directories(uhjdecoder
-            PRIVATE ${OpenAL_BINARY_DIR} ${OpenAL_SOURCE_DIR}/common)
-        target_compile_options(uhjdecoder PRIVATE ${C_FLAGS})
-        target_link_libraries(uhjdecoder PUBLIC common
-            PRIVATE ${LINKER_FLAGS} SndFile::SndFile ${UNICODE_FLAG})
-        set_target_properties(uhjdecoder PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        add_executable(uhjencoder utils/uhjencoder.cpp)
-        target_compile_definitions(uhjencoder PRIVATE ${CPP_DEFS})
-        target_include_directories(uhjencoder
-            PRIVATE ${OpenAL_BINARY_DIR} ${OpenAL_SOURCE_DIR}/common)
-        target_compile_options(uhjencoder PRIVATE ${C_FLAGS})
-        target_link_libraries(uhjencoder PUBLIC common
-            PRIVATE ${LINKER_FLAGS} SndFile::SndFile ${UNICODE_FLAG})
-        set_target_properties(uhjencoder PROPERTIES ${DEFAULT_TARGET_PROPS})
-    endif()
-
-    if(MYSOFA_FOUND)
-        set(SOFA_SUPPORT_SRCS
-            utils/sofa-support.cpp
-            utils/sofa-support.h)
-        add_library(sofa-support STATIC EXCLUDE_FROM_ALL ${SOFA_SUPPORT_SRCS})
-        target_compile_definitions(sofa-support PRIVATE ${CPP_DEFS})
-        target_include_directories(sofa-support PUBLIC ${OpenAL_SOURCE_DIR}/common)
-        target_compile_options(sofa-support PRIVATE ${C_FLAGS})
-        target_link_libraries(sofa-support PUBLIC common MySOFA::MySOFA PRIVATE ${LINKER_FLAGS})
-        set_target_properties(sofa-support PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        set(MAKEMHR_SRCS
-            utils/makemhr/loaddef.cpp
-            utils/makemhr/loaddef.h
-            utils/makemhr/loadsofa.cpp
-            utils/makemhr/loadsofa.h
-            utils/makemhr/makemhr.cpp
-            utils/makemhr/makemhr.h)
-        if(NOT HAVE_GETOPT)
-            set(MAKEMHR_SRCS  ${MAKEMHR_SRCS} utils/getopt.c utils/getopt.h)
-        endif()
-        add_executable(makemhr ${MAKEMHR_SRCS})
-        target_compile_definitions(makemhr PRIVATE ${CPP_DEFS})
-        target_include_directories(makemhr
-            PRIVATE ${OpenAL_BINARY_DIR} ${OpenAL_SOURCE_DIR}/utils)
-        target_compile_options(makemhr PRIVATE ${C_FLAGS})
-        target_link_libraries(makemhr PRIVATE ${LINKER_FLAGS} sofa-support ${UNICODE_FLAG})
-        set_target_properties(makemhr PROPERTIES ${DEFAULT_TARGET_PROPS})
-        if(ALSOFT_INSTALL_EXAMPLES)
-            set(EXTRA_INSTALLS ${EXTRA_INSTALLS} makemhr)
-        endif()
-
-        set(SOFAINFO_SRCS  utils/sofa-info.cpp)
-        add_executable(sofa-info ${SOFAINFO_SRCS})
-        target_compile_definitions(sofa-info PRIVATE ${CPP_DEFS})
-        target_include_directories(sofa-info PRIVATE ${OpenAL_SOURCE_DIR}/utils)
-        target_compile_options(sofa-info PRIVATE ${C_FLAGS})
-        target_link_libraries(sofa-info PRIVATE ${LINKER_FLAGS} sofa-support ${UNICODE_FLAG})
-        set_target_properties(sofa-info PROPERTIES ${DEFAULT_TARGET_PROPS})
-    endif()
-    message(STATUS "Building utility programs")
-
-    if(NOT ALSOFT_NO_CONFIG_UTIL)
-        add_subdirectory(utils/alsoft-config)
-    endif()
-    message(STATUS "")
-endif()
-
 
 # Add a static library with common functions used by multiple example targets
 #[[add_library(ex-common STATIC EXCLUDE_FROM_ALL
@@ -1652,127 +1438,3 @@ target_include_directories(ex-common PUBLIC ${OpenAL_SOURCE_DIR}/common)
 target_compile_options(ex-common PUBLIC ${C_FLAGS})
 target_link_libraries(ex-common PUBLIC OpenAL PRIVATE ${RT_LIB})
 set_target_properties(ex-common PROPERTIES ${DEFAULT_TARGET_PROPS})]]
-
-if(ALSOFT_EXAMPLES)
-    add_executable(altonegen examples/altonegen.c)
-    target_link_libraries(altonegen PRIVATE ${LINKER_FLAGS} ${MATH_LIB} ex-common ${UNICODE_FLAG})
-    set_target_properties(altonegen PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-    add_executable(alrecord examples/alrecord.c)
-    target_link_libraries(alrecord PRIVATE ${LINKER_FLAGS} ex-common ${UNICODE_FLAG})
-    set_target_properties(alrecord PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-    if(ALSOFT_INSTALL_EXAMPLES)
-        set(EXTRA_INSTALLS ${EXTRA_INSTALLS} altonegen alrecord)
-    endif()
-
-    message(STATUS "Building example programs")
-
-    if(SNDFILE_FOUND)
-        add_executable(alplay examples/alplay.c)
-        target_link_libraries(alplay PRIVATE ${LINKER_FLAGS} SndFile::SndFile ex-common
-            ${UNICODE_FLAG})
-        set_target_properties(alplay PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        add_executable(alstream examples/alstream.c)
-        target_link_libraries(alstream PRIVATE ${LINKER_FLAGS} SndFile::SndFile ex-common
-            ${UNICODE_FLAG})
-        set_target_properties(alstream PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        add_executable(alreverb examples/alreverb.c)
-        target_link_libraries(alreverb PRIVATE ${LINKER_FLAGS} SndFile::SndFile ex-common
-            ${UNICODE_FLAG})
-        set_target_properties(alreverb PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        add_executable(almultireverb examples/almultireverb.c)
-        target_link_libraries(almultireverb
-            PRIVATE ${LINKER_FLAGS} SndFile::SndFile ex-common ${MATH_LIB} ${UNICODE_FLAG})
-        set_target_properties(almultireverb PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        add_executable(allatency examples/allatency.c)
-        target_link_libraries(allatency PRIVATE ${LINKER_FLAGS} SndFile::SndFile ex-common
-            ${UNICODE_FLAG})
-        set_target_properties(allatency PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        add_executable(alhrtf examples/alhrtf.c)
-        target_link_libraries(alhrtf
-            PRIVATE ${LINKER_FLAGS} SndFile::SndFile ex-common ${MATH_LIB} ${UNICODE_FLAG})
-        set_target_properties(alhrtf PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        add_executable(alstreamcb examples/alstreamcb.cpp)
-        target_link_libraries(alstreamcb PRIVATE ${LINKER_FLAGS} SndFile::SndFile ex-common
-            ${UNICODE_FLAG})
-        set_target_properties(alstreamcb PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        add_executable(alconvolve examples/alconvolve.c)
-        target_link_libraries(alconvolve PRIVATE ${LINKER_FLAGS} common SndFile::SndFile ex-common
-            ${UNICODE_FLAG})
-        set_target_properties(alconvolve PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        if(ALSOFT_INSTALL_EXAMPLES)
-            set(EXTRA_INSTALLS ${EXTRA_INSTALLS} alplay alstream alreverb almultireverb allatency
-                alhrtf)
-        endif()
-
-        message(STATUS "Building SndFile example programs")
-    endif()
-
-    if(SDL2_FOUND)
-        add_executable(alloopback examples/alloopback.c)
-        target_link_libraries(alloopback
-            PRIVATE ${LINKER_FLAGS} SDL2::SDL2 ex-common ${MATH_LIB})
-        set_target_properties(alloopback PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-        if(ALSOFT_INSTALL_EXAMPLES)
-            set(EXTRA_INSTALLS ${EXTRA_INSTALLS} alloopback)
-        endif()
-
-        message(STATUS "Building SDL example programs")
-
-        set(FFVER_OK FALSE)
-        if(FFMPEG_FOUND)
-            set(FFVER_OK TRUE)
-            if(AVFORMAT_VERSION VERSION_LESS "59.27.100")
-                message(STATUS "libavformat is too old! (${AVFORMAT_VERSION}, wanted 59.27.100)")
-                set(FFVER_OK FALSE)
-            endif()
-            if(AVCODEC_VERSION VERSION_LESS "59.37.100")
-                message(STATUS "libavcodec is too old! (${AVCODEC_VERSION}, wanted 59.37.100)")
-                set(FFVER_OK FALSE)
-            endif()
-            if(AVUTIL_VERSION VERSION_LESS "57.28.100")
-                message(STATUS "libavutil is too old! (${AVUTIL_VERSION}, wanted 57.28.100)")
-                set(FFVER_OK FALSE)
-            endif()
-            if(SWSCALE_VERSION VERSION_LESS "6.7.100")
-                message(STATUS "libswscale is too old! (${SWSCALE_VERSION}, wanted 6.7.100)")
-                set(FFVER_OK FALSE)
-            endif()
-            if(SWRESAMPLE_VERSION VERSION_LESS "4.7.100")
-                message(STATUS "libswresample is too old! (${SWRESAMPLE_VERSION}, wanted 4.7.100)")
-                set(FFVER_OK FALSE)
-            endif()
-        endif()
-        if(FFVER_OK)
-            add_executable(alffplay examples/alffplay.cpp)
-            target_include_directories(alffplay PRIVATE ${FFMPEG_INCLUDE_DIRS})
-            target_link_libraries(alffplay
-                PRIVATE ${LINKER_FLAGS} SDL2::SDL2 ${FFMPEG_LIBRARIES} ex-common)
-            set_target_properties(alffplay PROPERTIES ${DEFAULT_TARGET_PROPS})
-
-            if(ALSOFT_INSTALL_EXAMPLES)
-                set(EXTRA_INSTALLS ${EXTRA_INSTALLS} alffplay)
-            endif()
-            message(STATUS "Building SDL+FFmpeg example programs")
-        endif()
-    endif()
-    message(STATUS "")
-endif()
-
-if(EXTRA_INSTALLS)
-    install(TARGETS ${EXTRA_INSTALLS}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        BUNDLE  DESTINATION ${CMAKE_INSTALL_BINDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-endif()

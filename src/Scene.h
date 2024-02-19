@@ -1,10 +1,8 @@
 #ifndef FAITHFUL_SCENE_H
 #define FAITHFUL_SCENE_H
 
-#include <set>
-
-#include "common/Object.h"
-#include "entities/EntityTraits.h"
+#include "io/Camera.h"
+#include "io/Cursor.h"
 
 namespace faithful {
 
@@ -12,11 +10,9 @@ namespace faithful {
 /// in things what we currently located
 // TODO: not sure that's all
 enum class SceneType {
-  kMainMenu,
-  kInventory,
-  kMainGameHud,
-  kMainGameItem, // differs from hud, that it's dynamic
-  kConfigurations
+  kMainMenu, // including configs; just check different sets of collisions
+  kMainGame, // by now only one, but can add mini-games
+  kTerminate // useful; should be set if window should be closed
 };
 
 /// Scene are in charge of:
@@ -27,8 +23,6 @@ enum class SceneType {
 /// - Camera/Cursor
 ///TODO: each scene has drawable/collisionable/updatable list?
 
-class Camera;
-class Cursor;
 
 /** How we're dealing with different scenes:
  *
@@ -52,62 +46,49 @@ class Cursor;
 
 class Scene {
  public:
-  // see Scene(Dummy, int id) below
-  struct Dummy {};
+  Scene(Camera camera, details::io::Cursor cursor);
 
-  Scene();
-  Scene(const Scene& other) = delete;
-  Scene(Scene&& other) = delete;
-  Scene& operator=(const Scene& other) = delete;
-  Scene& operator=(Scene&& other) = delete;
+  virtual void ProcessDrawing();
+  virtual void ProcessInput();
 
-  ~Scene();
-
-
-  int Id() const {
-    return id_;
-  }
-  virtual void ProcessDrawing() {
-  }
-  void ProcessInput(Window* window);
-  /// animations
-  /// rigid body
-  /// physics
-  // TODO: void ProcessUpdateObj();
-  // TODO: create class UpdateManager;
-  // TODO: create class Updatable - user has to just inherit from it
-  //              and override Update() method.
-  //  ____We also want class UpdateableUbiqutous and then just put lambdas into
-  //  it
-
-  // TODO: std::forward_list<const SingleObjectImpl__not_complete*>*
-  // update_list_ = nullptr;
-
-  /// __subscribers__-like system
-  // void ProcessCollisions();
-  // void ProcessAudio();
-
-  Camera* get_camera() const {
-    return camera_;
-  }
-  Cursor* get_cursor() const {
-    return cursor_;
-  }
-  // RenderSequence* get_draw_list() const { return draw_list_; }
-
-  void set_camera(Camera* camera) {
-    camera_ = camera;
-  }
-  void set_cursor(Cursor* cursor) {
-    cursor_ = cursor;
-  }
+  void MakeActive();
 
  protected:
-  Camera* camera_ = nullptr;
-  Cursor* cursor_ = nullptr;
-  // Managers?
+  Camera camera_;
+  details::io::Cursor cursor_;
 };
 
+class MainMenuScene : public Scene {
+ public:
+  enum class State {
+    kLoadStartScreen, // TODO: for each state its own collision kd-tree
+    //                      but it's pregenerated, so can just load from memory
+    kLoadPlayScreen,
+    kConfigGeneral,
+    kConfigLocalization,
+    kConfigIO,
+    kConfigSound,
+    kConfigGraphic,
+    kKeys
+  };
+ private:
+};
+
+// SO we have two: STATIC collision list and DYNAMIC collision list
+
+class MainGameScene : public Scene {
+ public:
+  enum class State {
+    kLoadScreen,
+    kPlayDefault,
+    kInventory1,
+    kInventory2,
+    kInventory3,
+    kInventory4,
+    kPause
+  };
+ private:
+};
 
 }  // namespace faithful
 

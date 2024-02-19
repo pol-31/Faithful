@@ -8,18 +8,6 @@ include(GNUInstallDirs)
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
-# Build options
-option(BUILD_SHARED_LIBS "Build shared library" OFF)
-if(APPLE)
-    option(BUILD_FRAMEWORK "Build Framework bundle for OSX" OFF)
-endif()
-
-if(BUILD_FRAMEWORK)
-	set(BUILD_SHARED_LIBS TRUE)
-endif()
-
-option(INSTALL_CMAKE_PACKAGE_MODULE "Install CMake package configiguration module" ON)
-
 # Extract project version from configure.ac
 file(READ configure.ac CONFIGURE_AC_CONTENTS)
 string(REGEX MATCH "AC_INIT\\(\\[libvorbis\\],\\[([0-9]*).([0-9]*).([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})

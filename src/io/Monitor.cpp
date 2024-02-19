@@ -1,19 +1,15 @@
 #include "Monitor.h"
 
+#include "MonitorInfo.h"
+
 namespace faithful {
-
 namespace details {
-namespace monitor {
+namespace io {
 
-void DefaultMonitorCallback(GLFWmonitor* monitor, int event) {
-  if (event == GLFW_CONNECTED) {
-    static_cast<Monitor*>(glfwGetMonitorUserPointer(monitor))->Connect();
-  } else if (event == GLFW_DISCONNECTED) {
-    static_cast<Monitor*>(glfwGetMonitorUserPointer(monitor))->Disconnect();
-  }
+Monitor::Monitor() {
+
 }
 
-}  // namespace monitor
+}  // namespace io
 }  // namespace details
-
 }  // namespace faithful

@@ -3,21 +3,19 @@
 #define FAITHFUL_DEBUG // todo: -> CMake
 #define AL_LIBTYPE_STATIC // todo: -> CMake
 
-#include <stdlib.h>
-#include <mimalloc-override.h>
+//#include <stdlib.h>
+//#include <mimalloc-override.h>
 /// We don't need to #include "mimalloc-new-delete.h"
 /// as it has already been overridden by libmimalloc.a
 
-#include <cmath>
-#include <iostream>
+//#include <cmath>
+//#include <iostream>
 
-#include <glad/glad.h>
-
-#include "executors/AudioThreadPool.h"
-#include "loader/SoundPool.h"
-#include "loader/Sound.h"
-#include "loader/MusicPool.h"
-#include "loader/Music.h"
+//#include "executors/AudioThreadPool.h"
+//#include "loader/SoundPool.h"
+//#include "loader/Sound.h"
+//#include "loader/MusicPool.h"
+//#include "loader/Music.h"
 
 //TODO:
 // 1) init OpenGL context inside the RenderThreadPool
@@ -44,7 +42,7 @@
 // TODO: do we need to restrict amount of opened simultaneous fd (file_descriptors)
 
 // States: NormalMode, IntensiveLoadingMode
-
+/*
 void TestAudioThreadPool();
 
 int MainGameSceneSetup() {
@@ -55,12 +53,12 @@ int MainGameSceneSetup() {
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
 
-}
+}*/
 
-#include "executors/RenderThreadPool.h"
-#include "loader/Model.h"
-
-#include "common/CollisionManager.h"
+//#include "executors/RenderThreadPool.h"
+//#include "loader/Model.h"
+//
+//#include "common/CollisionManager.h"
 
 // TODO: fix all #pragma & class names, cause we have some troubles now
 
@@ -68,15 +66,22 @@ int MainGameSceneSetup() {
 
 // TODO: loader/ModelPool.h
 
+
+
+#include <cstring>
+
 int main() {
-  faithful::details::RenderThreadPool render_tp_;
+
+  std::cout << "Hello, World!" << std::endl;
+//  faithful::details::RenderThreadPool render_tp_;
   // render_tp_.Run();
   //TestAudioThreadPool();
-  if (MainGameSceneSetup()) {
-    std::cerr << "Unable to InitRenderContext" << std::endl;
-  }
+//  if (MainGameSceneSetup()) {
+//    std::cerr << "Unable to InitRenderContext" << std::endl;
+//  }
   return 0;
 }
+/*
 
 void TestAudioThreadPool() {
   faithful::details::assets::SoundPool sound_manager;
@@ -115,6 +120,7 @@ void TestAudioThreadPool() {
   std::cout << "Sleep 60 sec" << std::endl;
   std::this_thread::sleep_for(std::chrono::seconds(60));
 }
+*/
 
 // tinygltf changes list:
 // preferences:
@@ -125,6 +131,8 @@ void TestAudioThreadPool() {
 //   remove jsonhpp: C++ JSON library.
 //   UpdateImageObject <- we handle it only by url property
 //   "todo" and "ifdef 0"
+//  LoadImageData - req_comp set to 4
+// TODO: tinygltf lods - level of detail nodes MSFT_lod
 
 
 

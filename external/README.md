@@ -133,3 +133,5 @@ ___
 - Release version: v2024.02.12.00
 - Files: Future, Executor
 
+We've separated "_licenses" folder for convenience, but each library's
+folder still contain it own license

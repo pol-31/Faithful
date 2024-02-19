@@ -30,18 +30,8 @@ else()
     set(FAITHFUL_RELEASE ON)
 endif()
 
-if(FAITHFUL_FREEZE_BUILD)
-    set(FAITHFUL_RELEASE ON)
-endif()
-
 option(FAITHFUL_BUILD_ASSET_PROCESSOR "Build Faithful::AssetProcessor" ON)
 option(FAITHFUL_BUILD_ASSET_DOWNLOADER "Faithful download/update assets" ON)
-
-# all externals won't be installed to system lib/include paths
-option(FAITHFUL_BUILD_EXTERNAL "Build Faithful external libs if missing" ON)
-
-# To avoid compatibility issues
-option(FAITHFUL_BUILD_EXTERNAL_ALL "Build all(!) Faithful external libs" ON)
 
 option(FAITHFUL_BUILD_TESTS "If enabled, compile Faithful tests" OFF)
 option(FAITHFUL_ENABLE_CLANG_TIDY "Enable Faithful clang-tidy check" OFF)
@@ -90,40 +80,21 @@ print_dir_info()
 
 print_build_options()
 
-include(${FAITHFUL_SOURCE_DIR}/cmake/FaithfulFunctions.cmake)
-include(cmake/FindDeps.cmake)
+add_subdirectory(external EXCLUDE_FROM_ALL)
 
-if(FAITHFUL_BUILD_EXTERNAL)
-    add_subdirectory(external EXCLUDE_FROM_ALL)
-# else()
-#     in that case if we can't find external lib - building fails.
+add_subdirectory(src)
+target_link_libraries(Faithful INTERFACE src)
+
+add_subdirectory(utils)
+target_link_libraries(Faithful INTERFACE utils)
+
+message(STATUS "+> Building of Faithful is completed")
+message("")
+
+if (FAITHFUL_BUILD_TESTS)
+    add_subdirectory(test EXCLUDE_FROM_ALL)
 endif()
 
-if(FAITHFUL_DEPS_FOUND OR FAITHFUL_BUILD_EXTERNAL OR FAITHFUL_BUILD_EXTERNAL_ALL)
-    add_subdirectory(src)
-    target_link_libraries(Faithful INTERFACE src)
-
-    add_subdirectory(utils)
-    target_link_libraries(Faithful INTERFACE utils)
-
-    message(STATUS "+> Building of Faithful is completed")
-    message("")
-
-    if (FAITHFUL_BUILD_TESTS)
-        add_subdirectory(test EXCLUDE_FROM_ALL)
-    endif()
-
-    if (FAITHFUL_ENABLE_CLANG_TIDY)
-        include(${FAITHFUL_SOURCE_DIR}/cmake/ConfigClangTidy.cmake)
-    endif ()
-
-    include(${FAITHFUL_SOURCE_DIR}/cmake/CopyExternalLicenses.cmake)
-else()
-    message(STATUS "+> Building of Faithful has failed: some externals missing")
-    print_not_found_externals()
-    message(STATUS "+> Set FAITHFUL_BUILD_EXTERNAL or FAITHFUL_BUILD_EXTERNAL_ALL "
-            "to build them with Faithful project OR install them on your own."
-    )
-    message(STATUS "(in this case they won't be installed to system path but "
-            "only build to <your_build_directory>/external)")
-endif()
+if (FAITHFUL_ENABLE_CLANG_TIDY)
+    include(${FAITHFUL_SOURCE_DIR}/cmake/ConfigClangTidy.cmake)
+endif ()

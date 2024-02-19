@@ -8,7 +8,7 @@
 #include <math.h>
 #include <stdint.h>
 
-#include "meshoptimizer/meshoptimizer/src/meshoptimizer.h"
+#include "../src/meshoptimizer.h"
 
 struct Bounds
 {

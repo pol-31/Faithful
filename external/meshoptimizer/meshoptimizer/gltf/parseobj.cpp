@@ -1,8 +1,8 @@
 // This file is part of gltfpack; see gltfpack.h for version/license details
 #include "gltfpack.h"
 
-#include "meshoptimizer/meshoptimizer/extern/fast_obj.h"
-#include "meshoptimizer/meshoptimizer/src/meshoptimizer.h"
+#include "../extern/fast_obj.h"
+#include "../src/meshoptimizer.h"
 
 #include <stdlib.h>
 #include <string.h>

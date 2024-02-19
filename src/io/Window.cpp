@@ -2,49 +2,38 @@
 
 #define GLFW_INCLUDE_NONE
 #include "GLFW/glfw3.h"
-#include "glad/glad.h"
 
 #include <iostream>
 
+#include "../../config/IO.h"
+
 namespace faithful {
+namespace details {
+namespace io {
 
-Window::Window() {
-  glm::vec2 window_size = CalculateDefaultResolution();
-  CreateDefaultGlfwWindow("Simurgh project", window_size.x, window_size.y);
-}
+bool Window::Init() {
+  cur_monitor_ = MonitorController::GetPrimaryMonitor();
+  // TODO: handle monitor "init"
 
-Window::Window(std::string_view title) {
-  // create window (0.5*width ; 0.5*height)
-  glm::vec2 window_size = CalculateDefaultResolution();
-  CreateDefaultGlfwWindow(title, window_size.x, window_size.y);
-}
-Window::Window(std::size_t width) {
-  CreateDefaultGlfwWindow("Simurgh project", width, width);
-}
-Window::Window(std::string_view title, std::size_t width) {
-  CreateDefaultGlfwWindow(title, width, width);
-}
-Window::Window(std::size_t width, std::size_t height) {
-  CreateDefaultGlfwWindow("Simurgh project", width, height);
-}
-Window::Window(std::string_view title, std::size_t width, std::size_t height) {
-  CreateDefaultGlfwWindow(title, width, height);
-}
 
-void Window::CreateDefaultGlfwWindow(std::string_view title, std::size_t width,
-                                     std::size_t height) {
-  // TODO: more default hints _________________________________<<
-
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  /// don't need more hints, becaues we create only full-screen window
+  /// and according to glfw.org needed hints set by default OR
+  /// not affect full-screen window
+  /// https://www.glfw.org/docs/3.3/window_guide.html
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 6);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
+  glm::vec2 window_size = monitors_.CurrentMonitorResolution();
+
   GLFWwindow* window =
-      glfwCreateWindow(width, height, "Faithful", nullptr, nullptr);
+      glfwCreateWindow(window_size.x, window_size.y,
+                       faithful::config::window_title,
+                       cur_monitor_->Glfw(), nullptr);
   // simurgh::Logger::LogIf(simurgh::LogType::kFatal, !window)
   //   <<"Unable to create GLFW window";
   glfwMakeContextCurrent(window);
@@ -52,17 +41,7 @@ void Window::CreateDefaultGlfwWindow(std::string_view title, std::size_t width,
 
   AttachSizeCallback(DefaultSizeCallback);
   // TODO: callbacks
-}
-
-glm::vec2 Window::CalculateDefaultResolution() {
-  glm::vec2 resolution = MonitorResolution();
-  return glm::vec2(resolution.x, resolution.y);
-}
-
-glm::vec2 Window::MonitorResolution() {
-  resolution_ = glm::vec2(1600, 800);
-  monitors_.CurrentMonitorResolution();
-  return resolution_;
+  return window;
 }
 
 Window::~Window() {
@@ -95,4 +74,6 @@ void DefaultSizeCallback(GLFWwindow* window __attribute__((unused)), int width,
   glViewport(0, 0, width, height);
 }
 
-}  // namespace faithful
+} // namespace io
+} // namespace details
+} // namespace faithful

@@ -70,59 +70,6 @@ target_include_directories(${ASTCENC_TARGET}-static
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:.>)
 
-if(${ASTCENC_SHAREDLIB})
-    add_library(${ASTCENC_TARGET}-shared
-        SHARED
-            astcenc_averages_and_directions.cpp
-            astcenc_block_sizes.cpp
-            astcenc_color_quantize.cpp
-            astcenc_color_unquantize.cpp
-            astcenc_compress_symbolic.cpp
-            astcenc_compute_variance.cpp
-            astcenc_decompress_symbolic.cpp
-            astcenc_diagnostic_trace.cpp
-            astcenc_entry.cpp
-            astcenc_find_best_partitioning.cpp
-            astcenc_ideal_endpoints_and_weights.cpp
-            astcenc_image.cpp
-            astcenc_integer_sequence.cpp
-            astcenc_mathlib.cpp
-            astcenc_mathlib_softfloat.cpp
-            astcenc_partition_tables.cpp
-            astcenc_percentile_tables.cpp
-            astcenc_pick_best_endpoint_format.cpp
-            astcenc_quantization.cpp
-            astcenc_symbolic_physical.cpp
-            astcenc_weight_align.cpp
-            astcenc_weight_quant_xfer_tables.cpp)
-
-    target_include_directories(${ASTCENC_TARGET}-shared
-        PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-            $<INSTALL_INTERFACE:.>)
-endif()
-
-if(${ASTCENC_CLI})
-    # Veneer is compiled without any extended ISA so we can safely do
-    # ISA compatability checks without triggering a SIGILL
-    add_library(${ASTCENC_TARGET}-veneer
-        astcenccli_entry.cpp)
-
-    add_executable(${ASTCENC_TARGET}
-        astcenccli_error_metrics.cpp
-        astcenccli_image.cpp
-        astcenccli_image_external.cpp
-        astcenccli_image_load_store.cpp
-        astcenccli_platform_dependents.cpp
-        astcenccli_toplevel.cpp
-        astcenccli_toplevel_help.cpp)
-
-    target_link_libraries(${ASTCENC_TARGET}
-        PRIVATE
-            ${ASTCENC_TARGET}-veneer
-            ${ASTCENC_TARGET}-static)
-endif()
-
 macro(astcenc_set_properties ASTCENC_TARGET_NAME ASTCENC_IS_VENEER)
 
     target_compile_features(${ASTCENC_TARGET_NAME}
@@ -143,12 +90,6 @@ macro(astcenc_set_properties ASTCENC_TARGET_NAME ASTCENC_IS_VENEER)
         target_compile_definitions(${ASTCENC_TARGET_NAME}
             PRIVATE
                 ASTCENC_BLOCK_MAX_TEXELS=${ASTCENC_BLOCK_MAX_TEXELS})
-    endif()
-
-    if(${ASTCENC_DIAGNOSTICS})
-        target_compile_definitions(${ASTCENC_TARGET_NAME}
-            PUBLIC
-                ASTCENC_DIAGNOSTICS)
     endif()
 
     target_compile_options(${ASTCENC_TARGET_NAME}
@@ -197,16 +138,6 @@ macro(astcenc_set_properties ASTCENC_TARGET_NAME ASTCENC_IS_VENEER)
             # Use pthreads on Linux/macOS
             $<$<PLATFORM_ID:Linux,Darwin>:-pthread>)
 
-    if(${ASTCENC_ASAN})
-        target_compile_options(${ASTCENC_TARGET_NAME}
-            PRIVATE
-                $<${is_clang}:-fsanitize=address>)
-
-        target_link_options(${ASTCENC_TARGET_NAME}
-            PRIVATE
-                $<${is_clang}:-fsanitize=address>)
-    endif()
-
     if(NOT ${ASTCENC_INVARIANCE})
         target_compile_definitions(${ASTCENC_TARGET_NAME}
             PRIVATE
@@ -242,18 +173,6 @@ macro(astcenc_set_properties ASTCENC_TARGET_NAME ASTCENC_IS_VENEER)
                 $<$<AND:${is_clangcl},$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,14.0.0>>:-Xclang -ffp-contract=off>
                 $<$<AND:${is_clang},$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,10.0.0>>:-ffp-model=precise>
                 $<${is_gnu_fe}:-ffp-contract=off>)
-    endif()
-
-    if(${ASTCENC_CLI})
-        # Enable LTO on release builds
-        set_property(TARGET ${ASTCENC_TARGET_NAME}
-            PROPERTY
-                INTERPROCEDURAL_OPTIMIZATION_RELEASE True)
-
-        # Use a static runtime on MSVC builds (ignored on non-MSVC compilers)
-        set_property(TARGET ${ASTCENC_TARGET_NAME}
-            PROPERTY
-                MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 
     # Set up configuration for SIMD ISA builds
@@ -395,48 +314,3 @@ astcenc_set_properties(${ASTCENC_TARGET}-static OFF)
 target_compile_options(${ASTCENC_TARGET}-static
     PRIVATE
         $<${is_msvc_fe}:/W4>)
-
-if(${ASTCENC_SHAREDLIB})
-    astcenc_set_properties(${ASTCENC_TARGET}-shared OFF)
-
-    target_compile_definitions(${ASTCENC_TARGET}-shared
-        PRIVATE
-            ASTCENC_DYNAMIC_LIBRARY=1)
-
-    target_compile_options(${ASTCENC_TARGET}-shared
-        PRIVATE
-            $<${is_gnu_fe}:-fvisibility=hidden>
-            $<${is_msvc_fe}:/W4>)
-
-    if(NOT ${ASTCENC_UNIVERSAL_BUILD})
-        install(TARGETS ${ASTCENC_TARGET}-shared)
-    endif()
-endif()
-
-if(${ASTCENC_CLI})
-    astcenc_set_properties(${ASTCENC_TARGET}-veneer ON)
-    astcenc_set_properties(${ASTCENC_TARGET} OFF)
-
-    target_compile_options(${ASTCENC_TARGET}
-        PRIVATE
-            $<${is_msvc_fe}:/W3>)
-
-    target_compile_options(${ASTCENC_TARGET}-veneer
-        PRIVATE
-            $<${is_msvc_fe}:/W3>)
-
-    string(TIMESTAMP astcencoder_YEAR "%Y")
-
-    configure_file(
-        astcenccli_version.h.in
-        astcenccli_version.h
-        ESCAPE_QUOTES @ONLY)
-
-    target_include_directories(${ASTCENC_TARGET}
-        PRIVATE
-            ${CMAKE_CURRENT_BINARY_DIR})
-
-    if(NOT ${ASTCENC_UNIVERSAL_BUILD})
-        install(TARGETS ${ASTCENC_TARGET})
-    endif()
-endif()
