@@ -1,17 +1,11 @@
 #ifndef FAITHFUL_MONITOR_H
 #define FAITHFUL_MONITOR_H
 
-#include <string>
-
 #define GLFW_INCLUDE_NONE
-#include "GLFW/glfw3.h"
-#include "glad/glad.h"
-
+#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
-#include <iostream>
-
-#include "../../utils/ConstexprVector.h"
+#include "../../utils/Span.h"
 
 namespace faithful {
 namespace details {
@@ -19,39 +13,69 @@ namespace io {
 
 class Monitor {
  public:
-  struct ModeInfo {
-    int width;
-    int height;
-    int refresh_rate;
-  };
+  using ModesType = faithful::utils::Span<const GLFWvidmode>;
 
-  Monitor(GLFWmonitor* glfw_monitor,
-          faithful::utils::ConstexprVector<const GLFWvidmode*, 10> modes)
-      : modes_(modes), glfw_monitor_(glfw_monitor) {
-    glfw_monitor_ = glfwGetPrimaryMonitor();
+  Monitor() : Monitor(glfwGetPrimaryMonitor()) {}
+
+  Monitor(const Monitor&) = default;
+  Monitor& operator=(const Monitor&) = default;
+
+  Monitor(Monitor&&) = default;
+  Monitor& operator=(Monitor&&) = default;
+
+  Monitor(GLFWmonitor* glfw_monitor) {
+    glfw_monitor_ = glfw_monitor;
     name_ = glfwGetMonitorName(glfw_monitor_);
-    const GLFWvidmode* mode = glfwGetVideoMode(glfw_monitor_);
-    // TODO: cur_mode = highest possible
+    int modes_num;
+    const GLFWvidmode* modes = glfwGetVideoModes(glfw_monitor, &modes_num);
+    modes_ = ModesType{static_cast<ModesType::SizeType>(modes_num), modes};
+    const GLFWvidmode* mode = glfwGetVideoMode(glfw_monitor_); // cur_mode chosen by GLFW
+    for (int i = 0; i < modes_num; ++i) {
+      if (modes_[i].width == mode->width &&
+          modes_[i].height == mode->height &&
+          modes_[i].refreshRate == mode->refreshRate) {
+        cur_mode_id_ = i;
+      }
+    }
   }
 
-  glm::vec2 GetResolution() const {
-    return {cur_mode_.width, cur_mode_.height};
+  GLFWmonitor* Glfw() {
+    return glfw_monitor_;
   }
 
-  void SetMode(int id) {
-    cur_mode_ = mode;
+  const ModesType& GetModes() const {
+    return modes_;
+  }
+  int GetCurModeId() const {
+    return cur_mode_id_;
+  }
+
+  glm::ivec2 GetCurResolution() {
+    return {modes_[cur_mode_id_].width, modes_[cur_mode_id_].height};
+  }
+  int GetCurFramerate() {
+    return modes_[cur_mode_id_].refreshRate;
+  }
+
+  void SetMonitor(GLFWwindow* glfw_window) {
+    const GLFWvidmode& new_mode = modes_[cur_mode_id_];
+    glfwSetWindowMonitor(glfw_window, glfw_monitor_, 0, 0, new_mode.width,
+                         new_mode.height, new_mode.refreshRate);
+  }
+
+  // also sets monitor
+  void SetMode(GLFWwindow* glfw_window, int mode_id) {
+    const GLFWvidmode& new_mode = modes_[mode_id];
+    cur_mode_id_ = mode_id;
+    glfwSetWindowMonitor(glfw_window, glfw_monitor_, 0, 0, new_mode.width,
+                         new_mode.height, new_mode.refreshRate);
   }
 
  private:
-  //TODO:
-  // Monitor should keep SOLELY pointers to data stored by GLFW
-  // we don't need allocate smt, just provide "cached storage" and
-  // convenient output
-
-  faithful::utils::ConstexprVector<const GLFWvidmode*, 10> modes_;
-  int cur_mode_id_;
+  ModesType modes_;
   GLFWmonitor* glfw_monitor_;
   const char* name_;
+  int cur_mode_id_;
 };
 
 }  // namespace io
