@@ -1,24 +1,27 @@
-#include "RenderThreadPool.h"
+#include "DisplayInteractionThreadPool.h"
 
-#include "../../utils/Logger.h"
-
-#include "../../assets/embedded/CursorMainMenu.h"
-#include "../../assets/embedded/CursorMainGame.h"
-
-#include "queues/LifoBoundedMPSCBlockingQueue.h"
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+#include <glad/glad.h>
 
 namespace faithful {
 namespace details {
 
-// TODO: .h
-static void error_callback(int error, const char *description) {
-  (void)error;
+void GlfwErrorCallback(int error __attribute__((unused)),
+                       const char *description) {
   fprintf(stderr, "Error: %s\n", description);
 }
 
+void GlfwFramebufferSizeCallback(GLFWwindow* window __attribute__((unused)),
+                                 int width, int height) {
+  glViewport(0, 0, width, height);
+}
 
-RenderThreadPool::RenderThreadPool() :
-      window_(),
+/// such weird constructor because Cursor and Camera classes have
+/// explicitly deleted ctor (there's no sense to use it) and
+/// should be initialized with class faithful::Window
+DisplayInteractionThreadPool::DisplayInteractionThreadPool(DrawManager* music_manager) :
+      window_(), // TODO: deferred window initialization (because of GLFW init)
       camera_game_(&window_),
       cursor_arrow_(&window_, faithful::embedded::cursor_main_menu_data,
                     faithful::embedded::cursor_main_menu_width,
@@ -26,38 +29,18 @@ RenderThreadPool::RenderThreadPool() :
       cursor_target_(&window_, faithful::embedded::cursor_main_game_data,
                      faithful::embedded::cursor_main_game_width,
                      faithful::embedded::cursor_main_game_height),
-      current_cursor_(&cursor_arrow_) {
-  task_queue_ = new queue::LifoBoundedMPSCBlockingQueue<Task>;
-}
-RenderThreadPool::~RenderThreadPool() {
-  Camera camera(&window_);
-  delete task_queue_;
-  glfwTerminate();
+      current_cursor_(&cursor_arrow_) {}
+
+void DisplayInteractionThreadPool::Join() {
+  // TODO: cur_main_scene_ == cur_game_scene_ == state_ = kTerminated
 }
 
-void RenderThreadPool::Join() {
-  state_ = State::kJoined;
-  // TODO: Join() from main thread and Run() from AudioThread intersecting there
-  //   need synchronization
-  while (!task_queue_->Empty()) {
-    (task_queue_->Front())();
-  }
-  /*for (auto& thread : threads_) {
-    thread.join();
-  }*/
-}
-
-
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
-#include <glad/glad.h>
-
-void processInput(GLFWwindow *window) {
+void DisplayInteractionThreadPool::processInput(GLFWwindow *window) {
   if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
 }
 
-void RenderThreadPool::InitOpenGLContext() {
+void DisplayInteractionThreadPool::InitContext() {
   if (opengl_initialized_) {
     return;
   }
@@ -66,60 +49,45 @@ void RenderThreadPool::InitOpenGLContext() {
     std::cerr << "glfw init error" << std::endl;
     std::terminate();
   }
-  glfwSetErrorCallback(error_callback);
 
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwSetErrorCallback(GlfwErrorCallback); // TODO: depends on FAITHFUL_DEBUG
+  // TODO; the problem is - its already initialized and without GLFW init
 
-#ifdef __APPLE__
-  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-
-  if (!window_.Init()) {
-    std::cout << "Failed to create GLFW window" << std::endl;
-    glfwTerminate();
-    std::terminate();
-  }
-
-  glfwMakeContextCurrent(window_.Glfw());
-  glClearColor(0.2, 0.2, 0.2, 1.0);
+  // TODO: init window
 
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
     std::cerr << "Failed to initialize GLAD" << std::endl;
     std::terminate();
   }
+  glfwSetFramebufferSizeCallback(window_.Glfw(), GlfwFramebufferSizeCallback);
 
-  std::cout << "OpenAL context initialized" << std::endl;
+  glClearColor(0.2, 0.2, 0.2, 1.0);
+  std::cout << "OpenGL context initialized" << std::endl;
 
   opengl_initialized_ = true;
 }
-void RenderThreadPool::DeinitOpenGLContext() {
-  if (opengl_initialized_) {
-    // TODO: blocking call glfwWindowsShouldStop
-    glfwTerminate();
-    opengl_initialized_ = false;
-  }
-}
 
-void RenderThreadPool::Run() {
-  if (state_ != State::kNotStarted) {
-    return;
-  }
-  while (game_state_ != GameState::kTerminate) {// TODO: set WindowShouldBeClosed callback
-    if (game_state_ == GameState::kMainMenu) {
+
+void DisplayInteractionThreadPool::Run() {
+  InitContext();
+  while (faithful::global::game_global_state !=
+         faithful::global::GameGlobalState::kTerminate) {
+    if (faithful::global::game_global_state ==
+        faithful::global::GameGlobalState::kMainMenu) {
       ConfigMainMenu();
       RunMainMenu(); // spinning there
     }
-    if (game_state_ == GameState::kMainGame) {
+    if (faithful::global::game_global_state ==
+        faithful::global::GameGlobalState::kMainGame) {
       ConfigMainGame();
       RunMainGame(); // spinning there
     }
   }
 }
 
-void RenderThreadPool::RunMainMenu() {
-  while (game_state_ == GameState::kMainMenu) { // TODO: state joint for all?
+void DisplayInteractionThreadPool::RunMainMenu() {
+  while (faithful::global::game_global_state ==
+         faithful::global::GameGlobalState::kMainMenu) {
     switch (cur_menu_scene_) {
       case MainMenuSceneState::kLoadStartScreen:
         ConfigLoadStartScreen();
@@ -185,8 +153,9 @@ void RenderThreadPool::RunMainMenu() {
   }
 }
 
-void RenderThreadPool::RunMainGame() {
-  while (game_state_ == GameState::kMainGame) { // TODO: state joint for all?
+void DisplayInteractionThreadPool::RunMainGame() {
+  while (faithful::global::game_global_state ==
+         faithful::global::GameGlobalState::kMainGame) {
     switch (cur_game_scene_) {
       case MainGameSceneState::kGameLoadScreen:
         ConfigGameLoadScreen();
@@ -243,12 +212,6 @@ void RenderThreadPool::RunMainGame() {
         cur_game_scene_ = MainGameSceneState::kGameDefault;
     }
   }
-}
-
-void RenderThreadPool::UpdateFramerate() {
-  double current_frame = glfwGetTime();
-  framerate_.delta_ = current_frame - framerate_.last_;
-  framerate_.last_ = current_frame;
 }
 
 } // namespace details
