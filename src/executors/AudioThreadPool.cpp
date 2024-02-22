@@ -15,7 +15,7 @@ namespace details {
 AudioThreadPool::AudioThreadPool(assets::MusicPool* music_manager,
                                  assets::SoundPool* sound_manager)
     : music_manager_(music_manager), sound_manager_(sound_manager) {
-  task_queue_ = new queue::LifoBoundedMPSCBlockingQueue<Task>;
+  task_queue_ = new queue::LifoBoundedMPSCBlockingQueue<TaskType>;
 }
 AudioThreadPool::~AudioThreadPool() {
   delete task_queue_;
@@ -23,6 +23,9 @@ AudioThreadPool::~AudioThreadPool() {
 
 void AudioThreadPool::Join() {
   state_ = State::kJoined;
+
+  // TODO: change state and only wait in while(true) <-- blocking, non-intervening
+
   // TODO: Join() from main thread and Run() from AudioThread intersecting there
   //   need synchronization
   while (!task_queue_->Empty()) {
@@ -33,7 +36,7 @@ void AudioThreadPool::Join() {
   }
 }
 
-void AudioThreadPool::InitOpenALContext() {
+void AudioThreadPool::InitContext() {
   if (openal_initialized_) {
     return;
   }
@@ -54,7 +57,7 @@ void AudioThreadPool::InitOpenALContext() {
   std::cerr << "OpenAL contect initialized" << std::endl;
   openal_initialized_ = true;
 }
-void AudioThreadPool::DeinitOpenALContext() {
+void AudioThreadPool::DeinitContext() {
   if (openal_initialized_) {
     alcMakeContextCurrent(nullptr);
     alcDestroyContext(openal_context_);
@@ -223,12 +226,12 @@ void AudioThreadPool::Play(const Sound& sound) {
   }
 
   int sound_opengl_id = sound.GetInternalId();
-  task_queue_->Push([=]() {
+  task_queue_->Pop([=]() {
     std::cout << "inside the task_queue_" << std::endl;
     auto& audio_info = sound_manager_->sound_heap_data_[sound_opengl_id];
     AL_CALL(alBufferData, sound_sources_[source_id].buffer_id,
-            audio_info.format, audio_info.data.get(),
-            audio_info.size, audio_info.sample_rate);
+            audio_info.format, audio_info.data.get(), audio_info.size,
+            audio_info.sample_rate);
     // TODO: can we bind them inside the initialization?
     AL_CALL(alSourcei, sound_sources_[source_id].source_id, AL_BUFFER,
             sound_sources_[source_id].buffer_id);
@@ -248,15 +251,15 @@ void AudioThreadPool::Play(const Music& music) {
   auto buffers_num = faithful::config::openal_buffers_per_music;
   int music_opengl_id = music.GetInternalId();
 
-  task_queue_->Push([=]() {
+  task_queue_->Pop([=]() {
     auto& audio_info = music_manager_->music_heap_data_[music_opengl_id];
     auto data = std::make_unique<char>(buffer_size);
     for (int i = 0; i < buffers_num; ++i) {
       int dataSoFar = 0;
       while (dataSoFar < buffer_size) {
-        int result = ov_read(
-            &audio_info.ogg_vorbis_file, data.get() + dataSoFar,
-            buffer_size - dataSoFar, 0, 2, 1, &audio_info.ogg_cur_section);
+        int result = ov_read(&audio_info.ogg_vorbis_file,
+                             data.get() + dataSoFar, buffer_size - dataSoFar, 0,
+                             2, 1, &audio_info.ogg_cur_section);
         if (CheckOggOvErrors(result, i)) {
           std::cerr << "AudioThreadPool::Play(Music) error" << std::endl;
           break;

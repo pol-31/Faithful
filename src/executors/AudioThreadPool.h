@@ -1,9 +1,9 @@
 #ifndef FAITHFUL_SRC_EXECUTORS_AUDIOTHREADPOOL_H_
 #define FAITHFUL_SRC_EXECUTORS_AUDIOTHREADPOOL_H_
 
-#include "Executor.h"
+#include "IExecutor.h"
 
-#include <array>
+#include <array> // TODO; excessive headers
 #include <cstring>
 #include <fstream>
 #include <map>
@@ -29,7 +29,7 @@ namespace assets {
 class MusicPool;
 class SoundPool;
 
-} // namespace details
+} // namespace assets
 
 /** AudioThreadPool purpose:
  * - encapsulate OpenAL
@@ -42,12 +42,11 @@ class SoundPool;
  * */
 
 /// "1" - because we need only ONE openAL context
-class AudioThreadPool : public StaticExecutor<1> {
+class AudioThreadPool : public IStaticExecutor<1> {
  public:
-  using Base = StaticExecutor<1>;
+  using Base = IStaticExecutor<1>;
 
   AudioThreadPool() = delete;
-
   AudioThreadPool(assets::MusicPool* music_manager,
                   assets::SoundPool* sound_manager);
 
@@ -79,8 +78,8 @@ class AudioThreadPool : public StaticExecutor<1> {
 
   void ReleaseSources(); // TODO: rename
 
-  void InitOpenALContext();
-  void DeinitOpenALContext();
+  void InitContext();
+  void DeinitContext();
 
   void InitOpenALBuffersAndSources();
   void DeinitOpenALBuffersAndSources();
