@@ -1,115 +1,74 @@
 #include "ExecutionEnvironment.h"
 
-#include "AudioThreadPool.h"
-#include "CollisionThreadPool.h"
-#include "DisplayInteractionThreadPool.h"
-#include "UpdateThreadPool.h"
-
-#include "../loader/SoundPool.h"
-#include "../loader/MusicPool.h"
-
-#include "../common/CollisionManager.h"
-#include "../common/DrawManager.h"
-#include "../common/UpdateManager.h"
-
-#include <assert.h>
-
 namespace faithful {
 namespace details {
 
+// TODO: player/*, environment/*
 
-//TODO 2: (ExecutionEnvironment.h):
-// framerate <-- Update()_read, Draw()_write
-// screen resolution <-- Draw()_read, GlobalCallback_write
-// GlfwWindowUserPointer:
-// - this; (to call Join()) --------------- execution_env
-// - all_ThreadPools --------------- execution_env
-// - all_SceneTypes; --------------- execution_env
-// - screen_res; --------------- display_interaction_thread_pool (window)
-// - need_to_update_monitor; --------------- display_interaction_thread_pool (window)
-// - framerate(?). --------------- display_interaction_thread_pool
+// TODO: error handling?
 
-// TODO 3: always need to use faithful::Window, NOT GLFWwindow* !!!
-
-// TODO 4: AudioThreadPool
-
-ExecutionEnvironment::ExecutionEnvironment() {
-  thread_pools_allocated_ = true;
-
-  // TODO: you know what to do with these managers...
-
-  // TODO: we don't need HEAP memory there
-
-  auto sound_pool = new assets::SoundPool; // delete
-  auto music_pool = new assets::MusicPool; // delete
-
-  auto collision_manager = new CollisionManager; // delete
-  auto draw_manager = new DrawManager; // delete
-  auto update_manager = new UpdateManager; // delete
-
-  audio_thread_pool_ = new AudioThreadPool(music_pool, sound_pool);
-  collision_thread_pool_ = new CollisionThreadPool(collision_manager);
-  display_interaction_thread_pool_ = new DisplayInteractionThreadPool(draw_manager);
-  update_thread_pool_ = new UpdateThreadPool(update_manager);
-
-  global_data.execution_environment = this;
-  global_data.audio_thread_pool = audio_thread_pool_;
-  global_data.collision_thread_pool = collision_thread_pool_;
-  global_data.display_interaction_thread_pool = display_interaction_thread_pool_;
-  global_data.update_thread_pool = update_thread_pool_;
-  //TODO: global_data.framerate, screen_resolution,
-  // need_to_update_monitor_info - from display_interaction_thread_pool::window_
-}
-
-ExecutionEnvironment::ExecutionEnvironment(
-    AudioThreadPool* audio_thread_pool,
-    CollisionThreadPool* collision_thread_pool,
-    DisplayInteractionThreadPool* display_interaction_thread_pool,
-    UpdateThreadPool* update_thread_pool) {
-  thread_pools_allocated_ = false;
-
-  assert(audio_thread_pool != nullptr);
-  assert(collision_thread_pool != nullptr);
-  assert(display_interaction_thread_pool != nullptr);
-  assert(update_thread_pool != nullptr);
-
-  audio_thread_pool_ = audio_thread_pool;
-  collision_thread_pool_ = collision_thread_pool;
-  display_interaction_thread_pool_ = display_interaction_thread_pool;
-  update_thread_pool_ = update_thread_pool;
+ExecutionEnvironment::ExecutionEnvironment()
+    : model_pool_(), music_pool_(), shader_pool_(),
+      sound_pool_(), texture1d_pool_(), texture2d_pool_(),
+      collision_manager_(&model_pool_),
+      draw_manager_(&model_pool_),
+      input_manager_(),
+      loading_manager_(&model_pool_, &music_pool_, &shader_pool_,
+                       &sound_pool_, &texture1d_pool_, &texture2d_pool_),
+      update_manager_(&model_pool_),
+      audio_thread_pool_(&music_pool_, &sound_pool_),
+      display_interaction_thread_pool_(&draw_manager_, &input_manager_),
+      game_logic_thread_pool_(&collision_manager_,
+                              &loading_manager_, &update_manager_) {
+  /// glfw has already been initialized at display_interaction_thread_pool_()
+  Init();
 }
 
 ExecutionEnvironment::~ExecutionEnvironment() {
-  if (thread_pools_allocated_) {
-    delete audio_thread_pool_;
-    delete collision_thread_pool_;
-    delete display_interaction_thread_pool_;
-    delete update_thread_pool_;
+  if (state_ == State::kRunning) {
+    Join();
   }
+  DeInit();
 };
 
 void ExecutionEnvironment::Init() {
-  // create managers(sound, music, draw/update/collision) if needed
+  global_data_.execution_environment = this;
+
+  global_data_.collision_manager = &collision_manager_;
+  global_data_.draw_manager = &draw_manager_;
+  global_data_.input_manager = &input_manager_;
+  global_data_.loading_manager = &loading_manager_;
+  global_data_.update_manager = &update_manager_;
+  global_data_.audio_thread_pool = &audio_thread_pool_;
+
+  collision_manager_.SetGlfwWindowUserPointer(&global_data_);
+  draw_manager_.SetGlfwWindowUserPointer(&global_data_);
+  input_manager_.SetGlfwWindowUserPointer(&global_data_);
+  loading_manager_.SetGlfwWindowUserPointer(&global_data_);
+  update_manager_.SetGlfwWindowUserPointer(&global_data_);
+  /// audio_thread_pool_ don't know about global_data, but there's no need
+
+  display_interaction_thread_pool_.SetGlfwWindowUserPointer(
+      reinterpret_cast<void*>(&global_data_));
 }
 
 void ExecutionEnvironment::DeInit() {
-  // delete managers(sound, music, draw/update/collision) if needed
+  display_interaction_thread_pool_.UnSetGlfwWindowUserPointer();
 }
 
 void ExecutionEnvironment::Run() {
-  audio_thread_pool_->Run();
-  collision_thread_pool_->Run();
-  update_thread_pool_->Run();
-  // called last because it's blocking
-  display_interaction_thread_pool_->Run();
+  state_ = State::kRunning;
+  audio_thread_pool_.Run();
+  game_logic_thread_pool_.Run();
+  display_interaction_thread_pool_.Run(); // called last because it's blocking
 }
 
 void ExecutionEnvironment::Join() {
-  audio_thread_pool_->Join();
-  collision_thread_pool_->Join();
-  update_thread_pool_->Join();
-  // called last because it blocks main() which which should be stopped last
-  display_interaction_thread_pool_->Join();
+  state_ = State::kJoined;
+  /// order doesn't matters, because we only Join(), not calling dtors
+  audio_thread_pool_.Join();
+  display_interaction_thread_pool_.Join();
+  game_logic_thread_pool_.Join();
 }
 
 } // namespace faithful

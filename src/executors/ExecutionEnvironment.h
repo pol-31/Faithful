@@ -1,26 +1,32 @@
 #ifndef FAITHFUL_SRC_EXECUTORS_EXECUTIONENVIRONMENT_H_
 #define FAITHFUL_SRC_EXECUTORS_EXECUTIONENVIRONMENT_H_
 
-#include "Executor.h"
+#include "IExecutor.h"
 #include "../common/GlfwWindowUserPointer.h"
+
+#include "AudioThreadPool.h"
+#include "GameLogicThreadPool.h"
+#include "DisplayInteractionThreadPool.h"
+
+#include "../common/CollisionManager.h"
+#include "../common/DrawManager.h"
+#include "../common/InputManager.h"
+#include "../common/LoadingManager.h"
+#include "../common/UpdateManager.h"
+
+#include "../loader/ModelPool.h"
+#include "../loader/MusicPool.h"
+#include "../loader/ShaderPool.h"
+#include "../loader/SoundPool.h"
+#include "../loader/Texture1DPool.h"
+#include "../loader/Texture2DPool.h"
 
 namespace faithful {
 namespace details {
 
-class AudioThreadPool;
-class CollisionThreadPool;
-class DisplayInteractionThreadPool;
-class UpdateThreadPool;
-
-class ExecutionEnvironment : public Executor {
+class ExecutionEnvironment : public IExecutor {
  public:
   ExecutionEnvironment();
-  ExecutionEnvironment(
-      AudioThreadPool* audio_thread_pool,
-      CollisionThreadPool* collision_thread_pool,
-      DisplayInteractionThreadPool* display_interaction_thread_pool,
-      UpdateThreadPool* update_thread_pool);
-
   ~ExecutionEnvironment();
 
   void Run() override;
@@ -30,14 +36,24 @@ class ExecutionEnvironment : public Executor {
   void Init();
   void DeInit();
 
-  AudioThreadPool* audio_thread_pool_;
-  CollisionThreadPool* collision_thread_pool_;
-  DisplayInteractionThreadPool* display_interaction_thread_pool_;
-  UpdateThreadPool* update_thread_pool_;
+  assets::ModelPool model_pool_;
+  assets::MusicPool music_pool_;
+  assets::ShaderPool shader_pool_;
+  assets::SoundPool sound_pool_;
+  assets::Texture1DPool texture1d_pool_;
+  assets::Texture2DPool texture2d_pool_;
 
-  GlfwWindowUserPointer global_data;
+  CollisionManager collision_manager_;
+  DrawManager draw_manager_;
+  InputManager input_manager_;
+  LoadingManager loading_manager_;
+  UpdateManager update_manager_;
 
-  bool thread_pools_allocated_;
+  AudioThreadPool audio_thread_pool_;
+  DisplayInteractionThreadPool display_interaction_thread_pool_;
+  GameLogicThreadPool game_logic_thread_pool_;
+
+  GlfwWindowUserPointer global_data_;
 };
 
 } // namespace faithful

@@ -1,7 +1,7 @@
 #ifndef FAITHFUL_SRC_EXECUTORS_DISPLAYINTERACTIONTHREADPOOL_H_
 #define FAITHFUL_SRC_EXECUTORS_DISPLAYINTERACTIONTHREADPOOL_H_
 
-#include "Executor.h"
+#include "IExecutor.h"
 
 #include <iostream> // todo: replace
 
@@ -12,13 +12,17 @@
 #include "../../assets/embedded/CursorMainMenu.h"
 #include "../../assets/embedded/CursorMainGame.h"
 
+#include "../common/GlfwWindowUserPointer.h"
+
 #include "../common/FrameRate.h"
 
 namespace faithful {
 namespace details {
 
 class DrawManager;
+class InputManager;
 
+void GlfwWindowCloseCallback(GLFWwindow* window);
 void GlfwErrorCallback(int error, const char *description);
 void GlfwFramebufferSizeCallback(GLFWwindow* window, int width, int height);
 
@@ -29,25 +33,44 @@ void GlfwFramebufferSizeCallback(GLFWwindow* window, int width, int height);
 /// calls both to OpenGL and GLFW functions (e.g. glfwPollEvents(), glClear()))
 /// Neither StaticThreadPool nor DynamicThreadPool
 /// This should be run from Main Thread and its blocking (after Run())
-/// "1" - because we need only ONE GLFW & Glad context
-class DisplayInteractionThreadPool : public Executor {
+class DisplayInteractionThreadPool : public IExecutor {
  public:
   DisplayInteractionThreadPool() = delete;
-  DisplayInteractionThreadPool(DrawManager* music_manager);
+  DisplayInteractionThreadPool(DrawManager* draw_manager,
+                               InputManager* input_manager);
 
   ~DisplayInteractionThreadPool();
 
   void Run() override;
   void Join() override;
 
+ protected:
+  friend class ExecutionEnvironment;
+  void SetGlfwWindowUserPointer(void* data);
+  void UnSetGlfwWindowUserPointer();
+
  private:
-  void InitContext();
-  void DeinitContext();
+  enum class ProcessingState {
+    kMenu,
+    kGame,
+    kJoined
+  };
 
-  void RunMainGame();
-  void RunMainMenu();
+  ProcessingState processing_state_;
 
-  void processInput(GLFWwindow *window);
+  // TODO: explain this 1000iq high-brain supremacy domination move
+  //  (because Window, Cursor, Camera
+  //  don't have default ctor and all should be aware of window and
+  //  also glfwInit() (because window can't be created without glfwInit()))
+  //  -- and the same "issue" with ExecutionEnvironment() default ctor
+  struct GlfwInitializer {
+    GlfwInitializer();
+    ~GlfwInitializer(); // glfw deinit at class dtor
+  };
+
+  void Init();
+
+  GlfwInitializer glfw_initializer_;
 
   io::Window window_;
 
@@ -58,10 +81,14 @@ class DisplayInteractionThreadPool : public Executor {
 
   faithful::details::io::Cursor* current_cursor_;
 
-  Framerate framerate_;
-  bool need_to_update_monitor_ = false;
+  DrawManager* draw_manager_;
+  InputManager* input_manager_;
 
-  bool opengl_initialized_ = false;
+  /// We don't use our own task_queue_
+  // NOT using Base::task_queue_;
+
+  Framerate framerate_; // TODO: integrate
+  bool need_to_update_monitor_ = false;
 };
 
 } // namespace details

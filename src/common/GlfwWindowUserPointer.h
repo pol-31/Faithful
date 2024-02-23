@@ -1,33 +1,60 @@
 #ifndef FAITHFUL_SRC_COMMON_GLFWWINDOWUSERPOINTER_H_
 #define FAITHFUL_SRC_COMMON_GLFWWINDOWUSERPOINTER_H_
 
-#include "Scenes.h"
-#include "FrameRate.h"
-
-#include <glm/glm.hpp>
-
 namespace faithful {
 namespace details {
 
 class ExecutionEnvironment;
+
+class CollisionManager;
+class DrawManager;
+class InputManager;
+class LoadingManager;
+class UpdateManager;
+
 class AudioThreadPool;
-class CollisionThreadPool;
-class DisplayInteractionThreadPool;
-class UpdateThreadPool;
 
 struct GlfwWindowUserPointer {
+  /// to call Join();
   ExecutionEnvironment* execution_environment;
 
+  /// for task_queue_-s in which each other manager can put tasks
+  CollisionManager* collision_manager;
+  DrawManager* draw_manager;
+  InputManager* input_manager;
+  LoadingManager* loading_manager;
+  UpdateManager* update_manager;
+
+  /// task_queue_ for sounds; music switching
+  /// btw this is the only thread pool (there's 3) which uses it's own queue
   AudioThreadPool* audio_thread_pool;
-  CollisionThreadPool* collision_thread_pool;
-  DisplayInteractionThreadPool* display_interaction_thread_pool;
-  UpdateThreadPool* update_thread_pool;
 
-  FaithfulState state;
+  inline void StateMenu();
+  inline void StateGame();
+  inline void StatePaused();
 
-  const glm::vec2& screen_resolution;
-  const bool& need_to_update_monitor_info;
-  const Framerate& framerate;
+  inline void StateCollisionPaused();
+  inline void StateDrawPaused();
+  inline void StateInputPaused();
+  inline void StateUpdatePaused();
+
+  inline void StateMenuLoadScreen();
+  inline void StateMenuStartScreen();
+  inline void StateMenuConfigGeneral();
+  inline void StateMenuConfigLocalization();
+  inline void StateMenuConfigIO();
+  inline void StateMenuConfigSound();
+  inline void StateMenuConfigGraphic();
+  inline void StateMenuConfigKeys();
+
+  inline void StateGameLoadScreen();
+  inline void StateGameDefault();
+  inline void StateGameInventory1();
+  inline void StateGameInventory2();
+  inline void StateGameInventory3();
+  inline void StateGameInventory4();
+  inline void StateGameGamePause();
+  inline void StateGameBattle();
 };
 
 } // namespace faithful
