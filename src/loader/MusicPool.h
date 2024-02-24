@@ -8,7 +8,7 @@
 #include <AL/al.h>
 #include <vorbis/vorbisfile.h>
 
-#include "../config/Loader.h"
+#include "../../config/Loader.h"
 #include "../../utils/Logger.h"
 #include "IAssetPool.h"
 #include "AssetInstanceInfo.h"

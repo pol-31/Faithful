@@ -189,22 +189,22 @@ ALenum MusicPool::DeduceMusicFormat(const MusicData& music_data) {
   // Vorbis format use float natively, so load as
   // float to avoid clipping when possible
   bool float_ext_supported = false;
-  if (alIsExtensionPresent("AL_EXT_FLOAT32")) {
+  if (alIsExtensionPresent("AL_EXT_float32")) {
     float_ext_supported = true;
   }
 
   if (float_ext_supported) {
     if (bits_per_sample == 8) {
       if (channels == 1) {
-        return AL_FORMAT_MONO_FLOAT32;
+        return AL_FORMAT_MONO_float32;
       } else if (channels == 2) {
-        return AL_FORMAT_STEREO_FLOAT32;
+        return AL_FORMAT_STEREO_float32;
       }
     } else if (bits_per_sample == 16) {
       if (channels == 1) {
-        return AL_FORMAT_MONO_FLOAT32;
+        return AL_FORMAT_MONO_float32;
       } else if (channels == 2) {
-        return AL_FORMAT_STEREO_FLOAT32;
+        return AL_FORMAT_STEREO_float32;
       }
     }
   } else {

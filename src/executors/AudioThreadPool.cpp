@@ -2,7 +2,9 @@
 
 #include "../../utils/Logger.h"
 
+#include "../loader/MusicPool.h"
 #include "../loader/Music.h"
+#include "../loader/SoundPool.h"
 #include "../loader/Sound.h"
 
 #include "queues/LifoBoundedMPSCBlockingQueue.h"
@@ -129,7 +131,7 @@ void AudioThreadPool::Run() {
 
   threads_[0] = std::thread([this]() {
     /// initialization
-    InitOpenALContext();
+    InitContext();
     if (!openal_initialized_) {
       std::cerr << "Can't create OpenAL context" << std::endl;
       std::terminate(); // TODO: replace by Logger::LogIF OR FAITHFUL_TERMINATE
@@ -138,8 +140,7 @@ void AudioThreadPool::Run() {
 
     /// main loop
     state_ = State::kRunning;
-    while(state_ != State::kJoined &&
-           state_ != State::kSuspended) {
+    while(state_ != State::kJoined) {
       if (!task_queue_->Empty()) {
         (task_queue_->Front())();
       }
@@ -154,7 +155,7 @@ void AudioThreadPool::Run() {
 
     /// deinitialization
     DeinitOpenALBuffersAndSources();
-    DeinitOpenALContext();
+    DeinitContext();
   });
 }
 
@@ -226,7 +227,7 @@ void AudioThreadPool::Play(const Sound& sound) {
   }
 
   int sound_opengl_id = sound.GetInternalId();
-  task_queue_->Pop([=]() {
+  task_queue_->Push([=]() {
     std::cout << "inside the task_queue_" << std::endl;
     auto& audio_info = sound_manager_->sound_heap_data_[sound_opengl_id];
     AL_CALL(alBufferData, sound_sources_[source_id].buffer_id,
@@ -251,7 +252,7 @@ void AudioThreadPool::Play(const Music& music) {
   auto buffers_num = faithful::config::openal_buffers_per_music;
   int music_opengl_id = music.GetInternalId();
 
-  task_queue_->Pop([=]() {
+  task_queue_->Push([=]() {
     auto& audio_info = music_manager_->music_heap_data_[music_opengl_id];
     auto data = std::make_unique<char>(buffer_size);
     for (int i = 0; i < buffers_num; ++i) {
