@@ -10,7 +10,7 @@ namespace faithful {
 
 class CreatureModel :
     public faithful::Model,
-    public Transformable3D, public Animatable,
+    public Transformable, public Animatable,
     public Collidable, public details::assets::CommonModelDrawer,
     public SoundEmittable, public Updatable {
  public:

@@ -4,7 +4,7 @@
 #include <array>
 #include <memory>
 
-#include "glm/glm/glm.hpp"
+#include <glm/glm.hpp>
 
 #include "Animation.h"
 #include "../loader/Texture2D.h"
@@ -12,6 +12,8 @@
 #include "../loader/ShaderProgram.h"
 
 #include "../../utils/ConstexprVector.h"
+
+#include "../collision/Aabb.h"
 
 namespace faithful {
 
@@ -23,9 +25,10 @@ class AudioThreadPool;
 
 class Collision;
 
-class Transformable2D {
+class Transformable {
  public:
-  Transformable2D() = default;
+  Transformable() = delete;
+  Transformable(glm::mat3& transform) : transform_(transform) {}
 
   glm::vec2 GetPosition() const;
 
@@ -74,60 +77,7 @@ class Transformable2D {
   void RotateOnRelatedTranslation(const glm::quat& rot,
                                   const glm::vec2& origin_pos);
 
-  glm::mat3 transform_;
-};
-
-class Transformable3D {
- public:
-  Transformable3D() = default;
-
-  glm::vec3 GetPosition() const;
-
-  glm::quat GetRotationQuat() const;
-  glm::vec3 GetRotationRad() const;
-
-  glm::vec3 GetScale() const;
-
-  /// positioning
-  void TranslateTo(float x, float y, float z);
-  void TranslateTo(const glm::vec3& pos);
-
-  void TranslateOn(float x, float y, float z);
-  void TranslateOn(const glm::vec3& delta);
-
-  void TranslateOnRelated(float len, float origin_x,
-                          float origin_y, float origin_z);
-  void TranslateOnRelated(float len, const glm::vec3& origin_pos);
-
-  /// rotation
-  void RotateTo(float radians, const glm::vec3& axis);
-  void RotateTo(const glm::quat& rot, const glm::vec3& axis);
-
-  void RotateOn(float radians, const glm::vec3& axis);
-  void RotateOn(const glm::quat& rot, const glm::vec3& axis);
-
-  void RotateOnRelated(const glm::quat& rot, float origin_x,
-                       float origin_y, float origin_z);
-  void RotateOnRelated(const glm::quat& rot, const glm::vec3& origin_pos);
-
-  /// scale
-  void ScaleTo(float factor);
-  void ScaleTo(float x, float y, float z);
-  void ScaleTo(const glm::vec3& scale);
-
-  void ScaleOn(float diff);
-  void ScaleOn(float x, float y, float z);
-  void ScaleOn(const glm::vec3& scale);
-
-  void ScaleOnRelated(float factor, float origin_x,
-                      float origin_y, float origin_z);
-  void ScaleOnRelated(float factor, const glm::vec3& origin_pos);
-
- protected:
-  void RotateOnRelatedTranslation(const glm::quat& rot,
-                                  const glm::vec3& origin_pos);
-
-  glm::mat4 transform_;
+  glm::mat3& transform_;
 };
 
 class Animatable {
@@ -156,15 +106,25 @@ class Animatable {
   // TODO: shader program for each instance (ubo binding)
 };
 
-class Collidable {
+class Collidable : public Transformable {
  public:
-  Collidable() = default;
+  Collidable() = delete;
+  Collidable(glm::mat3& transform, details::Aabb& bounds)
+      : Transformable(transform), bounds_(bounds) {}
 
   const Collision* GetCollision() const {
     return collision_;
   }
+  void SetCollition(details::Aabb bounds) {
+    bounds_ = bounds;
+  }
+
+  glm::vec2 Centroid() {
+    return .5f * bounds_.min_ + .5f * bounds_.max_;
+  }
 
  protected:
+  details::Aabb& bounds_;
   Collision* collision_;
 };
 

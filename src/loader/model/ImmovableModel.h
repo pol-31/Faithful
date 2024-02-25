@@ -10,7 +10,7 @@ namespace faithful {
 
 class ImmovableModel :
     public faithful::Model,
-    public Transformable3D, public Collidable,
+    public Transformable, public Collidable,
     public details::assets::CommonModelDrawer {
  public:
   using Base = faithful::Model;

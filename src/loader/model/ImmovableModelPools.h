@@ -4,7 +4,7 @@
 #include <fstream>
 #include <string>
 
-#include "../IAssetPool.h"
+#include "../AssetPoolBase.h"
 #include "../../common/Object.h"
 
 #include "Common.h"
@@ -29,9 +29,9 @@ namespace assets {
 /// examples: walls, big stone, loot
 /// class only for loading & storing (not for drawing or animation)
 template <int max_instances>
-class ImmovableModelTypePool : public IAssetPool<max_instances> {
+class ImmovableModelTypePool : public AssetPoolBase<max_instances> {
  public:
-  using Base = IAssetPool<max_instances>;
+  using Base = AssetPoolBase<max_instances>;
 
   ImmovableModelTypePool() {
     for (int i = 0; i < max_instances; ++i) {
@@ -101,9 +101,9 @@ class ImmovableModelTypePool : public IAssetPool<max_instances> {
 /// ref counters for them + __separate_segregation__, etc...
 /// This class provides user interface for Drawing, Updating
 template <int max_instances>
-class ImmovableModelInstancePool : public IAssetPool<max_instances> {
+class ImmovableModelInstancePool : public AssetPoolBase<max_instances> {
  public:
-  using Base = IAssetPool<max_instances>;
+  using Base = AssetPoolBase<max_instances>;
 
   ImmovableModelInstancePool() {
     for (int i = 0; i < max_instances; ++i) {

@@ -152,17 +152,45 @@ class CollisionManager : public IGameManager {
   MenuState menu_state_;
   GameState game_state_;
 
-  environment::LiquidHandler* liquid_handler_ = nullptr;
-  assets::ModelPool* model_manager_ = nullptr;
-  environment::PhenomenonAreaPool* phenomenon_area_pool_ = nullptr;
-  environment::VegetationHandler* vegetation_handler_ = nullptr;
-  PlayerCharacter* player_character_ = nullptr;
+  environment::LiquidHandler* liquid_handler_ = nullptr; // get from model/player
+  assets::ModelPool* model_manager_ = nullptr; // get from player/phenomenon_area
+  environment::PhenomenonAreaPool* phenomenon_area_pool_ = nullptr; // get from model/player
+  environment::VegetationHandler* vegetation_handler_ = nullptr; // get from model/player
+  PlayerCharacter* player_character_ = nullptr; // get from model/phenomenon_area
   Terrain* terrain_ = nullptr;
+
+  /** What collisions need to check:
+   * 1) InstantDamage: emitted by model/player; affect all (can't affect emitter, so nice)
+   * 2) phenomenon_area: emitted by model/player; temporary; affect all player/models (emitter included)
+   * 3) liquid/vegetation at point P if player moving there
+   * * */
+
+  // actual collision checking:
+  // for liquid / vegetation we just check current model/player position
+  // for Attack / Input(player) we traverse last generated BVH tree
+  /// if someone Move() then firstly should check direction from BVH
+  /// TODO: but how to handle if multiple models are moving
+  // for phenomenon area we just check current model/player position\
+
+  //TODO:
+  // Need to handle "tunneling" for:
+  // ambient_types_, boss_types_, enemy_types_, npc_types_, player
+  // -
+  // solution: get framerate and of (e.g.) circle we check this:
+  // (|||||)  <-sphere-swept rectangle
+  // instead of:
+  // ()       <-sphere
+
+  // Example: cur_framerate = 60
+  // for movable player we check ss-rectangle with length = player.speed * framerate
+  // BUT better to use cur_framerate as an median to discard all noise
+
+
 
   void InitContext(); // TODO: allocate lhbvh, kdtree
   void DeinitContext(); // TODO: deallocate lhbvh, kdtree
 
-  faithful::LHBVH* dynamic_data_ = nullptr;
+  faithful::BVH* dynamic_data_ = nullptr;
   faithful::KDTree* static_data_ = nullptr;
 
   faithful::LHBVH_result dynamic_data_result;
