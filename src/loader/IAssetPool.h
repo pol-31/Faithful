@@ -1,41 +1,47 @@
 #ifndef FAITHFUL_SRC_LOADER_IASSETPOOL_H_
 #define FAITHFUL_SRC_LOADER_IASSETPOOL_H_
 
-#include <array>
 #include <iostream> // TODO: replace by utils/Logger.h
 #include <string>
-#include <tuple>
+#include <vector>
+#include <algorithm>
+
+#include "../../utils/CacheBuffer.h"
+#include "../common/RefCounter.h"
 
 #include "AssetInstanceInfo.h"
 
-#include "../utils/ConstexprVector.h"
-#include "../common/RefCounter.h"
+#include <memory>
+
+#include <type_traits>
 
 namespace faithful {
 namespace details {
 namespace assets {
 
-/** Base class for ShaderProgramManager, ShaderObjectManager, TextureManager, etc
- * despite 'I' that's not interface, but still shouldn't be used directly
- * each Derived_class should implement Load();
- * */
-template <int max_instances>
+// TODO: not thread safe by now
+template <typename T, int cache_size, int global_type_id>
 class IAssetPool {
  public:
-  IAssetPool() {
-    for (int i = 0; i < max_instances; ++i) {
-      free_instances_.PushBack(i);
-    }
+  static_assert(cache_size >= 0, "cache_size must be non-negative");
+  using DataType = AssetInstanceInfo<T>;
+
+  struct TrackedDataType {
+    DataType data;
+    std::string path;
   };
+  using ActiveDataType = std::vector<TrackedDataType>;
+  using CachedDataType = utils::CachedBuffer<TrackedDataType, cache_size>;
+
+  IAssetPool() = default;
 
   ~IAssetPool() {
-    for (auto& i : active_instances_) {
-      if (i.ref_counter->Active()) {
+    for (auto& i : active_) {
+      if (i.data.data.use_count() != 1) {
         std::cerr
-            << "IAssetManager has been deleted but some ref_counters"
-            << " for IAsset-s still were active" << std::endl;
+            << "IAssetPool has been destroyed but some std::shared_ptr"
+            << " for IAsset-s still were active" << std::endl; // TODO: rename "IAsset-s"
       }
-      delete i.ref_counter;
     }
   }
 
@@ -47,49 +53,68 @@ class IAssetPool {
   IAssetPool(IAssetPool&&) = default;
   IAssetPool& operator=(IAssetPool&&) = default;
 
-  bool CleanInactive() {
-    if (free_instances_.Size() == 0) {
-      for (auto& t: active_instances_) {
-        if (!t.ref_counter->Active()) {
-          t.path.clear();
-          /// safe because both std::array have the same size
-          free_instances_[free_instances_.Size()];
-        }
+  DataType Load(std::string path) {
+    int found_id = FindInActive(path);
+    if (found_id != -1) {
+      return active_[found_id].data;
+    } else {
+      found_id = FindInCache(path);
+      if (found_id != -1) {
+        active_.push_back(cached_[found_id]);
+        return active_.back().data;
+      } else {
+        ClearInactive();
+        active_.push_back({{++last_type_id_, {}}, path}); // TODO: last_type_id only grow
+        return LoadImpl(active_.back(), path); // TODO: handle if loading failed
       }
     }
-    return free_instances_.Size() == 0 ? false : true;
   }
 
-  /// returns opengl id, active_instances id, is "new" (object new, id reused)
-  std::tuple<int, RefCounter*, bool> AcquireId(const std::string& path) {
-    if (!path.empty()) {
-      for (int i = 0; i < active_instances_.size(); ++i) {
-        if (active_instances_[i].path == path) {
-          //        ++active_instances_[i].ref_counter;
-          return {active_instances_[i].internal_id,
-                  active_instances_[i].ref_counter,
-                  false}; // "new" object
-        }
+  int FindInActive(const std::string& path) {
+    for (int i = 0; i < active_.size(); ++i) {
+      if (active_[i].path == path) {
+        return i;
       }
     }
-    if (free_instances_.Empty()) {
-      if (!CleanInactive()) {
-        return {-1, nullptr, false};
+    return -1;
+  }
+
+  int FindInCache(const std::string& path) {
+    for (int i = 0; i < cached_.Size(); ++i) {
+      if (cached_[i].path == path) {
+        cached_.RenewEntry(i);
+        return i;
       }
     }
-    int active_instances_id = free_instances_.Back();
-    free_instances_.PopBack();
-    active_instances_[active_instances_id].path = path;
-    return {active_instances_[active_instances_id].internal_id,
-            active_instances_[active_instances_id].ref_counter,
-            true};
+    return -1;
+  }
+
+  void ClearCache() {
+    cached_.Clear();
+  }
+
+  /// clean all inactive from active_ write them to cached_
+  void ClearInactive() {
+    for (auto rit = active_.rbegin(); rit != active_.rend(); ++rit) {
+      if (rit->data.data.use_count() == 1) {
+        cached_.Add(rit);
+      }
+    }
+    std::remove_if(active_.Begin(), active_.End(), [](TrackedDataType& data) {
+      return data.data.data.use_count() == 1;
+    });
   }
 
  protected:
-  std::array<AssetInstanceInfo, max_instances> active_instances_;
-  // id's for active_instances TODO: explain
-  faithful::utils::ConstexprVector<int, max_instances> free_instances_;
-  int default_id_ = 0;
+  virtual DataType LoadImpl(TrackedDataType& instance_info,
+                            std::string path) = 0;
+
+  int default_id_ = global_type_id; // used in case of failed loading
+
+ private:
+  ActiveDataType active_;
+  CachedDataType cached_;
+  int last_type_id_ = global_type_id;
 };
 
 } // namespace assets

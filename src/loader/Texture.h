@@ -1,13 +1,13 @@
 #ifndef FAITHFUL_SRC_LOADER_TEXTURE2D_H
 #define FAITHFUL_SRC_LOADER_TEXTURE2D_H
 
-#include "IAsset.h"
+#include "AssetBase.h"
 
 namespace faithful {
 
-class Texture2D : public details::assets::IAsset {
+class Texture : public details::assets::AssetBase {
  public:
-  using Base = details::assets::IAsset;
+  using Base = details::assets::AssetBase;
   using Base::Base;
   using Base::operator=;
 

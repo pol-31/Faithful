@@ -1,24 +1,25 @@
-#ifndef FAITHFUL_SRC_LOADER_TEXTURE2DPOOL_H_
-#define FAITHFUL_SRC_LOADER_TEXTURE2DPOOL_H_
+#ifndef FAITHFUL_SRC_LOADER_TEXTUREPOOL_H_
+#define FAITHFUL_SRC_LOADER_TEXTUREPOOL_H_
 
 #include <array>
 #include <memory>
 #include <string>
 
 #ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
-#include <astcenc.h>
+#include <Source/astcenc.h>
 #endif
 
 #include "IAssetPool.h"
 #include "AssetInstanceInfo.h"
-#include "../config/Loader.h"
+#include "../../config/Loader.h"
 
 namespace faithful {
 namespace details {
 namespace assets {
 
 /// should be only 1 instance for the entire program
-class Texture2DPool : public IAssetPool<
+class TexturePool
+    : public IAssetPool<
                           faithful::config::max_active_texture2d_num> {
  public:
   using Base = IAssetPool<faithful::config::max_active_texture2d_num>;
@@ -29,16 +30,16 @@ class Texture2DPool : public IAssetPool<
     kNmap
   };
 
-  Texture2DPool();
-  ~Texture2DPool();
+  TexturePool();
+  ~TexturePool();
 
   /// not copyable
-  Texture2DPool(const Texture2DPool&) = delete;
-  Texture2DPool& operator=(const Texture2DPool&) = delete;
+  TexturePool(const TexturePool&) = delete;
+  TexturePool& operator=(const TexturePool&) = delete;
 
   /// movable
-  Texture2DPool(Texture2DPool&&) = default;
-  Texture2DPool& operator=(Texture2DPool&&) = default;
+  TexturePool(TexturePool&&) = default;
+  TexturePool& operator=(TexturePool&&) = default;
 
   // TODO: Is it blocking ? <<-- add thread-safety
   AssetInstanceInfo Load(std::string&& texture_path);
@@ -66,9 +67,9 @@ class Texture2DPool : public IAssetPool<
       std::unique_ptr<uint8_t> tex_data, int tex_width,
       int tex_height, astcenc_context* context);
 
-  astcenc_context* PrepareContext(Texture2DPool::TextureCategory category);
+  astcenc_context* PrepareContext(TexturePool::TextureCategory category);
 
-  Texture2DPool::TextureCategory DeduceTextureCategory(
+  TexturePool::TextureCategory DeduceTextureCategory(
       const std::string& filename);
   bool DetectHdr(const std::string& filename);
   bool DetectNmap(const std::string& filename);
@@ -87,4 +88,4 @@ class Texture2DPool : public IAssetPool<
 } // namespace details
 }  // namespace faithfu
 
-#endif  // FAITHFUL_SRC_LOADER_TEXTURE2DPOOL_H_
+#endif  // FAITHFUL_SRC_LOADER_TEXTUREPOOL_H_

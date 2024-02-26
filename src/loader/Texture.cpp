@@ -1,10 +1,10 @@
-#include "Texture2D.h"
+#include "Texture.h"
 
 #include <glad/glad.h>
 
 namespace faithful {
 
-void Texture2D::Bind() {
+void Texture::Bind() {
   glBindTexture(GL_TEXTURE_2D, internal_id_);
 }
 

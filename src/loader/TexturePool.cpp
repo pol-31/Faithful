@@ -1,4 +1,4 @@
-#include "Texture2DPool.h"
+#include "TexturePool.h"
 
 #include <fstream>
 #include <iostream> // todo: replace by Logger
@@ -11,18 +11,21 @@ namespace faithful {
 namespace details {
 namespace assets {
 
-Texture2DPool::Texture2DPool() {
+TexturePool::TexturePool() {
   GLuint opengl_ids[faithful::config::max_active_texture2d_num];
   glGenTextures(faithful::config::max_active_texture2d_num, opengl_ids);
   for (int i = 0; i < faithful::config::max_active_texture2d_num; ++i) {
     active_instances_[i].internal_id = opengl_ids[i];
     glBindTexture(GL_TEXTURE_2D, opengl_ids[i]);
+    // TODO: another settings for .HDR <-----------------------------------------
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   }
   // TODO: load 1 default texture
+
+  // TODO: need nmap from rrrg to rgb
 
 #ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
   InitContextLdr();
@@ -31,7 +34,7 @@ Texture2DPool::Texture2DPool() {
 #endif
 }
 
-Texture2DPool::~Texture2DPool() {
+TexturePool::~TexturePool() {
   if (context_ldr_) {
     astcenc_context_free(context_ldr_);
   }
@@ -50,7 +53,7 @@ Texture2DPool::~Texture2DPool() {
 }
 
 
-AssetInstanceInfo Texture2DPool::Load(std::string&& texture_path) {
+AssetInstanceInfo TexturePool::Load(std::string&& texture_path) {
   auto [texture_id, ref_counter, is_new_id] = Base::AcquireId("");
   if (texture_id == -1) {
     return {"", ref_counter,
@@ -68,7 +71,7 @@ AssetInstanceInfo Texture2DPool::Load(std::string&& texture_path) {
 }
 
 #ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
-bool Texture2DPool::InitContextLdr() {
+bool TexturePool::InitContextLdr() {
   using namespace faithful;  // for namespace faithful::config
   astcenc_config config;
   config.block_x = config::tex_comp_block_x;
@@ -95,7 +98,7 @@ bool Texture2DPool::InitContextLdr() {
   }
   return true;
 }
-bool Texture2DPool::InitContextHdr() {
+bool TexturePool::InitContextHdr() {
   using namespace faithful;  // for namespace faithful::config
   astcenc_config config;
   config.block_x = config::tex_comp_block_x;
@@ -122,7 +125,7 @@ bool Texture2DPool::InitContextHdr() {
   }
   return true;
 }
-bool Texture2DPool::InitContextNmap() {
+bool TexturePool::InitContextNmap() {
   using namespace faithful;  // for namespace faithful::config
   astcenc_config config;
   config.block_x = config::tex_comp_block_x;
@@ -156,7 +159,7 @@ bool Texture2DPool::InitContextNmap() {
 }
 #endif
 
-bool Texture2DPool::LoadTextureData(int active_instance_id) {
+bool TexturePool::LoadTextureData(int active_instance_id) {
   auto& instance = active_instances_[active_instance_id];
   /// assets/textures contain only 6x6x2 astc, so there's no need
   /// to check is for "ASTC" and block size.
@@ -191,7 +194,7 @@ bool Texture2DPool::LoadTextureData(int active_instance_id) {
 }
 
 
-std::unique_ptr<uint8_t> Texture2DPool::DecompressAstcTexture(
+std::unique_ptr<uint8_t> TexturePool::DecompressAstcTexture(
     std::unique_ptr<uint8_t> tex_data, int tex_width,
     int tex_height, astcenc_context* context) {
   using namespace faithful;  // for namespace faithful::config
@@ -221,8 +224,8 @@ std::unique_ptr<uint8_t> Texture2DPool::DecompressAstcTexture(
   //  }
 }
 
-astcenc_context* Texture2DPool::PrepareContext(
-    Texture2DPool::TextureCategory category) {
+astcenc_context* TexturePool::PrepareContext(
+    TexturePool::TextureCategory category) {
   astcenc_context* context;
   switch (category) {
     case TextureCategory::kLdr:
@@ -239,7 +242,7 @@ astcenc_context* Texture2DPool::PrepareContext(
   return context;
 }
 
-Texture2DPool::TextureCategory Texture2DPool::DeduceTextureCategory(
+TexturePool::TextureCategory TexturePool::DeduceTextureCategory(
     const std::string& filename) {
   if (DetectHdr(filename)) {
     return TextureCategory::kHdr;
@@ -249,7 +252,7 @@ Texture2DPool::TextureCategory Texture2DPool::DeduceTextureCategory(
     return TextureCategory::kLdr;
   }
 }
-bool Texture2DPool::DetectHdr(const std::string& filename) {
+bool TexturePool::DetectHdr(const std::string& filename) {
   // len of "_hdr" + at least 1 char for actual name
   if (filename.length() < 5) {
     return false;
@@ -257,7 +260,7 @@ bool Texture2DPool::DetectHdr(const std::string& filename) {
   size_t suffixPos = filename.length() - 4;
   return filename.compare(suffixPos, std::string::npos, "_hdr") == 0;
 }
-bool Texture2DPool::DetectNmap(const std::string& filename) {
+bool TexturePool::DetectNmap(const std::string& filename) {
   // len of "_nmap" + at least 1 char for actual name
   if (filename.length() < 6) {
     return false;
