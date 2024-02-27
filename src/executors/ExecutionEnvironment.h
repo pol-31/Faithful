@@ -18,8 +18,7 @@
 #include "../loader/MusicPool.h"
 #include "../loader/ShaderPool.h"
 #include "../loader/SoundPool.h"
-#include "../loader/Texture1DPool.h"
-#include "../loader/Texture2DPool.h"
+#include "../loader/TexturePool.h"
 
 namespace faithful {
 namespace details {
@@ -40,8 +39,7 @@ class ExecutionEnvironment : public IExecutor {
   assets::MusicPool music_pool_;
   assets::ShaderPool shader_pool_;
   assets::SoundPool sound_pool_;
-  assets::Texture1DPool texture1d_pool_;
-  assets::Texture2DPool texture2d_pool_;
+  assets::TexturePool texture_pool_;
 
   CollisionManager collision_manager_;
   DrawManager draw_manager_;

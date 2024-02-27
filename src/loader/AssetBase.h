@@ -1,8 +1,6 @@
 #ifndef FAITHFUL_SRC_LOADER_ASSETBASE_H_
 #define FAITHFUL_SRC_LOADER_ASSETBASE_H_
 
-#include "AssetInstanceInfo.h"
-
 namespace faithful {
 namespace details {
 namespace assets {
@@ -32,7 +30,7 @@ class AssetBase {
   }
 
  protected:
-  AssetInstanceInfo<T> data_;
+  std::shared_ptr<T> data_;
 };
 
 } // namespace assets

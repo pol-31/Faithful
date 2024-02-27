@@ -2,33 +2,37 @@
 #define FAITHFUL_SRC_LOADER_TEXTUREPOOL_H_
 
 #include <array>
+#include <atomic>
 #include <memory>
 #include <string>
+#include <queue>
 
-#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
+#include <mutex>
+
+//#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
 #include <Source/astcenc.h>
-#endif
+//#endif
+
+#include "assets_data/TextureData.h"
 
 #include "IAssetPool.h"
-#include "AssetInstanceInfo.h"
 #include "../../config/Loader.h"
+
+#include "../../utils/Function.h"
 
 namespace faithful {
 namespace details {
+
+class DisplayInteractionThreadPool;
+
 namespace assets {
 
 /// should be only 1 instance for the entire program
 class TexturePool
-    : public IAssetPool<
-                          faithful::config::max_active_texture2d_num> {
+    : public IAssetPool<TextureData, faithful::config::texture_cache_size> {
  public:
-  using Base = IAssetPool<faithful::config::max_active_texture2d_num>;
-
-  enum class TextureCategory {
-    kLdr,
-    kHdr,
-    kNmap
-  };
+  using Base = IAssetPool<TextureData, faithful::config::texture_cache_size>;
+  using DataType = Base::DataType;
 
   TexturePool();
   ~TexturePool();
@@ -37,14 +41,21 @@ class TexturePool
   TexturePool(const TexturePool&) = delete;
   TexturePool& operator=(const TexturePool&) = delete;
 
-  /// movable
-  TexturePool(TexturePool&&) = default;
-  TexturePool& operator=(TexturePool&&) = default;
+  /// not movable (because of mutexes)
+  TexturePool(TexturePool&&) = delete;
+  TexturePool& operator=(TexturePool&&) = delete;
 
-  // TODO: Is it blocking ? <<-- add thread-safety
-  AssetInstanceInfo Load(std::string&& texture_path);
+  void SetOpenGlContext(DisplayInteractionThreadPool* opengl_context);
+
+  void Assist();
 
  private:
+  enum class TextureCategory {
+    kLdr,
+    kHdr,
+    kNmap
+  };
+
   struct AstcHeader {
     uint8_t magic[4];  /// format identifier
     uint8_t block_x;
@@ -55,33 +66,54 @@ class TexturePool
     uint8_t dim_z[3];
   };
 
-#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
+  // TODO: Is it blocking ? <<-- add thread-safety
+  DataType LoadImpl(TrackedDataType& instance_info) override;
+
+
+//#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
   bool InitContextLdr();
   bool InitContextHdr();
   bool InitContextNmap();
-#endif
+//#endif
 
-  bool LoadTextureData(int active_instance_id);
+  void DecompressAstcTexture(TrackedDataType& instance_info,
+                             std::unique_ptr<uint8_t[]> data,
+                             int width, int height);
 
-  std::unique_ptr<uint8_t> DecompressAstcTexture(
-      std::unique_ptr<uint8_t> tex_data, int tex_width,
-      int tex_height, astcenc_context* context);
-
-  astcenc_context* PrepareContext(TexturePool::TextureCategory category);
+  astcenc_context* PrepareContext(TextureCategory category);
 
   TexturePool::TextureCategory DeduceTextureCategory(
       const std::string& filename);
   bool DetectHdr(const std::string& filename);
   bool DetectNmap(const std::string& filename);
 
-#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
+  struct ProcessingContext {
+    TexturePool::DataType data;
+    folly::Function<void(int)> decoding_function;
+    astcenc_context* context;
+    int compressed_data_length;
+    std::unique_ptr<uint8_t[]> compressed_data;
+    astcenc_image image; // width, height, decompressed_data
+    astcenc_swizzle swizzle;
+
+    std::atomic_bool success = false;
+
+    // 2 or 8 -- not atomic, because in Assist() it Guarded by mutex
+    int free_thread_slots;
+    std::atomic<int> working_threads_left;
+  };
+
+  std::mutex mutex_processing_tasks_;
+  std::vector<ProcessingContext> processing_tasks_;
+
+  DisplayInteractionThreadPool* opengl_context_ = nullptr;
+
+
+//#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
   astcenc_context* context_ldr_ = nullptr;
   astcenc_context* context_hdr_ = nullptr;
   astcenc_context* context_nmap_ = nullptr;
-#endif
-  using Base::active_instances_;
-  using Base::free_instances_;
-  using Base::default_id_; // TODO: use it inside the Load()
+//#endif
 };
 
 } // namespace assets

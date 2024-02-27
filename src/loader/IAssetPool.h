@@ -7,9 +7,6 @@
 #include <algorithm>
 
 #include "../../utils/CacheBuffer.h"
-#include "../common/RefCounter.h"
-
-#include "AssetInstanceInfo.h"
 
 #include <memory>
 
@@ -20,11 +17,11 @@ namespace details {
 namespace assets {
 
 // TODO: not thread safe by now
-template <typename T, int cache_size, int global_type_id>
+template <typename T, int cache_size>
 class IAssetPool {
  public:
   static_assert(cache_size >= 0, "cache_size must be non-negative");
-  using DataType = AssetInstanceInfo<T>;
+  using DataType = std::shared_ptr<T>;
 
   struct TrackedDataType {
     DataType data;
@@ -35,9 +32,9 @@ class IAssetPool {
 
   IAssetPool() = default;
 
-  ~IAssetPool() {
+  virtual ~IAssetPool() {
     for (auto& i : active_) {
-      if (i.data.data.use_count() != 1) {
+      if (i.data.use_count() != 1) {
         std::cerr
             << "IAssetPool has been destroyed but some std::shared_ptr"
             << " for IAsset-s still were active" << std::endl; // TODO: rename "IAsset-s"
@@ -62,10 +59,10 @@ class IAssetPool {
       if (found_id != -1) {
         active_.push_back(cached_[found_id]);
         return active_.back().data;
-      } else {
+      } else { // TODO: reuse memory from cache
         ClearInactive();
-        active_.push_back({{++last_type_id_, {}}, path}); // TODO: last_type_id only grow
-        return LoadImpl(active_.back(), path); // TODO: handle if loading failed
+        active_.push_back({{}, path});
+        return LoadImpl(active_.back()); // TODO: handle if loading failed
       }
     }
   }
@@ -96,25 +93,23 @@ class IAssetPool {
   /// clean all inactive from active_ write them to cached_
   void ClearInactive() {
     for (auto rit = active_.rbegin(); rit != active_.rend(); ++rit) {
-      if (rit->data.data.use_count() == 1) {
+      if (rit->data.use_count() == 1) {
         cached_.Add(rit);
       }
     }
     std::remove_if(active_.Begin(), active_.End(), [](TrackedDataType& data) {
-      return data.data.data.use_count() == 1;
+      return data.data.use_count() == 1;
     });
   }
 
  protected:
-  virtual DataType LoadImpl(TrackedDataType& instance_info,
-                            std::string path) = 0;
+  virtual DataType LoadImpl(TrackedDataType& instance_info) = 0;
 
-  int default_id_ = global_type_id; // used in case of failed loading
+  // TODO: virtual custom data deleter
 
  private:
   ActiveDataType active_;
   CachedDataType cached_;
-  int last_type_id_ = global_type_id;
 };
 
 } // namespace assets

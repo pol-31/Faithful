@@ -5,10 +5,24 @@
 
 namespace faithful {
 namespace details {
+
+class DisplayInteractionThreadPool;
+
 namespace assets {
 
 struct TextureData {
-  GLint id;
+  GLuint id = 0;
+  bool ready = false;
+  DisplayInteractionThreadPool* opengl_context = nullptr;
+
+  // TODO: the same for shader object / shader program / model
+  ~TextureData() {
+    if (opengl_context) {
+      opengl_context->Put([=]{
+        glDeleteTextures(1, &id);
+      });
+    }
+  }
 };
 
 } // namespace assets

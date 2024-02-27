@@ -9,12 +9,12 @@ namespace details {
 
 ExecutionEnvironment::ExecutionEnvironment()
     : model_pool_(), music_pool_(), shader_pool_(),
-      sound_pool_(), texture1d_pool_(), texture2d_pool_(),
+      sound_pool_(), texture_pool_(),
       collision_manager_(&model_pool_),
       draw_manager_(&model_pool_),
       input_manager_(),
       loading_manager_(&model_pool_, &music_pool_, &shader_pool_,
-                       &sound_pool_, &texture1d_pool_, &texture2d_pool_),
+                       &sound_pool_, &texture_pool_),
       update_manager_(&model_pool_),
       audio_thread_pool_(&music_pool_, &sound_pool_),
       display_interaction_thread_pool_(&draw_manager_, &input_manager_),
@@ -40,6 +40,8 @@ void ExecutionEnvironment::Init() {
   global_data_.loading_manager = &loading_manager_;
   global_data_.update_manager = &update_manager_;
   global_data_.audio_thread_pool = &audio_thread_pool_;
+
+  texture_pool_.SetOpenGlContext(&display_interaction_thread_pool_);
 
   collision_manager_.SetGlfwWindowUserPointer(&global_data_);
   draw_manager_.SetGlfwWindowUserPointer(&global_data_);
