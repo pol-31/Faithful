@@ -56,11 +56,6 @@ message(STATUS "---> dr_libs building")
 add_subdirectory(dr_libs EXCLUDE_FROM_ALL)
 
 #    --------------------------------------------------------------------
-#    folly (Faithful: asynchronous Futures&Promises)
-message(STATUS "---> folly building")
-add_subdirectory(folly EXCLUDE_FROM_ALL)
-
-#    --------------------------------------------------------------------
 #    glfw (Faithful: Window/context creation)
 message(STATUS "---> glfw building")
 add_subdirectory(glfw EXCLUDE_FROM_ALL)
