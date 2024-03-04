@@ -1,15 +1,16 @@
 #ifndef FAITHFUL_SRC_ENVIRONMENT_WEATHER_H_
 #define FAITHFUL_SRC_ENVIRONMENT_WEATHER_H_
 
+/// This header currently not in use (and not implemented)
+
 namespace faithful {
 
-namespace details {
-namespace environment {
+struct Weather {};
 
-class WeatherHandler {};
-
-} // namespace environment
-} // namespace details
+class WeatherHandler {
+ public:
+  void SetWeather(Weather weather) {}
+};
 
 // TODO; there is no class Weather, but rather types of weather with traits:
 //  - wind

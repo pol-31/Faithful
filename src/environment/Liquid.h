@@ -3,8 +3,39 @@
 
 namespace faithful {
 
-namespace details {
-namespace environment {
+// TODO: all liquids can be represented on the same textures
+//      with different texture coordinates
+//  NO:
+//  - vegetation / weather don't have textures - just color
+//  - terrain should be represented with big texture to avoid tiling
+//  - sky represented as color and hdr texture
+
+// TODO: standing in water ->
+//  - lower camera/player y-pos
+//  - effect / damage
+
+struct Liquid {
+  static constexpr int tex_coord_x = 0;
+  static constexpr int tex_coord_y = 0;
+  static constexpr float damage_per_second = 0;
+  static constexpr float viscosity = 3;
+  // todo name
+};
+
+// TODO: Water = Liquid(1, 1, 0, 1);
+
+// TODO; there is no class Liquid, but rather types of liquid with traits:
+//  - viscosity
+//  - solidity (?)
+
+// TODO: texture mask?
+
+// glossiness
+// temperature
+// opacity
+// sound
+// steam
+// boosting
 
 /** How liquid represented: x:y of global_terrain_map as a quadriliteral,
  *     so main shape described by terrain pits.
@@ -26,56 +57,25 @@ class LiquidHandler {
   LiquidHandler() = default;
   // Draw, Collision
 
-  // homoheneous
-  void SetWater(); // color
-  void SetAcid(); // color
-  void SetBlood(); // color
-  void SetHoney(); // color
-  void SetQuicksilver(); // color
-  void SetEctoplasm(); // color
+  /* Water
+   * Acid
+   * Blood
+   * Honey
+   * Quicksilver
+   * Ectoplasm
+   * Lava
+   * Mud
+   * LiquidCrystal
+   * */
 
-  // heterogeneous
-  void SetLava();
-  void SetMud();
-  void SetLiquidCrystal();
+  void SetLiquid(Liquid liquid) {}
 
  private:
   int cur_tex_coord_x = 0;
   int cur_tex_coord_y = 0;
   float cur_damage_per_second = 0;
   float cur_viscosity = 3;
-
-  // mask: we have only 2 textures and different masks affecting it
-
-  // glossiness
-  // temperature
-  // opacity
-  // sound
-  // steam
-  // boosting
 };
-
-} // namespace environment
-} // namespace details
-
-struct LiquidBase {
-  static constexpr int tex_coord_x = 0;
-  static constexpr int tex_coord_y = 0;
-  static constexpr float damage_per_second = 0;
-  static constexpr float viscosity = 3;
-  // todo name
-};
-
-struct Water : public LiquidBase {
-  static constexpr int tex_coord_x = 1;
-  static constexpr int tex_coord_y = 1;
-  static constexpr float damage_per_second = 0;
-  static constexpr float viscosity = 1;
-};
-
-// TODO; there is no class Liquid, but rather types of liquid with traits:
-//  - viscosity
-//  - solidity (?)
 
 } // namespace faithful
 

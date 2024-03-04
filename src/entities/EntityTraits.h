@@ -3,13 +3,16 @@
 
 namespace faithful {
 
+
+// TODO: do we need this file?
+
 enum class EntityType {
   kAmbient,
   kBoss,
   kEnemy,
   kFurniture,
   kLoot,
-  kNPC,
+  kNpc,
   kObstacle
 };
 

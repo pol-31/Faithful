@@ -1,11 +1,11 @@
-#ifndef FAITHFUL_SRC_ENTITIES_AMBIENT_H_
-#define FAITHFUL_SRC_ENTITIES_AMBIENT_H_
+#ifndef FAITHFUL_SRC_ENTITIES_NPC_H_
+#define FAITHFUL_SRC_ENTITIES_NPC_H_
 
 #include "../loader/model/AnimatableModel.h"
 
 namespace faithful {
 
-class Ambient : public AnimatableModel {
+class Npc : public AnimatableModel {
  public:
   using Base = AnimatableModel;
   using Base::Base;
@@ -14,4 +14,4 @@ class Ambient : public AnimatableModel {
 
 } // namespace faithful
 
-#endif  // FAITHFUL_SRC_ENTITIES_AMBIENT_H_
+#endif  // FAITHFUL_SRC_ENTITIES_NPC_H_

@@ -1,57 +1,53 @@
-#include "Object.h"
+#include "TransformableObject.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "../executors/AudioThreadPool.h"
-
 namespace faithful {
 
-/// Transformable
-
-glm::vec2 Transformable::GetPosition() const {
+glm::vec2 TransformableObject::GetPosition() const {
   return glm::vec2(transform_[2]);
 }
 
-glm::quat Transformable::GetRotationQuat() const {
+glm::quat TransformableObject::GetRotationQuat() const {
   return glm::quat_cast(transform_);
 }
-float Transformable::GetRotationRad() const {
+float TransformableObject::GetRotationRad() const {
   return std::atan2(transform_[1][0], transform_[0][0]);
 }
 
-glm::vec2 Transformable::GetScale() const {
+glm::vec2 TransformableObject::GetScale() const {
   return {transform_[0][0], transform_[1][1]};
 }
 
 
-void Transformable::TranslateTo(float x, float y) {
+void TransformableObject::TranslateTo(float x, float y) {
   transform_[2] = glm::vec3(x, y, 1.0f);
 }
-void Transformable::TranslateTo(const glm::vec2& pos) {
+void TransformableObject::TranslateTo(const glm::vec2& pos) {
   transform_[2] = glm::vec3(pos, 1.0f);
 }
 
-void Transformable::TranslateOn(float x, float y) {
+void TransformableObject::TranslateOn(float x, float y) {
   transform_[2] += glm::vec3(x, y, 1.0f);
 }
-void Transformable::TranslateOn(const glm::vec2& delta) {
+void TransformableObject::TranslateOn(const glm::vec2& delta) {
   transform_[2] += glm::vec3(delta, 1.0f);
 }
 
-void Transformable::TranslateOnRelated(
+void TransformableObject::TranslateOnRelated(
     float len, float origin_x, float origin_y) {
   glm::vec2 direction = GetPosition() - glm::vec2(origin_x, origin_y);
   transform_[2] = glm::vec3(len * direction, 1.0f);
 }
-void Transformable::TranslateOnRelated(
+void TransformableObject::TranslateOnRelated(
     float len, const glm::vec2& origin_pos) {
   glm::vec2 direction = GetPosition() - origin_pos;
   transform_[2] = glm::vec3(len * direction, 1.0f);
 }
 
 
-void Transformable::RotateTo(float radians) {
+void TransformableObject::RotateTo(float radians) {
   glm::vec2 scale = GetScale();
   glm::vec2 pos = GetPosition();
 
@@ -64,7 +60,7 @@ void Transformable::RotateTo(float radians) {
   ScaleTo(scale);
   TranslateTo(pos);
 }
-void Transformable::RotateTo(const glm::quat& rot) {
+void TransformableObject::RotateTo(const glm::quat& rot) {
   glm::vec2 scale = GetScale();
   glm::vec2 pos = GetPosition();
 
@@ -73,75 +69,75 @@ void Transformable::RotateTo(const glm::quat& rot) {
   TranslateTo(pos);
 }
 
-void Transformable::RotateOn(float radians) {
+void TransformableObject::RotateOn(float radians) {
   float new_angle = GetRotationRad() + radians;
   RotateTo(new_angle);
 }
-void Transformable::RotateOn(const glm::quat& rot) {
+void TransformableObject::RotateOn(const glm::quat& rot) {
   RotateTo(GetRotationQuat() + rot);
 }
 
-void Transformable::RotateOnRelated(
+void TransformableObject::RotateOnRelated(
     float radians, float origin_x, float origin_y) {
   RotateOn(radians);
   RotateOnRelatedTranslation(radians, {origin_x, origin_y});
 }
-void Transformable::RotateOnRelated(
+void TransformableObject::RotateOnRelated(
     float radians, const glm::vec2& origin_pos) {
   RotateOn(radians);
   RotateOnRelatedTranslation(radians, origin_pos);
 }
-void Transformable::RotateOnRelated(
+void TransformableObject::RotateOnRelated(
     const glm::quat& rot, float origin_x, float origin_y) {
   RotateOn(rot);
   RotateOnRelatedTranslation(rot, {origin_x, origin_y});
 }
-void Transformable::RotateOnRelated(
+void TransformableObject::RotateOnRelated(
     const glm::quat& rot, const glm::vec2& origin_pos) {
   RotateOn(rot);
   RotateOnRelatedTranslation(rot, origin_pos);
 }
 
 
-void Transformable::ScaleTo(float factor) {
+void TransformableObject::ScaleTo(float factor) {
   transform_[0][0] = factor;
   transform_[1][1] = factor;
 }
-void Transformable::ScaleTo(float x, float y) {
+void TransformableObject::ScaleTo(float x, float y) {
   transform_[0][0] = x;
   transform_[1][1] = y;
 }
-void Transformable::ScaleTo(const glm::vec2& scale) {
+void TransformableObject::ScaleTo(const glm::vec2& scale) {
   transform_[0][0] = scale.x;
   transform_[1][1] = scale.y;
 }
 
-void Transformable::ScaleOn(float diff) {
+void TransformableObject::ScaleOn(float diff) {
   transform_[0][0] += diff;
   transform_[1][1] += diff;
 }
-void Transformable::ScaleOn(float x, float y) {
+void TransformableObject::ScaleOn(float x, float y) {
   transform_[0][0] += x;
   transform_[1][1] += y;
 }
-void Transformable::ScaleOn(const glm::vec2& scale) {
+void TransformableObject::ScaleOn(const glm::vec2& scale) {
   transform_[0][0] += scale.x;
   transform_[1][1] += scale.y;
 }
 
-void Transformable::ScaleOnRelated(
+void TransformableObject::ScaleOnRelated(
     float factor, float origin_x, float origin_y) {
   TranslateOnRelated(factor, origin_x, origin_y);
   ScaleOn(factor);
 }
-void Transformable::ScaleOnRelated(
+void TransformableObject::ScaleOnRelated(
     float factor, const glm::vec2& origin_pos) {
   TranslateOnRelated(factor, origin_pos);
   ScaleOn(factor);
 }
 
 
-void Transformable::RotateOnRelatedTranslation(
+void TransformableObject::RotateOnRelatedTranslation(
     float radians, const glm::vec2& origin_pos) {
   glm::vec2 direction = glm::abs(GetPosition() - origin_pos);
   float len = glm::length(direction);
@@ -154,7 +150,7 @@ void Transformable::RotateOnRelatedTranslation(
                origin_pos.y + hypotenuse * glm::cos(beta)});
 }
 
-void Transformable::RotateOnRelatedTranslation(
+void TransformableObject::RotateOnRelatedTranslation(
     const glm::quat& rot, const glm::vec2& origin_pos) {
   glm::vec3 direction {GetPosition() - origin_pos, 0.0f};
   glm::vec3 rotated_direction = glm::mat3_cast(rot) * direction;
@@ -169,30 +165,6 @@ void Transformable::RotateOnRelatedTranslation(
 
   TranslateTo({origin_pos.x + hypotenuse * beta_sin,
                origin_pos.y + hypotenuse * beta_cos});
-}
-
-/// Animatable
-
-void Animatable::RunAnimation(int animation_id) {
-  animation_.SetNext(animation_id);
-}
-
-void Animatable::RunAnimationForce(int animation_id) {
-  animation_.Run(animation_id);
-}
-
-void Animatable::UpdateAnimation(int time) {
-  // load interpolated data to cur_pose and then update ubo_
-}
-
-void Animatable::StopAnimation() {
-  animation_.Stop();
-}
-
-/// SoundEmittable
-
-void SoundEmittable::PlaySound(int sound_id) {
-  audio_thread_pool_->Play(sounds_[sound_id]);
 }
 
 } // namespace faithful

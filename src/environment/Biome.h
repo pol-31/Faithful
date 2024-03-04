@@ -1,30 +1,65 @@
 #ifndef FAITHFUL_SRC_LOADER_BIOME_H_
 #define FAITHFUL_SRC_LOADER_BIOME_H_
 
-/*
- * There should be listed all biomes with required textures / models / sounds / etc...
- * */
+#include <vector>
 
+#include "Liquid.h"
+#include "Sky.h"
+#include "Terrain.h"
+#include "Vegetation.h"
+#include "Weather.h"
 
+namespace faithful {
 
-enum class Biome {
-  Desert,
-  Forest,
-  Beach,
-  Fields,
-  Mountain,
-  TotalBiomes
+namespace details {
+
+class AudioThreadPool;
+
+} // namespace details
+
+struct Biome {
+  Liquid liquid;
+  Sky sky;
+  Terrain terrain;
+  Vegetation vegetation;
+  Weather weather;
+  int music_id;
 };
 
-Biome GetBiomeId(int map_x_coord, int max_y_coord) {
-  /* ohhh... radix search (z-curve / Morton-curve) */
-}
-// locator as in spaceship: locate with radius R clockwise each 15 degree
-// then if location changed - Release & Acquire ids of IAssetManager
-// (if we're moving in predictable direction - don't need to check all directions)
+class BiomeHandler {
+ public:
+  BiomeHandler() = delete;
+  BiomeHandler(details::AudioThreadPool* audio_thread_pool,
+               LiquidHandler* liquid_handler,
+               SkyHandler* sky_handler,
+               TerrainHandler* terrain_handler,
+               VegetationHandler* vegetation_handler,
+               WeatherHandler* weather_handler);
 
+  BiomeHandler(const BiomeHandler&) = default;
+  BiomeHandler& operator=(const BiomeHandler&) = default;
 
+  BiomeHandler(BiomeHandler&&) = default;
+  BiomeHandler& operator=(BiomeHandler&&) = default;
 
+  void SetBiome(int new_id);
 
+ private:
+  void Init();
+
+  int cur_biome_id_{-1};
+
+  details::AudioThreadPool* audio_thread_pool_;
+
+  LiquidHandler* liquid_handler_;
+  SkyHandler* sky_handler_;
+  TerrainHandler* terrain_handler_;
+  VegetationHandler* vegetation_handler_;
+  WeatherHandler* weather_handler_;
+
+  std::vector<Biome> biomes_;
+};
+
+} // namespace faithful
 
 #endif  // FAITHFUL_SRC_LOADER_BIOME_H_
