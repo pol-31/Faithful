@@ -3,4 +3,4 @@ tesselation water;
 picking effect;
 particles;
 light emitter pbr/bsdf;
-ibl (for environment/sky hdr texture);
+ibl (for environment/sky hdr texture)

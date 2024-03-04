@@ -1,6 +1,9 @@
 #ifndef FAITHFUL_CURSOR_H
 #define FAITHFUL_CURSOR_H
 
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
 #include "Window.h"
 
 namespace faithful {
@@ -11,8 +14,7 @@ class DefaultCursor;
 
 class Cursor {
  public:
-  Cursor() = delete;
-  Cursor(Window* window);
+  Cursor();
 
   ~Cursor();
 
@@ -22,17 +24,16 @@ class Cursor {
   Cursor(Cursor&& other);
   Cursor& operator=(Cursor&& other);
 
-  Cursor(Window* window, const uint8_t* data,
-         int width, int height);
+  Cursor(const uint8_t* data, int width, int height);
 
   GLFWcursor* Glfw() {
     return glfw_cursor_;
   }
 
-  void MakeCursorVisible();
-  void MakeCursorInvisible();
+  void MakeCursorVisible(Window* window);
+  void MakeCursorInvisible(Window* window);
 
-  void MakeActive();
+  void MakeActive(Window* window);
 
  protected:
   friend class DefaultCursor;
@@ -41,7 +42,6 @@ class Cursor {
   }
 
  private:
-  Window* window_ = nullptr;
   GLFWcursor* glfw_cursor_ = nullptr;
   bool visible_ = true;
   bool active_ = false;

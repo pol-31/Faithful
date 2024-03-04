@@ -4,8 +4,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "Window.h"
-
 #include "../../config/IO.h"
 
 namespace faithful {
@@ -25,12 +23,10 @@ namespace faithful {
 
 class Camera {
  public:
-  Camera() = delete;
-  Camera(faithful::details::io::Window* window) :
-        position_(faithful::config::camera_dir_position),
-        window_(window),
-        screen_resolution_(window->Resolution()),
-        yaw_(faithful::config::camera_yaw) {
+  Camera(const glm::ivec2& screen_resolution)
+      : position_(faithful::config::kCameraDirPosition),
+        screen_resolution_(screen_resolution),
+        yaw_(faithful::config::kCameraYaw) {
     UpdateMatrices();
   }
 
@@ -72,26 +68,26 @@ class Camera {
   void UpdateMatrices() {
     glm::vec3 direction_front;
     direction_front.x =
-        glm::cos(glm::radians(faithful::config::camera_yaw))
-        * glm::cos(glm::radians(faithful::config::camera_pitch));
-    direction_front.y = glm::sin(glm::radians(faithful::config::camera_pitch));
+        glm::cos(glm::radians(faithful::config::kCameraYaw))
+        * glm::cos(glm::radians(faithful::config::kCameraPitch));
+    direction_front.y = glm::sin(glm::radians(faithful::config::kCameraPitch));
     direction_front.z =
-        glm::sin(glm::radians(faithful::config::camera_yaw))
-        * glm::cos(glm::radians(faithful::config::camera_pitch));
+        glm::sin(glm::radians(faithful::config::kCameraYaw))
+        * glm::cos(glm::radians(faithful::config::kCameraPitch));
     direction_front_ = glm::normalize(direction_front);
 
-    glm::vec3 direction_right = glm::cross(faithful::config::camera_dir_world_up,
+    glm::vec3 direction_right = glm::cross(faithful::config::kCameraDirWorldUp,
                                            direction_front_);
     glm::vec3 direction_up = glm::cross(direction_front_, direction_right);
     direction_up_ = glm::normalize(direction_up);
 
     look_at_matrix_ = glm::lookAt(position_, position_ + direction_front_,
                                   direction_up_);
-    auto screen_resolution = window_->Resolution();
+    auto aspect = static_cast<float>(screen_resolution_.x / screen_resolution_.y);
     projection_matrix_ = glm::perspective(
-        faithful::config::camera_fov, screen_resolution.x / screen_resolution.y,
-        faithful::config::camera_perspective_near,
-        faithful::config::camera_perspective_far);
+        faithful::config::kCameraFov, aspect,
+        faithful::config::kCameraPerspectiveNear,
+        faithful::config::kCameraPerspectiveFar);
   }
 
   glm::mat4 look_at_matrix_;
@@ -101,8 +97,7 @@ class Camera {
   glm::vec3 direction_front_;
   glm::vec3 direction_up_;
 
-  faithful::details::io::Window* window_ = nullptr;
-  const glm::vec2& screen_resolution_;
+  const glm::ivec2& screen_resolution_;
 
   float yaw_;
 };

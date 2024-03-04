@@ -11,6 +11,8 @@ namespace faithful {
 namespace details {
 namespace io {
 
+class Window;
+
 class Monitor {
  public:
   using ModesType = faithful::utils::Span<const GLFWvidmode>;
@@ -23,21 +25,7 @@ class Monitor {
   Monitor(Monitor&&) = default;
   Monitor& operator=(Monitor&&) = default;
 
-  Monitor(GLFWmonitor* glfw_monitor) {
-    glfw_monitor_ = glfw_monitor;
-    name_ = glfwGetMonitorName(glfw_monitor_);
-    int modes_num;
-    const GLFWvidmode* modes = glfwGetVideoModes(glfw_monitor, &modes_num);
-    modes_ = ModesType{static_cast<ModesType::SizeType>(modes_num), modes};
-    const GLFWvidmode* mode = glfwGetVideoMode(glfw_monitor_); // cur_mode chosen by GLFW
-    for (int i = 0; i < modes_num; ++i) {
-      if (modes_[i].width == mode->width &&
-          modes_[i].height == mode->height &&
-          modes_[i].refreshRate == mode->refreshRate) {
-        cur_mode_id_ = i;
-      }
-    }
-  }
+  Monitor(GLFWmonitor* glfw_monitor);
 
   GLFWmonitor* Glfw() {
     return glfw_monitor_;
@@ -57,19 +45,10 @@ class Monitor {
     return modes_[cur_mode_id_].refreshRate;
   }
 
-  void SetMonitor(GLFWwindow* glfw_window) {
-    const GLFWvidmode& new_mode = modes_[cur_mode_id_];
-    glfwSetWindowMonitor(glfw_window, glfw_monitor_, 0, 0, new_mode.width,
-                         new_mode.height, new_mode.refreshRate);
-  }
+  void SetMonitor(Window* window);
 
   // also sets monitor
-  void SetMode(GLFWwindow* glfw_window, int mode_id) {
-    const GLFWvidmode& new_mode = modes_[mode_id];
-    cur_mode_id_ = mode_id;
-    glfwSetWindowMonitor(glfw_window, glfw_monitor_, 0, 0, new_mode.width,
-                         new_mode.height, new_mode.refreshRate);
-  }
+  void SetMode(Window* window, int mode_id);
 
  private:
   ModesType modes_;

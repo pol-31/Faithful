@@ -1,24 +1,24 @@
 #include "Window.h"
 
-#define GLFW_INCLUDE_NONE
-#include "GLFW/glfw3.h"
+#include <iostream> // Logger.h
 
-#include <iostream>
-
-#include "../../config/IO.h"
+#include "../../config/IO.h" // for window title
+#include "../../assets/embedded/WindowIcon.h"
 
 namespace faithful {
 namespace details {
 namespace io {
 
-bool Window::Init() {
-  cur_monitor_ = MonitorController::GetPrimaryMonitor();
-  // TODO: handle monitor "init"
+Window::Window() {
+  Init();
+}
 
+Window::~Window() {
+  DeInit();
+}
 
-  /// don't need more hints, becaues we create only full-screen window
-  /// and according to glfw.org needed hints set by default OR
-  /// not affect full-screen window
+void Window::Init() {
+  /// don't need more hints, (one full-screen window there)
   /// https://www.glfw.org/docs/3.3/window_guide.html
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 6);
@@ -28,54 +28,53 @@ bool Window::Init() {
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-  glm::vec2 window_size = monitors_.CurrentMonitorResolution();
+  resolution_ = CalculateDefaultResolution();
 
-  GLFWwindow* window =
-      glfwCreateWindow(window_size.x, window_size.y,
-                       faithful::config::window_title,
-                       cur_monitor_->Glfw(), nullptr);
-  // simurgh::Logger::LogIf(simurgh::LogType::kFatal, !window)
-  //   <<"Unable to create GLFW window";
+  GLFWwindow* window = glfwCreateWindow(
+      resolution_.x, resolution_.y,
+      faithful::config::kWindowTitle,
+      monitors_info_.GetCurMonitor().Glfw(),
+      nullptr); // no screen resources sharing
+  if (!window) {
+    std::cerr << "Window::Init() can't create window" << std::endl;
+    std::terminate(); // TODO: FAITHFUL_UNREACHABLE
+  }
+
+  GLFWimage icon;
+  icon.width = faithful::embedded::kWindowIconWidth;
+  icon.height = faithful::embedded::kWindowIconHeight;
+  icon.pixels = const_cast<unsigned char*>(faithful::embedded::kWindowIconData);
+  glfwSetWindowIcon(glfw_window_, 1, &icon);
+
+  monitors_info_.SetWindowMonitorMode(
+      glfw_window_, monitors_info_.GetCurMonitor().GetCurModeId());
+
   glfwMakeContextCurrent(window);
-  window_ = window;
 
-  AttachSizeCallback(DefaultSizeCallback);
-  // TODO: callbacks
-  return window;
+  EnableVSync();
 }
 
-Window::~Window() {
-  glfwDestroyWindow(window_);
+void Window::DeInit() {
+  glfwDestroyWindow(glfw_window_);
 }
 
-const glm::vec2& Window::Resolution() {
-  return resolution_;
-//  return cur_monitor_.GetResolution();
+void Window::Update() {
+  monitors_info_.Update(glfwGetWindowMonitor(glfw_window_));
+  resolution_ = monitors_info_.GetCurMonitor().GetCurResolution();
 }
 
-void Window::Resize() {
-  GLint w, h;
-  glfwGetWindowSize(window_, &w, &h);
-  glViewport(0, 0, w, h);
+void Window::EnableVSync() {
+  glfwSwapInterval(1);
+  enable_vsync_ = true;
 }
 
-void Window::Close() {
-  glfwSetWindowShouldClose(window_, true);
+void Window::DisableVSync() {
+  glfwSwapInterval(0);
+  enable_vsync_ = false;
 }
 
-void Window::FullscreenOn() {
-  Monitor::Mode mode = monitors_.Current()->CurMode();
-  glfwSetWindowMonitor(window_, monitors_.Current()->Glfw(), 0, 0, mode.width,
-                       mode.height, mode.framerate);
-}
-
-void Window::FullscreenOff() {
-  glfwSetWindowMonitor(window_, nullptr, 0, 0, resolution_.x, resolution_.y, 0);
-}
-
-void DefaultSizeCallback(GLFWwindow* window __attribute__((unused)), int width,
-                         int height) {
-  glViewport(0, 0, width, height);
+glm::ivec2 Window::CalculateDefaultResolution() {
+  return monitors_info_.GetCurMonitor().GetCurResolution();
 }
 
 } // namespace io

@@ -15,7 +15,7 @@ layout(std140) uniform Matrices {
 out vec3 normal;
 out vec2 texcoord;
 
-const int MaxBones = 200; // looks like too much
+const int kMaxBones = 100;
 
 layout(std140) uniform BoneData {
     mat4 bone_transforms[MaxBones];
@@ -31,7 +31,7 @@ void main() {
         final_pos += bone_transforms[bone_index] * vec4(in_position, 1.0) * weight;
     }
 
-    gl_Position = projection * view * worldPos;
+    gl_Position = projection * view * world_pos;
 
     normal = normalize(mat3(transform) * in_normal);
     texcoord = in_texcoord;

@@ -4,8 +4,7 @@ namespace faithful {
 namespace details {
 namespace io {
 
-Cursor::Cursor(Window* glfw_window) {
-  window_ = glfw_window;
+Cursor::Cursor() {
   glfw_cursor_ = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 }
 
@@ -14,20 +13,16 @@ Cursor::~Cursor() {
 }
 
 Cursor::Cursor(Cursor&& other) {
-  window_ = other.window_;
   glfw_cursor_ = other.glfw_cursor_;
   other.glfw_cursor_ = nullptr;
 }
 Cursor& Cursor::operator=(Cursor&& other) {
   glfwDestroyCursor(other.glfw_cursor_);
-  window_ = other.window_;
   glfw_cursor_ = other.glfw_cursor_;
   other.glfw_cursor_ = nullptr;
 }
 
-Cursor::Cursor(Window* window, const uint8_t* data,
-               int width, int height) {
-  window_ = window;
+Cursor::Cursor(const uint8_t* data, int width, int height) {
   if (!data) {
     glfw_cursor_ = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     return;
@@ -46,26 +41,26 @@ Cursor::Cursor(Window* window, const uint8_t* data,
 }
 
 
-void Cursor::MakeCursorVisible() {
+void Cursor::MakeCursorVisible(Window* window) {
   if (active_) {
-    glfwSetInputMode(window_->Glfw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(window->Glfw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
   }
   visible_ = true;
 }
-void Cursor::MakeCursorInvisible() {
+void Cursor::MakeCursorInvisible(Window* window) {
   visible_ = false;
   if (active_) {
-    glfwSetInputMode(window_->Glfw(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window->Glfw(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   }
 }
 
-void Cursor::MakeActive() {
+void Cursor::MakeActive(Window* window) {
   if (visible_) {
-    glfwSetInputMode(window_->Glfw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(window->Glfw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
   } else {
-    glfwSetInputMode(window_->Glfw(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window->Glfw(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   }
-  glfwSetCursor(window_->Glfw(), glfw_cursor_);
+  glfwSetCursor(window->Glfw(), glfw_cursor_);
 }
 
 }  // namespace io

@@ -8,8 +8,7 @@ uniform sampler2D tex_metal_rough;
 uniform sampler2D tex_normal;
 uniform sampler2D tex_occlusion;
 
-//uniform vec3 sun_position;
-//uniform vec3 sun_color;
+// TODO: sun_position and sun_color as uniform?
 
 void main() {
     vec3 sun_position = vec3(3.0, 10.0, -5.0);
