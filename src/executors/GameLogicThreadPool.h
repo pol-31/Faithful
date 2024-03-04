@@ -1,12 +1,20 @@
 #ifndef FAITHFUL_SRC_EXECUTORS_GAMELOGICTHREADPOOL_H_
 #define FAITHFUL_SRC_EXECUTORS_GAMELOGICTHREADPOOL_H_
 
+#include <thread>
+
+#include <glm/glm.hpp>
+
 #include "IExecutor.h"
 
 #include "../common/FrameRate.h"
 #include "../../config/Loader.h"
+#include "../environment/Map.h"
 
 namespace faithful {
+
+class BiomeHandler;
+
 namespace details {
 
 class CollisionManager;
@@ -14,25 +22,17 @@ class LoadingManager;
 class UpdateManager;
 
 class GameLogicThreadPool
-    : public IStaticExecutor<faithful::config::total_game_logic_threads> {
+    : public IStaticExecutor<faithful::config::kTotalGameLogicThreads> {
  public:
-  using Base = IStaticExecutor<faithful::config::total_game_logic_threads>;
-
-  enum class PriorityState {
-    MainMenuLoading, // load embedded assets, no update/collisions
-    MainMenu, // no update_manager_,
-              // may try to predict further "load game"
-    GameStressLoading, // main menu -> load game -> +50 assets
-    GameNoLoading, // just standing / boss fight
-    GameLazyLoading, // moving somewhere (+tryna predict)
-    GameIntensiveLoading // fast moving (assume we run too fast OR fast travel)
-  };
-  // ONLY GameStressLoading can be set externally, other switches internally
+  using Base = IStaticExecutor<faithful::config::kTotalGameLogicThreads>;
 
   GameLogicThreadPool() = delete;
+
   GameLogicThreadPool(CollisionManager* collision_manager,
                       LoadingManager* loading_manager,
-                      UpdateManager* update_manager);
+                      UpdateManager* update_manager,
+                      BiomeHandler* biome_handler,
+                      const glm::vec3& player_pos);
 
   ~GameLogicThreadPool();
 
@@ -40,6 +40,12 @@ class GameLogicThreadPool
   void Join() override;
 
  private:
+  enum class PriorityState {
+    kDefault,
+    kIntensiveLoading, // if current map tiles have not loaded assets
+    kStressLoading // previous but + there's a lot
+  };
+
   enum class ThreadOccupancy {
     kCollision,
     kLoading,
@@ -47,17 +53,32 @@ class GameLogicThreadPool
     kJoined
   };
 
+  void SetDefaultMode();
+  void SetIntensiveMode();
+  void SetStressMode();
+
+  void UpdateGameMap();
+
+  PriorityState priority_state_;
+
   CollisionManager* collision_manager_;
   LoadingManager* loading_manager_;
   UpdateManager* update_manager_;
 
-  std::array<ThreadOccupancy, faithful::config::total_game_logic_threads>
+  std::array<ThreadOccupancy, faithful::config::kTotalGameLogicThreads>
       thread_occupancy_;
 
-  /// We don't use our own task_queue_
+  /// We don't use task_queue_ there
   // NOT using Base::task_queue_;
 
-  Framerate framerate_; // TODO: integrate
+  using Base::threads_;
+  std::thread lead_thread_;
+  bool join_lead_thread_{false};
+
+  MapHandler map_handler_;
+  BiomeHandler* biome_handler_;
+
+  const glm::vec3& player_pos_;
 };
 
 } // namespace details

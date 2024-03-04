@@ -14,12 +14,13 @@ class IExecutor {
  public:
   using TaskType = folly::Function<void()>;
 
+  /// comparing to more common approach with kSuspended and kTerminated,
+  /// we don't need them: all possible function are correctly created and
+  /// all they noexcept (just Faithful design)
   enum class State {
     kNotStarted,
     kRunning,
-    kSuspended, // for debug only
-    kJoined,
-    kTerminated
+    kJoined
   };
 
   IExecutor() = default;
@@ -37,22 +38,20 @@ class IExecutor {
   virtual void Join() = 0;
 
   TaskType&& Take() {
-    if (state_ != State::kJoined &&
-        state_ != State::kTerminated) {
+    if (state_ != State::kJoined) {
       return task_queue_->Pop();
     }
   }
 
   void Put(TaskType&& task) {
-    if (state_ != State::kJoined &&
-        state_ != State::kTerminated) {
+    if (state_ != State::kJoined) {
       task_queue_->Push(std::move(task));
     }
   }
 
  protected:
   queue::IQueueBase<TaskType>* task_queue_;
-  State state_;
+  State state_ = State::kNotStarted;
 };
 
 /// has fixed number of threads
@@ -86,8 +85,7 @@ class IDynamicExecutor : public IExecutor {
   IDynamicExecutor(IDynamicExecutor&&) = default;
   IDynamicExecutor& operator=(IDynamicExecutor&&) = default;
 
-  virtual void Spawn(int num) = 0;
-  virtual void Kill(int num) = 0;
+  virtual void SetThreadsNumber(int num) = 0;
 
  protected:
   std::vector<std::thread> threads_;

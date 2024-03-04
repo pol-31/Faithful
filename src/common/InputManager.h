@@ -1,17 +1,16 @@
 #ifndef FAITHFUL_SRC_COMMON_INPUTMANAGER_H_
 #define FAITHFUL_SRC_COMMON_INPUTMANAGER_H_
 
-#include "IGameManager.h"
+#include "GlobalStateAwareBase.h"
 
 namespace faithful {
 namespace details {
 
-class InputManager : public IGameManager {
+class InputManager : public GlobalStateAwareBase {
  public:
   InputManager() = default;
 
-  void Update() override {}
-  void Run() override {
+  void Update() {
     // TODO: process pooling + set callbacks?
     //   task_queue_ not used?
   }

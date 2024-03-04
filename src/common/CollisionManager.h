@@ -1,14 +1,20 @@
 #ifndef FAITHFUL_COLLISIONMANAGER_H
 #define FAITHFUL_COLLISIONMANAGER_H
 
-#include "IGameManager.h"
+#include "GlobalStateAwareBase.h"
 
 #include "../collision/CollisionTarget.h" // TODO: do we need it
+
+#include "FrameRate.h"
+
+#include "../environment/Liquid.h"
+#include "../environment/Terrain.h"
+#include "../environment/Vegetation.h"
 
 namespace faithful {
 
 class PlayerCharacter;
-class Terrain;
+class PhenomenonAreaPool;
 
 namespace details {
 
@@ -17,14 +23,6 @@ namespace assets {
 class ModelPool;
 
 } // namespace assets
-namespace environment {
-
-class LiquidHandler;
-class PhenomenonAreaPool;
-class VegetationHandler;
-
-} // namespace environment
-
 
 // StaticCollisionCheck -> assume we click1, click2, click3 ->
 // -> queue_with_size_1 while processing click1, can't process anything else ->
@@ -34,18 +32,19 @@ class VegetationHandler;
 /** This class should perform all collision checks (including accelerations)
  * and order then by their (possible) priority
  * */
-class CollisionManager : public IGameManager {
+class CollisionManager : public GlobalStateAwareBase {
  public:
   CollisionManager() = delete;
-  CollisionManager(assets::ModelPool* model_manager);
+  CollisionManager(assets::ModelPool* model_manager,
+                   const Framerate& framerate);
 
-  void SetLiquidHandler(environment::LiquidHandler* liquid_handler) {
+  void SetLiquidHandler(LiquidHandler* liquid_handler) {
     liquid_handler_ = liquid_handler;
   }
-  void SetPhenomenonAreaPool(environment::PhenomenonAreaPool* phenomenon_area_pool) {
+  void SetPhenomenonAreaPool(PhenomenonAreaPool* phenomenon_area_pool) {
     phenomenon_area_pool_ = phenomenon_area_pool;
   }
-  void SetVegetationHandler(environment::VegetationHandler* vegetation_handler) {
+  void SetVegetationHandler(VegetationHandler* vegetation_handler) {
     vegetation_handler_ = vegetation_handler;
   }
   void SetPlayerCharacter(PlayerCharacter* player_character) {
@@ -55,8 +54,9 @@ class CollisionManager : public IGameManager {
     terrain_ = terrain;
   }
 
-  void Update() override;
-  void Run() override;
+  void ProcessTask();
+
+  void UpdateTree();
 
   /// We have 3D game but with __camera_view__ from up to down which allows
   /// us to firstly check always 2D check and only then 3D check -> A-buffer CollDet
@@ -152,10 +152,10 @@ class CollisionManager : public IGameManager {
   MenuState menu_state_;
   GameState game_state_;
 
-  environment::LiquidHandler* liquid_handler_ = nullptr; // get from model/player
+  LiquidHandler* liquid_handler_ = nullptr; // get from model/player
   assets::ModelPool* model_manager_ = nullptr; // get from player/phenomenon_area
-  environment::PhenomenonAreaPool* phenomenon_area_pool_ = nullptr; // get from model/player
-  environment::VegetationHandler* vegetation_handler_ = nullptr; // get from model/player
+  PhenomenonAreaPool* phenomenon_area_pool_ = nullptr; // get from model/player
+  VegetationHandler* vegetation_handler_ = nullptr; // get from model/player
   PlayerCharacter* player_character_ = nullptr; // get from model/phenomenon_area
   Terrain* terrain_ = nullptr;
 
@@ -198,6 +198,8 @@ class CollisionManager : public IGameManager {
   CollisionManager* collision_manager_ = nullptr;
 
   bool initialized_ = false;
+
+  const Framerate& framerate_;
 };
 
 } // namespace details

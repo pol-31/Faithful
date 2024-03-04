@@ -1,12 +1,17 @@
 #ifndef FAITHFUL_SRC_COMMON_UPDATEMANAGER_H_
 #define FAITHFUL_SRC_COMMON_UPDATEMANAGER_H_
 
-#include "IGameManager.h"
+#include "GlobalStateAwareBase.h"
+
+#include "FrameRate.h"
+
+#include "../environment/Sky.h"
+#include "../environment/Weather.h"
 
 namespace faithful {
 
 class PlayerCharacter;
-class Sky;
+class PhenomenonAreaPool;
 
 namespace details {
 
@@ -15,25 +20,20 @@ namespace assets {
 class ModelPool;
 
 } // namespace assets
-namespace environment {
-
-class PhenomenonAreaPool;
-class WeatherHandler;
-
-} // namespace environment
 
 /** This class should optimize the order of updating operations
  * to the OpenGL context to avoid consecutive Depth Test failures
  * */
-class UpdateManager : public IGameManager {
+class UpdateManager : public GlobalStateAwareBase {
  public:
   UpdateManager() = delete;
-  UpdateManager(assets::ModelPool* model_manager);
+  UpdateManager(assets::ModelPool* model_manager,
+                const Framerate& framerate);
 
-  void SetPhenomenonAreaPool(environment::PhenomenonAreaPool* phenomenon_area_pool) {
+  void SetPhenomenonAreaPool(PhenomenonAreaPool* phenomenon_area_pool) {
     phenomenon_area_pool_ = phenomenon_area_pool;
   }
-  void SetWeatherHandler(environment::WeatherHandler* weather_handler) {
+  void SetWeatherHandler(WeatherHandler* weather_handler) {
     weather_handler_ = weather_handler;
   }
   void SetPlayerCharacter(PlayerCharacter* player_character) {
@@ -43,8 +43,12 @@ class UpdateManager : public IGameManager {
     sky_ = sky;
   }
 
-  void Update() override;
-  void Run() override;
+  void ProcessTask();
+
+  // updates all models actions logic / affects;
+  // phenomenon area (e.g. gas intensity)
+  void UpdateGameLogic();
+  void UpdateAnimations();
 
   inline void StatePaused() {
     scene_state_ = SceneState::kPaused;
@@ -57,7 +61,7 @@ class UpdateManager : public IGameManager {
   }
 
  private:
-  enum class SceneState {
+  enum class SceneState { // TODO do we still need this?..
     kPaused,
     kMainMenu,
     kMainGame
@@ -74,9 +78,11 @@ class UpdateManager : public IGameManager {
   PlayerCharacter* player_character_ = nullptr;
 
   /// Time-based
-  environment::PhenomenonAreaPool* phenomenon_area_pool_ = nullptr;
-  environment::WeatherHandler* weather_handler_ = nullptr;
+  PhenomenonAreaPool* phenomenon_area_pool_ = nullptr;
+  WeatherHandler* weather_handler_ = nullptr;
   Sky* sky_ = nullptr;
+
+  const Framerate& framerate_;
 };
 
 } // namespace details

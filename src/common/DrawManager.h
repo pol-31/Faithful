@@ -1,13 +1,18 @@
 #ifndef FAITHFUL_SRC_COMMON_DRAWMANAGER_H_
 #define FAITHFUL_SRC_COMMON_DRAWMANAGER_H_
 
-#include "IGameManager.h"
+#include "GlobalStateAwareBase.h"
+
+#include "../environment/Liquid.h"
+#include "../environment/Sky.h"
+#include "../environment/Terrain.h"
+#include "../environment/Vegetation.h"
+#include "../environment/Weather.h"
 
 namespace faithful {
 
 class PlayerCharacter;
-class Sky;
-class Terrain;
+class PhenomenonAreaPool;
 
 namespace details {
 
@@ -16,33 +21,28 @@ namespace assets {
 class ModelPool;
 
 } // namespace assets
-namespace environment {
 
-class LiquidHandler;
-class PhenomenonAreaPool;
-class VegetationHandler;
-class WeatherHandler;
+// TODO: add ALL shader_program, ubo creation to DrawManager::Init()
 
-} // namespace environment
 
 /** This class should optimize the order of rendering operations
  * to the OpenGL context to avoid consecutive Depth Test failures
  * */
-class DrawManager : public IGameManager {
+class DrawManager : public GlobalStateAwareBase {
  public:
   DrawManager() = delete;
   DrawManager(assets::ModelPool* model_manager);
 
-  void SetLiquidHandler(environment::LiquidHandler* liquid_handler) {
+  void SetLiquidHandler(LiquidHandler* liquid_handler) {
     liquid_handler_ = liquid_handler;
   }
-  void SetPhenomenonAreaPool(environment::PhenomenonAreaPool* phenomenon_area_pool) {
+  void SetPhenomenonAreaPool(PhenomenonAreaPool* phenomenon_area_pool) {
     phenomenon_area_pool_ = phenomenon_area_pool;
   }
-  void SetVegetationHandler(environment::VegetationHandler* vegetation_handler) {
+  void SetVegetationHandler(VegetationHandler* vegetation_handler) {
     vegetation_handler_ = vegetation_handler;
   }
-  void SetWeatherHandler(environment::WeatherHandler* weather_handler) {
+  void SetWeatherHandler(WeatherHandler* weather_handler) {
     weather_handler_ = weather_handler;
   }
   void SetPlayerCharacter(PlayerCharacter* player_character) {
@@ -55,8 +55,7 @@ class DrawManager : public IGameManager {
     terrain_ = terrain;
   }
 
-  void Update() override;
-  void Run() override;
+  void Update();
 
   /// states
 
@@ -147,14 +146,16 @@ class DrawManager : public IGameManager {
     kGamePause
   };
 
+  void Init();
+
   MenuState menu_state_;
   GameState game_state_;
 
-  environment::LiquidHandler* liquid_handler_ = nullptr;
+  LiquidHandler* liquid_handler_ = nullptr;
   assets::ModelPool* model_manager_ = nullptr;
-  environment::PhenomenonAreaPool* phenomenon_area_pool_ = nullptr;
-  environment::VegetationHandler* vegetation_handler_ = nullptr;
-  environment::WeatherHandler* weather_handler_ = nullptr;
+  PhenomenonAreaPool* phenomenon_area_pool_ = nullptr;
+  VegetationHandler* vegetation_handler_ = nullptr;
+  WeatherHandler* weather_handler_ = nullptr;
   PlayerCharacter* player_character_ = nullptr;
   Sky* sky_ = nullptr;
   Terrain* terrain_ = nullptr;

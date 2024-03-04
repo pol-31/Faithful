@@ -12,7 +12,7 @@
 #include "../../assets/embedded/CursorMainMenu.h"
 #include "../../assets/embedded/CursorMainGame.h"
 
-#include "../common/GlfwWindowUserPointer.h"
+#include "../common/GlobalStateInfo.h"
 
 #include "../common/FrameRate.h"
 

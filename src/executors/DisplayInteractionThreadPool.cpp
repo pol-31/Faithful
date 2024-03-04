@@ -14,7 +14,7 @@ namespace details {
 
 void GlfwWindowCloseCallback(GLFWwindow* window) {
   void* data = glfwGetWindowUserPointer(window);
-  reinterpret_cast<GlfwWindowUserPointer*>(data)
+  reinterpret_cast<GlobalStateInfo*>(data)
       ->execution_environment->Join();
 }
 
@@ -55,12 +55,12 @@ DisplayInteractionThreadPool::DisplayInteractionThreadPool(
     : glfw_initializer_(), // glfw initialized here
       window_(),
       camera_game_(window_.GetResolution()),
-      cursor_arrow_(faithful::embedded::cursor_main_menu_data,
-                    faithful::embedded::cursor_main_menu_width,
-                    faithful::embedded::cursor_main_menu_height),
-      cursor_target_(faithful::embedded::cursor_main_game_data,
-                     faithful::embedded::cursor_main_game_width,
-                     faithful::embedded::cursor_main_game_height),
+      cursor_arrow_(faithful::embedded::kCursorMainMenuData,
+                    faithful::embedded::kCursorMainMenuWidth,
+                    faithful::embedded::kCursorMainMenuHeight),
+      cursor_target_(faithful::embedded::kCursorMainGameData,
+                     faithful::embedded::kCursorMainGameWidth,
+                     faithful::embedded::kCursorMainGameHeight),
       current_cursor_(&cursor_arrow_),
       draw_manager_(draw_manager),
       input_manager_(input_manager) {

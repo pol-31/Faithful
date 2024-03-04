@@ -1,34 +1,44 @@
 #include "LoadingManager.h"
 
+#include <thread>
+
+#include "../loader/ModelPool.h"
+#include "../loader/TexturePool.h"
+
 namespace faithful {
 namespace details {
 
 LoadingManager::LoadingManager(
     assets::ModelPool* model_pool,
-    assets::MusicPool* music_pool,
-    assets::ShaderPool* shader_pool,
-    assets::SoundPool* sound_pool,
-    assets::Texture1DPool* texture1d_pool,
-    assets::Texture2DPool* texture2d_pool)
-    : model_pool_(model_pool), music_pool_(music_pool),
-      shader_pool_(shader_pool), sound_pool_(sound_pool),
-      texture1d_pool_(texture1d_pool), texture2d_pool_(texture2d_pool),
-      support_thread_pool_(task_queue_) {}
+    assets::TexturePool* texture_pool)
+    : model_pool_(model_pool),
+      texture_pool_(texture_pool) {}
 
-void LoadingManager::Update() {
-  // TODO: process all loading + all from task_queue_
+std::shared_ptr<assets::ModelData> LoadingManager::LoadModel(int model_id) {
+  return model_pool_->Load(model_id);
 }
-void LoadingManager::Run() {
-  //
+
+void LoadingManager::ProcessTask() {
+  if (!texture_pool_->Assist()) {
+    if (!model_pool_->Assist()) {
+      stress_loading_ = false;
+    }
+  }
 }
 
 void LoadingManager::StressLoading(int extra_threads_num) {
-  //TODO:
-  // occupancies
-  // stress loading: we take half of all tasks there at once
-  // supporting thread pool
-  // report back to FaithfulState
-  // NOTIFY GameLogicThreadPool
+  if (stress_loading_) {
+    return;
+  }
+  stress_loading_ = true;
+  for (int i = 0; i < extra_threads_num; ++i) {
+    std::thread{[=] {
+      /// they both returns false if there is no task to execute
+        if (!(texture_pool_->Assist() || model_pool_->Assist())) {
+          return;
+        }
+    }}.detach();
+  }
 }
 
 } // namespace details

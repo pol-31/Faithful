@@ -2,7 +2,7 @@
 #define FAITHFUL_SRC_EXECUTORS_EXECUTIONENVIRONMENT_H_
 
 #include "IExecutor.h"
-#include "../common/GlfwWindowUserPointer.h"
+#include "../common/GlobalStateInfo.h"
 
 #include "AudioThreadPool.h"
 #include "GameLogicThreadPool.h"
@@ -16,7 +16,7 @@
 
 #include "../loader/ModelPool.h"
 #include "../loader/MusicPool.h"
-#include "../loader/ShaderPool.h"
+#include "../loader/ShaderObjectPool.h"
 #include "../loader/SoundPool.h"
 #include "../loader/TexturePool.h"
 
@@ -35,11 +35,11 @@ class ExecutionEnvironment : public IExecutor {
   void Init();
   void DeInit();
 
-  assets::ModelPool model_pool_;
   assets::MusicPool music_pool_;
-  assets::ShaderPool shader_pool_;
+  assets::ShaderObjectPool shader_pool_;
   assets::SoundPool sound_pool_;
   assets::TexturePool texture_pool_;
+  assets::ModelPool model_pool_;
 
   CollisionManager collision_manager_;
   DrawManager draw_manager_;
@@ -51,7 +51,7 @@ class ExecutionEnvironment : public IExecutor {
   DisplayInteractionThreadPool display_interaction_thread_pool_;
   GameLogicThreadPool game_logic_thread_pool_;
 
-  GlfwWindowUserPointer global_data_;
+  GlobalStateInfo global_data_;
 };
 
 } // namespace faithful

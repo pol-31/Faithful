@@ -1,5 +1,5 @@
-#ifndef FAITHFUL_SRC_COMMON_GLFWWINDOWUSERPOINTER_H_
-#define FAITHFUL_SRC_COMMON_GLFWWINDOWUSERPOINTER_H_
+#ifndef FAITHFUL_SRC_COMMON_GLOBALSTATEINFO_H_
+#define FAITHFUL_SRC_COMMON_GLOBALSTATEINFO_H_
 
 namespace faithful {
 namespace details {
@@ -14,7 +14,7 @@ class UpdateManager;
 
 class AudioThreadPool;
 
-struct GlfwWindowUserPointer {
+struct GlobalStateInfo {
   /// to call Join();
   ExecutionEnvironment* execution_environment;
 
@@ -60,4 +60,4 @@ struct GlfwWindowUserPointer {
 } // namespace faithful
 } // namespace details
 
-#endif  // FAITHFUL_SRC_COMMON_GLFWWINDOWUSERPOINTER_H_
+#endif  // FAITHFUL_SRC_COMMON_GLOBALSTATEINFO_H_

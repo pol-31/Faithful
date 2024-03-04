@@ -1,19 +1,12 @@
 #ifndef FAITHFUL_SRC_EXECUTORS_AUDIOTHREADPOOL_H_
 #define FAITHFUL_SRC_EXECUTORS_AUDIOTHREADPOOL_H_
 
-#include "IExecutor.h"
-
-#include <array> // TODO; excessive headers
-#include <cstring>
-#include <fstream>
-#include <map>
-#include <string>
-#include <type_traits>
-#include <iostream> // todo: replace
+#include <array>
 
 #include <AL/al.h>
 #include <AL/alc.h>
-#include <ogg/ogg.h>
+
+#include "IExecutor.h"
 
 #include "../../config/Loader.h"
 
@@ -23,13 +16,6 @@ class Music;
 class Sound;
 
 namespace details {
-
-namespace assets {
-
-class MusicPool;
-class SoundPool;
-
-} // namespace assets
 
 /** AudioThreadPool purpose:
  * - encapsulate OpenAL
@@ -46,16 +32,16 @@ class AudioThreadPool : public IStaticExecutor<1> {
  public:
   using Base = IStaticExecutor<1>;
 
-  AudioThreadPool() = delete;
-  AudioThreadPool(assets::MusicPool* music_manager,
-                  assets::SoundPool* sound_manager);
+  AudioThreadPool();
 
   ~AudioThreadPool();
 
-  void Play(const Sound& sound);
-  void Play(const Music& music);
+  void Play(Sound& sound);
+  void Play(Music& music);
 
-  void SetBackground(Music* music); // if already set -> smooth transmission
+  // TODO 1: refactor to call by id
+  // TODO 2: if already set -> smooth transmission
+  void SetBackground(Music* music);
 
   void Run() override;
   void Join() override;
@@ -70,7 +56,7 @@ class AudioThreadPool : public IStaticExecutor<1> {
 
   /// Music: .ogg
   struct MusicSourceData {
-    std::array<ALuint, faithful::config::openal_buffers_per_music> buffers_id;
+    std::array<ALuint, faithful::config::kOpenalBuffersPerMusic> buffers_id;
     faithful::Music* data;
     ALuint source_id;
     bool busy = false;
@@ -98,16 +84,13 @@ class AudioThreadPool : public IStaticExecutor<1> {
   ALCcontext* openal_context_;
   ALCdevice* openal_device_;
 
-  std::array<SoundSourceData, faithful::config::openal_sound_num> sound_sources_;
+  std::array<SoundSourceData, faithful::config::kOpenalSoundNum> sound_sources_;
 
   /// music_sources_[0] <- main background music
   /// (where BackgroundSmoothTransition works)
-  std::array<MusicSourceData, faithful::config::openal_music_num> music_sources_;
+  std::array<MusicSourceData, faithful::config::kOpenalMusicNum> music_sources_;
 
   faithful::Music* next_background_music_ = nullptr;
-
-  details::assets::MusicPool* music_manager_ = nullptr;
-  details::assets::SoundPool* sound_manager_ = nullptr;
 
   float background_gain_ = 1.0f;
   float background_gain_step_ = 0.0f; // for smooth transition between two streams

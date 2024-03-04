@@ -3,15 +3,20 @@
 namespace faithful {
 namespace details {
 
-UpdateManager::UpdateManager(assets::ModelPool* model_manager)
-    : model_manager_(model_manager) {}
+UpdateManager::UpdateManager(
+    assets::ModelPool* model_manager, const Framerate& framerate)
+    : model_manager_(model_manager),
+      framerate_(framerate) {}
 
-void UpdateManager::Update() {
-  // TODO: process all Updatable instances + all from task_queue_
+void UpdateManager::ProcessTask() {
+  // TODO: all from task_queue_
 }
 
-void UpdateManager::Run() {
-  //
+void UpdateManager::UpdateAnimations() {
+  // TODO: for each model call UpdateAnimation()
+}
+void UpdateManager::UpdateGameLogic() {
+  // TODO: for each model call Update()
 }
 
 } // namespace details

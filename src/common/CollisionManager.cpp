@@ -3,15 +3,17 @@
 namespace faithful {
 namespace details {
 
-CollisionManager::CollisionManager(assets::ModelPool* model_manager)
-    : model_manager_(model_manager) {}
+CollisionManager::CollisionManager(
+    assets::ModelPool* model_manager, const Framerate& framerate)
+    : model_manager_(model_manager),
+      framerate_(framerate) {}
 
-void CollisionManager::Update() {
-  // TODO: process bvh + all from task_queue_
+void CollisionManager::ProcessTask() {
+  // TODO: all from task_queue_
 }
 
-void CollisionManager::Run() {
-  //
+void CollisionManager::UpdateTree() {
+  // TODO: update bvh tree
 }
 
 } // namespace details

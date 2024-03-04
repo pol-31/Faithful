@@ -14,9 +14,7 @@ namespace details {
 
 // TODO: alSourceRewind(source); for Play(Sound) to pleyback from the beginning
 
-AudioThreadPool::AudioThreadPool(assets::MusicPool* music_manager,
-                                 assets::SoundPool* sound_manager)
-    : music_manager_(music_manager), sound_manager_(sound_manager) {
+AudioThreadPool::AudioThreadPool() {
   task_queue_ = new queue::LifoBoundedMPSCBlockingQueue<TaskType>;
 }
 AudioThreadPool::~AudioThreadPool() {
@@ -75,7 +73,7 @@ void AudioThreadPool::InitOpenALBuffersAndSources() {
   AL_CALL(alGenSources, total_sources_num, source_ids);
 
   int total_buffers_num = sound_sources_.size() +
-                          faithful::config::openal_buffers_per_music *
+                          faithful::config::kOpenalBuffersPerMusic *
                               music_sources_.size();
   ALuint buffer_ids[total_buffers_num];
   AL_CALL(alGenBuffers, total_buffers_num, buffer_ids);
@@ -89,7 +87,7 @@ void AudioThreadPool::InitOpenALBuffersAndSources() {
 
   for (int i = 0; i < music_sources_.size(); ++i) { // <-- todo; write to documentation (order of source/buffer)
     music_sources_[i].source_id = source_ids[i + sound_sources_.size()];
-    for (int j = 0; j < faithful::config::openal_buffers_per_music; ++j) {
+    for (int j = 0; j < faithful::config::kOpenalBuffersPerMusic; ++j) {
       music_sources_[i].buffers_id[j] = buffer_ids[i * j + j + sound_sources_.size()];
     }
     /// pitch, gain, position, velocity, etc - by default
@@ -103,7 +101,7 @@ void AudioThreadPool::DeinitOpenALBuffersAndSources() {
   ALuint source_ids[total_sources_num];
 
   int total_buffers_num = sound_sources_.size() +
-                          faithful::config::openal_buffers_per_music *
+                          faithful::config::kOpenalBuffersPerMusic *
                               music_sources_.size();
   ALuint buffer_ids[total_buffers_num];
 
@@ -114,7 +112,7 @@ void AudioThreadPool::DeinitOpenALBuffersAndSources() {
 
   for (int i = 0; i < music_sources_.size(); ++i) {
     source_ids[i + sound_sources_.size()] = music_sources_[i].source_id;
-    for (int j = 0; j < faithful::config::openal_buffers_per_music; ++j) {
+    for (int j = 0; j < faithful::config::kOpenalBuffersPerMusic; ++j) {
       buffer_ids[i * j + j + sound_sources_.size()] = music_sources_[i].buffers_id[j];
     }
   }
@@ -218,21 +216,18 @@ int AudioThreadPool::GetAvailableMusicSourceId() {
  * then when the queue is full (we didn't have enough time to process them all),
  * -> we just rewrite the older by newer
  * */
-void AudioThreadPool::Play(const Sound& sound) {
+void AudioThreadPool::Play(Sound& sound) {
   int source_id = GetAvailableSoundSourceId();
   if (source_id == -1) {
     std::cerr << "can't get available id for sound" << std::endl;
     // FAITHFUL_DEBUG log warning
     return; // all busy, can skip <-- todo; write to documentation
   }
-
-  int sound_opengl_id = sound.GetInternalId();
   task_queue_->Push([=]() {
     std::cout << "inside the task_queue_" << std::endl;
-    auto& audio_info = sound_manager_->sound_heap_data_[sound_opengl_id];
     AL_CALL(alBufferData, sound_sources_[source_id].buffer_id,
-            audio_info.format, audio_info.data.get(), audio_info.size,
-            audio_info.sample_rate);
+            sound.GetFormat(), sound.GetData().get(), sound.GetSize(),
+            sound.GetSampleRate());
     // TODO: can we bind them inside the initialization?
     AL_CALL(alSourcei, sound_sources_[source_id].source_id, AL_BUFFER,
             sound_sources_[source_id].buffer_id);
@@ -240,7 +235,7 @@ void AudioThreadPool::Play(const Sound& sound) {
     /// non-blocking, continue spinning in thread pool run-loop
   });
 }
-void AudioThreadPool::Play(const Music& music) {
+void AudioThreadPool::Play(Music& music) {
   int source_id = GetAvailableMusicSourceId();
   if (source_id == -1) {
     std::cerr << "can't get available id for music" << std::endl;
@@ -248,19 +243,19 @@ void AudioThreadPool::Play(const Music& music) {
     return; // all busy, can skip <-- todo; write to documentation
   }
 
-  auto buffer_size = faithful::config::openal_buffers_size;
-  auto buffers_num = faithful::config::openal_buffers_per_music;
-  int music_opengl_id = music.GetInternalId();
+  auto buffer_size = faithful::config::kOpenalBuffersSize;
+  auto buffers_num = faithful::config::kOpenalBuffersPerMusic;
 
-  task_queue_->Push([=]() {
-    auto& audio_info = music_manager_->music_heap_data_[music_opengl_id];
+    auto data = std::make_unique<char>(buffer_size);
+    int dataSoFar = 0;
+  task_queue_->Push([buffer_size, buffers_num, this, source_id, &music] {
     auto data = std::make_unique<char>(buffer_size);
     for (int i = 0; i < buffers_num; ++i) {
       int dataSoFar = 0;
       while (dataSoFar < buffer_size) {
-        int result = ov_read(&audio_info.ogg_vorbis_file,
+        int result = ov_read(&music.GetOggVorbisFile(),
                              data.get() + dataSoFar, buffer_size - dataSoFar, 0,
-                             2, 1, &audio_info.ogg_cur_section);
+                             2, 1, &music.GetOggCurSection());
         if (CheckOggOvErrors(result, i)) {
           std::cerr << "AudioThreadPool::Play(Music) error" << std::endl;
           break;
@@ -268,10 +263,10 @@ void AudioThreadPool::Play(const Music& music) {
         dataSoFar += result;
       }
       AL_CALL(alBufferData, music_sources_[source_id].buffers_id[i],
-              audio_info.format, data.get(), dataSoFar, audio_info.sample_rate);
+              music.GetFormat(), data.get(), dataSoFar, music.GetSampleRate());
     }
     AL_CALL(alSourceQueueBuffers, source_id,
-            faithful::config::openal_buffers_per_music,
+            faithful::config::kOpenalBuffersPerMusic,
             &music_sources_[source_id].buffers_id[0]);
     /// non-blocking, continue spinning in thread pool run-loop
   });
@@ -280,7 +275,7 @@ void AudioThreadPool::Play(const Music& music) {
 /// should be called only from one thread
 void AudioThreadPool::SetBackground(faithful::Music* music) {
   next_background_music_ = music;
-  background_gain_step_ = faithful::config::default_background_gain_step;
+  background_gain_step_ = faithful::config::kDefaultBackgroundGainStep;
 }
 
 // internally in thread, so AL_CALL safe
@@ -291,13 +286,11 @@ void AudioThreadPool::UpdateMusicStream(MusicSourceData& music_data) {
     return;
   }
 
-  auto& audio_info = music_manager_->music_heap_data_[music_data.data->GetInternalId()];
-
   while(buffersProcessed--) {
     ALuint buffer;
     AL_CALL(alSourceUnqueueBuffers, music_data.source_id, 1, &buffer);
 
-    auto buffer_size = faithful::config::openal_buffers_size;
+    auto buffer_size = faithful::config::kOpenalBuffersSize;
     auto data = std::make_unique<char>(buffer_size);
     std::memset(data.get(), 0, buffer_size);
 
@@ -305,9 +298,9 @@ void AudioThreadPool::UpdateMusicStream(MusicSourceData& music_data) {
 
     while(sizeRead < buffer_size) {
       int result = ov_read(
-          &audio_info.ogg_vorbis_file, data.get() + sizeRead,
+          &music_data.data->GetOggVorbisFile(), data.get() + sizeRead,
           buffer_size - sizeRead, 0, 2, 1,
-          reinterpret_cast<int*>(audio_info.ogg_cur_section));
+          &music_data.data->GetOggCurSection());
       if (result == OV_HOLE) {
         std::cerr << "ERROR: OV_HOLE found in update of buffer " << std::endl;
         break;
@@ -318,7 +311,8 @@ void AudioThreadPool::UpdateMusicStream(MusicSourceData& music_data) {
         std::cerr << "ERROR: OV_EINVAL found in update of buffer " << std::endl;
         break;
       } else if (result == 0) {
-        if (CheckOggOvLoopErrors(ov_raw_seek(&audio_info.ogg_vorbis_file, 0))) {
+        if (CheckOggOvLoopErrors(ov_raw_seek(
+                &music_data.data->GetOggVorbisFile(), 0))) {
           return;
         }
       }
@@ -327,8 +321,8 @@ void AudioThreadPool::UpdateMusicStream(MusicSourceData& music_data) {
     ALsizei dataSizeToBuffer = sizeRead;
 
     if (dataSizeToBuffer > 0) {
-      AL_CALL(alBufferData, buffer, audio_info.format, data.get(),
-              dataSizeToBuffer, audio_info.sample_rate);
+      AL_CALL(alBufferData, buffer, music_data.data->GetFormat(), data.get(),
+              dataSizeToBuffer, music_data.data->GetSampleRate());
       AL_CALL(alSourceQueueBuffers, music_data.source_id, 1, &buffer);
     }
 

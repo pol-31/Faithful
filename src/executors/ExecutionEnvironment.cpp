@@ -5,22 +5,20 @@ namespace details {
 
 // TODO: player/*, environment/*
 
-// TODO: error handling?
-
+// TODO: error handling at ctors?
 ExecutionEnvironment::ExecutionEnvironment()
-    : model_pool_(), music_pool_(), shader_pool_(),
-      sound_pool_(), texture_pool_(),
+    : music_pool_(), shader_pool_(), sound_pool_(),
+      texture_pool_(), model_pool_(&sound_pool_, &texture_pool_),
       collision_manager_(&model_pool_),
       draw_manager_(&model_pool_),
       input_manager_(),
       loading_manager_(&model_pool_, &music_pool_, &shader_pool_,
                        &sound_pool_, &texture_pool_),
       update_manager_(&model_pool_),
-      audio_thread_pool_(&music_pool_, &sound_pool_),
+      audio_thread_pool_(),
       display_interaction_thread_pool_(&draw_manager_, &input_manager_),
       game_logic_thread_pool_(&collision_manager_,
                               &loading_manager_, &update_manager_) {
-  /// glfw has already been initialized at display_interaction_thread_pool_()
   Init();
 }
 
@@ -42,6 +40,8 @@ void ExecutionEnvironment::Init() {
   global_data_.audio_thread_pool = &audio_thread_pool_;
 
   texture_pool_.SetOpenGlContext(&display_interaction_thread_pool_);
+  shader_pool_.SetOpenGlContext(&display_interaction_thread_pool_);
+  model_pool_.SetOpenGlContext(&display_interaction_thread_pool_);
 
   collision_manager_.SetGlfwWindowUserPointer(&global_data_);
   draw_manager_.SetGlfwWindowUserPointer(&global_data_);

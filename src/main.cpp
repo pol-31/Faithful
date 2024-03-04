@@ -8,57 +8,7 @@
 /// We don't need to #include "mimalloc-new-delete.h"
 /// as it has already been overridden by libmimalloc.a
 
-//#include <cmath>
-//#include <iostream>
-
-//#include "executors/AudioThreadPool.h"
-//#include "loader/SoundPool.h"
-//#include "loader/Sound.h"
-//#include "loader/MusicPool.h"
-//#include "loader/Music.h"
-
-//TODO:
-// 1) init OpenGL context inside the RenderThreadPool
-// 3) render loop inside the RenderThreadPool
-// 2) folly::Future + combinators ---> Texture2D.h
-// 4) textures + tinygltf
-// 5) run tinygltf example
-// BONUS: Music.h
-
-
-// class Main thread (a.k. RenderThreadPool): GLFW(input handling), OpenGL
-
-// class AudioThreadPool: sound processing / music streaming
-
-// WorkerThreadPool: movement/animation/collision_computation (what cell are we in)
-//                   loading (Passive/Active)
-// * class StaticWorkerThreadPool  -- default threads for object processing
-//       -- most depends on std::thread::hardware_concurrency()
-// * class DynamicWorkerThreadPool -- extra threads in __Loading__ case
-
-// if someone doesn't have any task it can steal it from other (see
-// GO_threading) OR HELP him
-
 // TODO: do we need to restrict amount of opened simultaneous fd (file_descriptors)
-
-// States: NormalMode, IntensiveLoadingMode
-/*
-void TestAudioThreadPool();
-
-int MainGameSceneSetup() {
-
-  glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_LESS);
-
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glEnable(GL_BLEND);
-
-}*/
-
-//#include "executors/RenderThreadPool.h"
-//#include "loader/Model.h"
-//
-//#include "common/CollisionManager.h"
 
 // TODO: fix all #pragma & class names, cause we have some troubles now
 
@@ -66,27 +16,25 @@ int MainGameSceneSetup() {
 
 // TODO: loader/ModelPool.h
 
-#include "GLFW/glfw3.h"
+// TODO: make all constructors light-weight (add Init() at "heavy" initializing)
 
-#include <cstring>
+#include "executors/ExecutionEnvironment.h"
 
 int main() {
+  faithful::details::ExecutionEnvironment execution_environment;
+  std::cout << "__start__" << std::endl;
 
-  glfwInit();
+  execution_environment.Run();
 
-  int count;
-  const GLFWvidmode* vid_modes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
-  for (int i = 0; i < count; ++i) {
-    std::cout << vid_modes[i].width << std::endl;
-  }
+  std::cout << "__end__" << std::endl;
 
-  std::cout << "Hello, World!" << std::endl;
 //  faithful::details::RenderThreadPool render_tp_;
   // render_tp_.Run();
   //TestAudioThreadPool();
 //  if (MainGameSceneSetup()) {
 //    std::cerr << "Unable to InitRenderContext" << std::endl;
 //  }
+
   return 0;
 }
 /*

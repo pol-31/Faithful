@@ -2,22 +2,65 @@ cmake_minimum_required(VERSION 3.26)
 
 project(faithful-core)
 
-#file(GLOB_RECURSE FAITHFUL_MAIN_SOURCES ${FAITHFUL_SOURCE_DIR}/src/*.cpp)
+# TODO: file(GLOB_RECURSE FAITHFUL_MAIN_SOURCES ${FAITHFUL_SOURCE_DIR}/src/*.cpp)
 
 add_executable(faithful-core
         ../external/glad/src/glad.c
         main.cpp
-#        io/Monitor.cpp
-#        io/Window.cpp
-#        executors/AudioThreadPool.cpp
-#        ../utils/Logger.cpp
-#        loader/Music.cpp
-#        loader/Sound.cpp
-#        loader/Shader.cpp
-#        loader/Texture2D.cpp
-#        loader/Texture1D.cpp
-#        loader/Model.cpp
-#        common/Object.cpp
+
+        collision/Bvh.cpp
+        collision/Collision.cpp
+        collision/CollisionArea.cpp
+
+        common/CollisionManager.cpp
+        common/DrawManager.cpp
+        common/GlobalStateInfo.cpp
+        common/InputManager.cpp
+        common/LoadingManager.cpp
+        common/TransformableObject.cpp
+        common/UpdateManager.cpp
+
+        entities/Ambient.cpp
+        entities/Boss.cpp
+        entities/Enemy.cpp
+        entities/Furniture.cpp
+        entities/Loot.cpp
+        entities/Npc.cpp
+        entities/Obstacle.cpp
+        entities/PhenomenonArea.cpp
+
+        environment/Biome.cpp
+        environment/Map.cpp
+
+        executors/AudioThreadPool.cpp
+        executors/DisplayInteractionThreadPool.cpp
+        executors/ExecutionEnvironment.cpp
+        executors/GameLogicThreadPool.cpp
+        executors/SupportThreadPool.cpp
+
+        io/Cursor.cpp
+        io/Monitor.cpp
+        io/MonitorInfo.cpp
+        io/Window.cpp
+
+        loader/assets_data/ModelData.cpp
+        loader/assets_data/ShaderObjectData.h.cpp
+        loader/assets_data/ShaderProgramData.cpp
+        loader/assets_data/TextureData.cpp
+
+        loader/model/AnimatableModel.cpp
+        loader/model/NonAnimatableModel.cpp
+
+        loader/ModelPool.cpp
+        loader/MusicPool.cpp
+        loader/ShaderObjectPool.cpp
+        loader/ShaderProgram.cpp
+        loader/Sound.cpp
+        loader/SoundPool.cpp
+        loader/Texture.cpp
+        loader/TexturePool.cpp
+
+        player/PlayerCharacter.cpp
         ${FAITHFUL_MAIN_SOURCES})
 
 target_compile_options(faithful-core PRIVATE ${FAITHFUL_COMPILE_OPTIONS})
@@ -58,4 +101,6 @@ target_include_directories(faithful-core
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/rapidjson
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/tinygltf
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/vorbis/include
+        # TODO: not always:
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external/astc-encoder
 )
