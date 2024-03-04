@@ -1,6 +1,6 @@
 #include "Bvh.h"
 
-#include "../loader/AssetInstanceInfo.h"
+#include "Aabb.h"
 
 namespace faithful {
 namespace details {
@@ -45,7 +45,7 @@ Bvh::BVHBuildNode* Bvh::BuildRecursive(int node_id) {
     centroidBounds = Union(centroidBounds, prim.Centroid());
   int dim = centroidBounds.MaxDimension();
 
-  if (centroidBounds.max_[dim] == centroidBounds.min_[dim]) {
+  if (centroidBounds.max[dim] == centroidBounds.min[dim]) {
     node->InitLeaf(bvhPrimitives.size(), bounds);
     return node;
   } else {
@@ -124,65 +124,6 @@ Bvh::BVHBuildNode* Bvh::BuildRecursive(int node_id) {
   }
   return node;
 }
-
-void Bvh::ProcessSah() {
-  //
-}
-
-/*
-pstd::optional<ShapeIntersection> Bvh::Intersect(
-    const Ray &ray, float tMax) const {
-  if (!nodes)
-    return {};
-  pstd::optional<ShapeIntersection> si;
-  glm::vec3 invDir(1 / ray.d.x, 1 / ray.d.y, 1 / ray.d.z);
-  int dirIsNeg[3] = {int(invDir.x < 0), int(invDir.y < 0), int(invDir.z < 0)};
-  // Follow ray through BVH nodes to find primitive intersections
-  int toVisitOffset = 0, currentNodeIndex = 0;
-  int nodesToVisit[64];
-  int nodesVisited = 0;
-  while (true) {
-    ++nodesVisited;
-    const LinearBVHNode *node = &nodes[currentNodeIndex];
-    // Check ray against BVH node
-    if (node->bounds.IntersectP(ray.o, ray.d, tMax, invDir, dirIsNeg)) {
-      if (node->nPrimitives > 0) {
-        // Intersect ray with primitives in leaf BVH node
-        for (int i = 0; i < node->nPrimitives; ++i) {
-          // Check for intersection with primitive in BVH node
-          pstd::optional<ShapeIntersection> primSi =
-              primitives[node->primitivesOffset + i].Intersect(ray, tMax);
-          if (primSi) {
-            si = primSi;
-            tMax = si->tHit;
-          }
-        }
-        if (toVisitOffset == 0)
-          break;
-        currentNodeIndex = nodesToVisit[--toVisitOffset];
-
-      } else {
-        // Put far BVH node on _nodesToVisit_ stack, advance to near node
-        if (dirIsNeg[node->axis]) {
-          nodesToVisit[toVisitOffset++] = currentNodeIndex + 1;
-          currentNodeIndex = node->secondChildOffset;
-        } else {
-          nodesToVisit[toVisitOffset++] = node->secondChildOffset;
-          currentNodeIndex = currentNodeIndex + 1;
-        }
-      }
-    } else {
-      if (toVisitOffset == 0)
-        break;
-      currentNodeIndex = nodesToVisit[--toVisitOffset];
-    }
-  }
-
-  bvhNodesVisited += nodesVisited;
-  return si;
-}
-*/
-
 
 } // namespace details
 } // namespace faithful

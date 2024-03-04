@@ -8,14 +8,15 @@
 
 namespace faithful {
 namespace details {
+namespace collision {
 
-class Aabb {
+struct Aabb {
  public:
   Aabb() {
     float minNum = std::numeric_limits<float>::lowest();
     float maxNum = std::numeric_limits<float>::max();
-    min_ = {maxNum, maxNum};
-    max_ = {minNum, minNum};
+    min = {maxNum, maxNum};
+    max = {minNum, minNum};
   }
 
   Aabb(const Aabb&) = default;
@@ -23,19 +24,23 @@ class Aabb {
   Aabb& operator=(const Aabb&) = default;
   Aabb& operator=(Aabb&&) = default;
 
-  Aabb(glm::vec2 p) : min_(p), max_(p) {}
+  Aabb(glm::vec2 p)
+      : min(p),
+        max(p) {
+  }
   Aabb(glm::vec2 p1, glm::vec2 p2)
-      : min_(glm::min(p1, p2)), max_(glm::max(p1, p2)) {}
-
+      : min(glm::min(p1, p2)),
+        max(glm::max(p1, p2)) {
+  }
 
   glm::vec2 Diagonal() const {
-    return max_ - min_;
+    return max - min;
   }
   bool Empty() const {
-    return min_.x >= max_.x || min_.y >= max_.y;
+    return min.x >= max.x || min.y >= max.y;
   }
   bool Degenerate() const {
-    return min_.x > max_.x || min_.y > max_.y;
+    return min.x > max.x || min.y > max.y;
   }
 
   int MaxDimension() const {
@@ -49,97 +54,93 @@ class Aabb {
   }
 
   glm::vec2 operator[](int i) const {
-    return (i == 0) ? min_ : max_;
+    return (i == 0) ? min : max;
   }
 
   glm::vec2& operator[](int i) {
-    return (i == 0) ? min_ : max_;
+    return (i == 0) ? min : max;
   }
 
   bool operator==(const Aabb& other) const {
-    return other.min_ == min_ && other.max_ == max_;
+    return other.min == min && other.max == max;
   }
 
   bool operator!=(const Aabb& other) const {
-    return other.min_ != min_ || other.max_ != max_;
+    return other.min != min || other.max != max;
   }
 
   glm::vec2 Corner(int corner) const {
-    return {(*this)[(corner & 1)].x,
-            (*this)[(corner & 2) ? 1 : 0].y};
+    return {(*this)[(corner & 1)].x, (*this)[(corner & 2) ? 1 : 0].y};
   }
 
   glm::vec2 Lerp(glm::vec2 t) const {
-    return glm::vec2(glm::lerp(t.x, min_.x, max_.x),
-                     glm::lerp(t.y, min_.y, max_.y));
+    return glm::vec2(glm::lerp(t.x, min.x, max.x),
+                     glm::lerp(t.y, min.y, max.y));
   }
 
   glm::vec2 Offset(glm::vec2 p) const {
-    glm::vec2 o = p - min_;
-    if (max_.x > min_.x) {
-      o.x /= max_.x - min_.x;
+    glm::vec2 o = p - min;
+    if (max.x > min.x) {
+      o.x /= max.x - min.x;
     }
-    if (max_.y > min_.y) {
-      o.y /= max_.y - min_.y;
+    if (max.y > min.y) {
+      o.y /= max.y - min.y;
     }
     return o;
   }
 
-  void BoundingSphere(glm::vec2 *c, float *rad) const;
+  void BoundingSphere(glm::vec2* c, float* rad) const;
 
-  //TODO: std::string ToString() const;
+  // TODO: std::string ToString() const;
 
   /// intentionally public
-  glm::vec2 min_;
-  glm::vec2 max_;
+  glm::vec2 min;
+  glm::vec2 max;
 };
 
-inline Aabb Union(const Aabb &b1, const Aabb &b2) {
-  return {glm::min(b1.min_, b2.min_),
-          glm::max(b1.max_, b2.max_)};
+inline Aabb Union(const Aabb& b1, const Aabb& b2) {
+  return {glm::min(b1.min, b2.min), glm::max(b1.max, b2.max)};
 }
 
-inline Aabb Union(const Aabb &b, glm::vec2 p) {
-  return {glm::min(b.min_, p),
-          glm::max(b.max_, p)};
+inline Aabb Union(const Aabb& b, glm::vec2 p) {
+  return {glm::min(b.min, p), glm::max(b.max, p)};
 }
 
-inline Aabb Intersect(const Aabb &b1, const Aabb &b2) {
-  return {glm::max(b1.min_, b2.min_),
-          glm::min(b1.max_, b2.max_)};
+inline Aabb Intersect(const Aabb& b1, const Aabb& b2) {
+  return {glm::max(b1.min, b2.min), glm::min(b1.max, b2.max)};
 }
 
-inline bool Overlaps(const Aabb &ba, const Aabb &bb) {
-  bool x = (ba.max_.x >= bb.min_.x) && (ba.min_.x <= bb.max_.x);
-  bool y = (ba.max_.y >= bb.min_.y) && (ba.min_.y <= bb.max_.y);
+inline bool Overlaps(const Aabb& ba, const Aabb& bb) {
+  bool x = (ba.max.x >= bb.min.x) && (ba.min.x <= bb.max.x);
+  bool y = (ba.max.y >= bb.min.y) && (ba.min.y <= bb.max.y);
   return (x && y);
 }
 
-inline bool Inside(glm::vec2 pt, const Aabb &b) {
-  return (pt.x >= b.min_.x && pt.x <= b.max_.x &&
-          pt.y >= b.min_.y && pt.y <= b.max_.y);
+inline bool Inside(glm::vec2 pt, const Aabb& b) {
+  return (pt.x >= b.min.x && pt.x <= b.max.x && pt.y >= b.min.y &&
+          pt.y <= b.max.y);
 }
 
-inline bool Inside(const Aabb &ba, const Aabb &bb) {
-  return (ba.min_.x >= bb.min_.x && ba.max_.x <= bb.max_.x &&
-          ba.min_.y >= bb.min_.y && ba.max_.y <= bb.max_.y);
+inline bool Inside(const Aabb& ba, const Aabb& bb) {
+  return (ba.min.x >= bb.min.x && ba.max.x <= bb.max.x &&
+          ba.min.y >= bb.min.y && ba.max.y <= bb.max.y);
 }
 
-inline bool InsideExclusive(glm::vec2 pt, const Aabb &b) {
-  return (pt.x >= b.min_.x && pt.x < b.max_.x &&
-          pt.y >= b.min_.y && pt.y < b.max_.y);
+inline bool InsideExclusive(glm::vec2 pt, const Aabb& b) {
+  return (pt.x >= b.min.x && pt.x < b.max.x && pt.y >= b.min.y &&
+          pt.y < b.max.y);
 }
 
-inline Aabb Expand(const Aabb &b, float delta) {
-  return {b.min_ - glm::vec2(delta, delta),
-          b.max_ + glm::vec2(delta, delta)};
+inline Aabb Expand(const Aabb& b, float delta) {
+  return {b.min - glm::vec2(delta, delta), b.max + glm::vec2(delta, delta)};
 }
 
-void Aabb::BoundingSphere(glm::vec2 *c, float *rad) const {
-  *c = (min_ + max_) / 2.0f;
-  *rad = Inside(*c, *this) ? glm::distance(*c, max_) : 0;
+void Aabb::BoundingSphere(glm::vec2* c, float* rad) const {
+  *c = (min + max) / 2.0f;
+  *rad = Inside(*c, *this) ? glm::distance(*c, max) : 0;
 }
 
+} // namespace collision
 } // namespace details
 } // namespace faithful
 

@@ -8,7 +8,7 @@
 
 #include "Aabb.h"
 #include "../loader/ModelPool.h"
-#include "../environment/PhenomenonArea.h"
+#include "../entities/PhenomenonArea.h"
 #include "../player/PlayerCharacter.h"
 
 namespace faithful {
