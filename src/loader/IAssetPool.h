@@ -1,7 +1,7 @@
 #ifndef FAITHFUL_SRC_LOADER_IASSETPOOL_H_
 #define FAITHFUL_SRC_LOADER_IASSETPOOL_H_
 
-#include <iostream> // TODO: replace by utils/Logger.h
+#include <iostream> // TODO: replace by logger
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -16,7 +16,6 @@ namespace faithful {
 namespace details {
 namespace assets {
 
-// TODO: not thread safe by now
 template <typename T, int cache_size>
 class IAssetPool {
  public:
@@ -37,7 +36,7 @@ class IAssetPool {
       if (i.data.use_count() != 1) {
         std::cerr
             << "IAssetPool has been destroyed but some std::shared_ptr"
-            << " for IAsset-s still were active" << std::endl; // TODO: rename "IAsset-s"
+            << " for AssetBase-s still were active" << std::endl;
       }
     }
   }
@@ -59,7 +58,7 @@ class IAssetPool {
       if (found_id != -1) {
         active_.push_back(cached_[found_id]);
         return active_.back().data;
-      } else { // TODO: reuse memory from cache
+      } else { // TODO: reuse memory from cache (CacheBuffer::Older())
         ClearInactive();
         active_.push_back({{}, path});
         return LoadImpl(active_.back()); // TODO: handle if loading failed
@@ -67,6 +66,28 @@ class IAssetPool {
     }
   }
 
+  void ClearCache() {
+    cached_.Clear();
+  }
+
+  /// clean all inactive from active_ write them to cached_
+  /// so to fully deleted unused assets should
+  /// call ClearInactive() and only after ClearCache()
+  void ClearInactive() {
+    for (auto rit = active_.rbegin(); rit != active_.rend(); ++rit) {
+      if (rit->data.use_count() == 1) {
+        cached_.Add(*rit);
+      }
+    }
+    std::remove_if(active_.begin(), active_.end(), [](TrackedDataType& data) {
+      return data.data.use_count() == 1;
+    });
+  }
+
+ protected:
+  virtual DataType LoadImpl(TrackedDataType& instance_info) = 0;
+
+ private:
   int FindInActive(const std::string& path) {
     for (int i = 0; i < active_.size(); ++i) {
       if (active_[i].path == path) {
@@ -86,28 +107,6 @@ class IAssetPool {
     return -1;
   }
 
-  void ClearCache() {
-    cached_.Clear();
-  }
-
-  /// clean all inactive from active_ write them to cached_
-  void ClearInactive() {
-    for (auto rit = active_.rbegin(); rit != active_.rend(); ++rit) {
-      if (rit->data.use_count() == 1) {
-        cached_.Add(rit);
-      }
-    }
-    std::remove_if(active_.Begin(), active_.End(), [](TrackedDataType& data) {
-      return data.data.use_count() == 1;
-    });
-  }
-
- protected:
-  virtual DataType LoadImpl(TrackedDataType& instance_info) = 0;
-
-  // TODO: virtual custom data deleter
-
- private:
   ActiveDataType active_;
   CachedDataType cached_;
 };

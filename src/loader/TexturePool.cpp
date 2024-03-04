@@ -9,16 +9,16 @@
 
 #include "../executors/DisplayInteractionThreadPool.h"
 
+// TODO: ASTCENC_FLG_DECOMPRESS_ONLY
+
 namespace faithful {
 namespace details {
 namespace assets {
 
 TexturePool::TexturePool() {
-//#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
   InitContextLdr();
   InitContextHdr();
   InitContextNmap();
-//#endif
 }
 
 TexturePool::~TexturePool() {
@@ -31,58 +31,36 @@ TexturePool::~TexturePool() {
   if (context_nmap_) {
     astcenc_context_free(context_nmap_);
   }
-
-  /* UpdateManager see not how many tasks but to "circle" around the player:
-   * R1 - visible screen
-   * R2 - nearby visible - visible + 8 (in tiles total 3x3=9 tiles)
-   * R3 - should be processed but necessary
-   * R4 - if all R3 loaded we can lazy with 1 thread load from there
-   *
-   * SO:
-   *  - if there's something not loaded in R1-R2 - it's full stress loading (+ dynam tp)
-   *  - if R3 - 2 threads
-   *  - if R4 - 1 thread - 2 contexts
-   *
-   * BY DEFAULT:
-   * - 1 context for 2 threads - ldr
-   * - 1 context for 2 threads - nmap
-   * IF HDR:
-   * - + 1 context for 2 threads - hdr
-   * IF R1-R2:
-   * - +1 context for 8 threads - ldr
-   * - +1 context for 8 threads - nmap
-   * */
-
-
-
-  // TODO: in id reuse firstly glDeleteTexture of previous
-
-  // TODO: how to handle failure
-  glDeleteTextures(active_instances_.size(), opengl_ids);
 }
 
-void TexturePool::SetOpenGlContext(DisplayInteractionThreadPool* opengl_context) {
-  opengl_context_ = opengl_context;
-}
-
-void TexturePool::Assist() {
-  if (!processing_tasks_.empty()) {
-    std::lock_guard lock(mutex_processing_tasks_);
-    if (!processing_tasks_.empty()) {
-      for (auto& task : processing_tasks_) {
-        if (task.free_thread_slots != 0) {
-          --task.free_thread_slots;
-          task.working_threads_left.fetch_add(1);
-          task.decoding_function(task.free_thread_slots);
-          return;
-        }
-      }
+bool TexturePool::Assist() {
+  if (processing_tasks_.empty()) {
+    return false;
+  }
+  std::unique_lock lock(mutex_processing_tasks_);
+  if (processing_tasks_.empty()) {
+    return false;
+  }
+  for (auto it = processing_tasks_.begin(); it != processing_tasks_.end();) {
+    if (it->get()->completed) {
+      /// Since we have already acquired the mutex and
+      /// are iterating through all elements, let's maximize our efforts
+      /// - let's clean up completed tasks
+      processing_tasks_.erase(it++);
+    } else if (it->get()->free_thread_slots != 0) {
+      --(it->get()->free_thread_slots);
+      it->get()->working_threads_left += 1;
+      /// release lock and start processing
+      lock.unlock();
+      /// assist only once, we don't want to hang out there all the time
+      it->get()->Decompress(it->get()->free_thread_slots);
+      return true;
     }
   }
 }
 
-
 TexturePool::DataType TexturePool::LoadImpl(TrackedDataType& instance_info) {
+  instance_info.data->opengl_context = opengl_context_;
   /// assets/textures contain only 6x6x2 astc, so there's no need
   /// to check is for "ASTC" and block size.
   /// but we still need to get texture resolution
@@ -93,38 +71,86 @@ TexturePool::DataType TexturePool::LoadImpl(TrackedDataType& instance_info) {
   int height = header.dim_y[0] | header.dim_y[1] << 8 | header.dim_y[2] << 16;
   /// .astc always has 4 channels
   int texture_data_size = width * height * 4;
+
+  int block_count_x = (width + config::kTexCompBlockX - 1)
+                      / config::kTexCompBlockX;
+  int block_count_y = (height + config::kTexCompBlockY - 1)
+                      / config::kTexCompBlockY;
+  int comp_len = block_count_x * block_count_y * 16;
+
+  astcenc_image image;
+  image.dim_x = width;
+  image.dim_y = height;
+  image.dim_z = 1;
+
+  TextureCategory category = DeduceTextureCategory(instance_info.path);
+  if (category == TextureCategory::kHdr) {
+    comp_len *= 4; // float32 instead of u8
+    texture_data_size *= 4;
+    image.data_type = static_cast<astcenc_type>(config::kTexHdrDataType);
+  } else {
+    image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
+  }
+
   auto texture_data = std::make_unique<uint8_t[]>(texture_data_size);
   texture_file.read(reinterpret_cast<char*>(texture_data.get()),
                     texture_data_size);
-  // TODO: GL_COMPRESSED_RGBA_ASTC_6x6_KHR +
-  //  + normal_map z-coord reconstruction in shader
-  DecompressAstcTexture(instance_info, std::move(texture_data), width, height);
+  image.data = reinterpret_cast<void**>(texture_data.get());
 
-  instance_info.data->opengl_context = opengl_context_;
+  astcenc_context* context = PrepareContext(category);
 
+  auto processing_context = std::make_unique<ProcessingContext>();
+  processing_context->data = instance_info.data;
+  processing_context->context = context;
+  processing_context->category = category;
+  processing_context->compressed_data_length = comp_len;
+  processing_context->compressed_data = std::make_unique<uint8_t[]>(comp_len);
+  processing_context->image = std::move(image);
+  processing_context->swizzle = config::kTexCompSwizzle;
+
+  switch (category) {
+    case TextureCategory::kLdr:
+      processing_context->free_thread_slots = max_thread_per_ldr_;
+      break;
+    case TextureCategory::kNmap:
+      processing_context->free_thread_slots = max_thread_per_nmap_;
+      break;
+    case TextureCategory::kHdr:
+      processing_context->free_thread_slots = max_thread_per_hdr_;
+      break;
+  }
+  std::lock_guard lock(mutex_processing_tasks_);
+  processing_tasks_.push_back(std::move(processing_context));
   return instance_info.data;
 }
 
-//#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
+/* TODO:
+ *  textures loading is the slower part of assets loading, so
+ *  there we've separated actual loading and tracking,
+ *  so when we have object Texture by Load() we still need to Assist()
+ *  to process it
+ * */
+
+
 bool TexturePool::InitContextLdr() {
   using namespace faithful;  // for namespace faithful::config
   astcenc_config config;
-  config.block_x = config::tex_comp_block_x;
-  config.block_y = config::tex_comp_block_y;
-  config.block_z = config::tex_comp_block_z;
-  config.profile = config::tex_comp_profile_ldr;
+  config.block_x = config::kTexCompBlockX;
+  config.block_y = config::kTexCompBlockY;
+  config.block_z = config::kTexCompBlockZ;
+  config.profile = config::kTexCompProfileLdr;
 
   astcenc_error status = astcenc_config_init(
-      config::tex_comp_profile_ldr, config::tex_comp_block_x,
-      config::tex_comp_block_y, config::tex_comp_block_z,
-      config::tex_comp_quality, 0, &config);
+      config::kTexCompProfileLdr, config::kTexCompBlockX,
+      config::kTexCompBlockY, config::kTexCompBlockZ,
+      config::kTexCompQuality, 0, &config);
   if (status != ASTCENC_SUCCESS) {
     std::cout << "Error: astc-enc ldr codec config init failed: "
               << astcenc_get_error_string(status) << std::endl;
     return false;
   }
 
-  status = astcenc_context_alloc(&config, config::threads_per_texture,
+  status = astcenc_context_alloc(&config, max_thread_per_hdr_,
                                  &context_ldr_);
   if (status != ASTCENC_SUCCESS) {
     std::cout << "Error: astc-enc ldr codec context alloc failed: "
@@ -136,22 +162,22 @@ bool TexturePool::InitContextLdr() {
 bool TexturePool::InitContextHdr() {
   using namespace faithful;  // for namespace faithful::config
   astcenc_config config;
-  config.block_x = config::tex_comp_block_x;
-  config.block_y = config::tex_comp_block_y;
-  config.block_z = config::tex_comp_block_z;
-  config.profile = config::tex_comp_profile_hdr;
+  config.block_x = config::kTexCompBlockX;
+  config.block_y = config::kTexCompBlockY;
+  config.block_z = config::kTexCompBlockZ;
+  config.profile = config::kTexCompProfileHdr;
 
   astcenc_error status = astcenc_config_init(
-      config::tex_comp_profile_hdr, config::tex_comp_block_x,
-      config::tex_comp_block_y, config::tex_comp_block_z,
-      config::tex_comp_quality, 0, &config);
+      config::kTexCompProfileHdr, config::kTexCompBlockX,
+      config::kTexCompBlockY, config::kTexCompBlockZ,
+      config::kTexCompQuality, 0, &config);
   if (status != ASTCENC_SUCCESS) {
     std::cout << "Error: astc-enc hdr codec config init failed: "
               << astcenc_get_error_string(status) << std::endl;
     return false;
   }
 
-  status = astcenc_context_alloc(&config, config::threads_per_texture,
+  status = astcenc_context_alloc(&config, max_thread_per_hdr_,
                                  &context_hdr_);
   if (status != ASTCENC_SUCCESS) {
     std::cout << "Error: astc-enc hdr codec context alloc failed: "
@@ -163,10 +189,10 @@ bool TexturePool::InitContextHdr() {
 bool TexturePool::InitContextNmap() {
   using namespace faithful;  // for namespace faithful::config
   astcenc_config config;
-  config.block_x = config::tex_comp_block_x;
-  config.block_y = config::tex_comp_block_y;
-  config.block_z = config::tex_comp_block_z;
-  config.profile = config::tex_comp_profile_ldr;
+  config.block_x = config::kTexCompBlockX;
+  config.block_y = config::kTexCompBlockY;
+  config.block_z = config::kTexCompBlockZ;
+  config.profile = config::kTexCompProfileLdr;
 
   unsigned int flags{0};
   flags |= ASTCENC_FLG_MAP_NORMAL;
@@ -174,16 +200,16 @@ bool TexturePool::InitContextNmap() {
   config.flags |= flags;
 
   astcenc_error status = astcenc_config_init(
-      config::tex_comp_profile_ldr, config::tex_comp_block_x,
-      config::tex_comp_block_y, config::tex_comp_block_z,
-      config::tex_comp_quality, flags, &config);
+      config::kTexCompProfileLdr, config::kTexCompBlockX,
+      config::kTexCompBlockY, config::kTexCompBlockZ,
+      config::kTexCompQuality, flags, &config);
   if (status != ASTCENC_SUCCESS) {
     std::cout << "Error: astc-enc nmap codec config init failed: "
               << astcenc_get_error_string(status) << std::endl;
     return false;
   }
 
-  status = astcenc_context_alloc(&config, config::threads_per_texture,
+  status = astcenc_context_alloc(&config, max_thread_per_nmap_,
                                  &context_nmap_);
   if (status != ASTCENC_SUCCESS) {
     std::cout << "Error: astc-enc nmap codec context alloc failed: "
@@ -192,85 +218,50 @@ bool TexturePool::InitContextNmap() {
   }
   return true;
 }
-//#endif
 
-void TexturePool::DecompressAstcTexture(
-    TrackedDataType& instance_info,
-    std::unique_ptr<uint8_t[]> data,
-    int width, int height) {
-  using namespace faithful;  // for namespace faithful::config
-  int block_count_x = (width + config::tex_comp_block_x - 1)
-                      / config::tex_comp_block_x;
-  int block_count_y = (height + config::tex_comp_block_y - 1)
-                      / config::tex_comp_block_y;
-  int comp_len = block_count_x * block_count_y * 16;
+void TexturePool::ProcessingContext::MakeComplete() {
+  /// removing this task from TexturePool::processing_tasks_
+  /// performed inside the Assist()
 
-  TextureCategory category = DeduceTextureCategory(instance_info.path);
-
-  if (category == TextureCategory::kHdr) {
-    comp_len *= 4; // not u8 but float32
+  if (!success) {
+    std::cerr << "TexturePool threads can't decompress texture" << std::endl;
+    return;
   }
-  auto comp_data = std::make_unique<uint8_t[]>(comp_len);
 
-  astcenc_image image;
-  image.dim_x = width;
-  image.dim_y = height;
-  image.dim_z = 1;
-
-  if (category == TextureCategory::kHdr) {
-    image.data_type = static_cast<astcenc_type>(config::tex_hdr_data_type);
-  } else {
-    image.data_type = static_cast<astcenc_type>(config::tex_ldr_data_type);
-  }
-  image.data = reinterpret_cast<void**>(data.get());
-
-  astcenc_context* context = PrepareContext(category);
-
-  ProcessingContext processing_context;
-  processing_context.data = instance_info.data;
-  processing_context.context = context;
-  processing_context.compressed_data_length = comp_len;
-  processing_context.compressed_data = std::move(comp_data);
-  processing_context.image = std::move(image);
-  processing_context.swizzle = config::tex_comp_swizzle;
-  processing_context.decoding_function = [](int thread_id) {
-    auto decode_fail = astcenc_decompress_image(
-        context, comp_data.get(), comp_len,
-        &image, &config::tex_comp_swizzle, thread_id);
-
-    if (decode_fail != ASTCENC_SUCCESS) {
-      // set processing_context.success = false
-      return;
+  /// pass by copy, because of std::shared_ptr class member
+  data->opengl_context->Put([=] { // capturing by copy - data is std::shared_ptr
+    glGenTextures(1, &data->id);
+    glBindTexture(GL_TEXTURE_2D, data->id);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    if (category == TextureCategory::kHdr) {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, image.dim_x, image.dim_y,
+                   0, GL_RGB, GL_FLOAT, data.get());
+    } else {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_UNSIGNED_BYTE,
+                   image.dim_x, image.dim_y, 0, GL_RGBA,
+                   GL_UNSIGNED_BYTE, data.get());
+      glGenerateMipmap(GL_TEXTURE_2D);
     }
+    data->ready = true;
+    // TODO: handle OpenGL call failure?
+  });
+  completed = true;
+}
 
-    // if (working_threads_left != 1) {
-
-    // TODO: if (other.done) ...
-    //  render thread pool push:
-    opengl_context_->Put([]{
-      glGenTextures(1, &instance_info.data->id);
-      glBindTexture(GL_TEXTURE_2D, instance_info.data->id);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      if (category == TextureCategory::kHdr) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height,
-                     0, GL_RGB, GL_FLOAT, data.get());
-      } else {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_UNSIGNED_BYTE,
-                     width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.get());
-        glGenerateMipmap(GL_TEXTURE_2D);
-      }
-      // TODO: if !GL_CALL or !DecompressAstcTexture()
-      instance_info.data->ready = true;
-    });
-  };
-
-  processing_context.context = ;
-  processing_context.context = ;
-
-  processing_tasks_.push_back(processing_context);
+void TexturePool::ProcessingContext::Decompress(int thread_id) {
+  auto decode_fail = astcenc_decompress_image(
+      context, compressed_data.get(), compressed_data_length,
+      &image, &swizzle, thread_id);
+  if (decode_fail != ASTCENC_SUCCESS) {
+    success = false;
+  }
+  if (working_threads_left.fetch_sub(1) == 1) { // if other done
+    MakeComplete();
+  }
 }
 
 astcenc_context* TexturePool::PrepareContext(
@@ -280,11 +271,11 @@ astcenc_context* TexturePool::PrepareContext(
     case TextureCategory::kLdr:
       context = context_ldr_;
       break;
-    case TextureCategory::kHdr:
-      context = context_hdr_;
-      break;
     case TextureCategory::kNmap:
       context = context_nmap_;
+      break;
+    case TextureCategory::kHdr:
+      context = context_hdr_;
       break;
   }
   astcenc_decompress_reset(context);
@@ -310,12 +301,12 @@ bool TexturePool::DetectHdr(const std::string& filename) {
   return filename.compare(suffixPos, std::string::npos, "_hdr") == 0;
 }
 bool TexturePool::DetectNmap(const std::string& filename) {
-  // len of "_nmap" + at least 1 char for actual name
+  // len of "_rrrg" + at least 1 char for actual name
   if (filename.length() < 6) {
     return false;
   }
   size_t suffixPos = filename.length() - 5;
-  return filename.compare(suffixPos, std::string::npos, "_nmap") == 0; // TODO: or _rrrg ?
+  return filename.compare(suffixPos, std::string::npos, "_rrrg") == 0;
 }
 
 } // namespace assets

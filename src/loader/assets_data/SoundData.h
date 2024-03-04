@@ -11,9 +11,12 @@
 
 namespace faithful {
 namespace details {
+
+class AudioThreadPool;
+
 namespace assets {
 
-struct AudioDataBase {
+struct SoundData {
   std::string filename;
   int channels;
   int sample_rate;
@@ -21,6 +24,7 @@ struct AudioDataBase {
   ALsizei size;
   ALenum format;
   std::unique_ptr<char> data;
+  AudioThreadPool* audio_thread_pool;
 };
 
 } // namespace assets

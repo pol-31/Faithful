@@ -1,5 +1,6 @@
 #include "MusicPool.h"
 
+#include <cstring>
 #include <fstream>
 #include <iostream> // todo: replace by Logger
 #include <limits>
@@ -33,9 +34,7 @@ std::size_t OggReadCallback(void* ptr, std::size_t size,
     }
   }
 
-  //  auto buffer = std::make_unique<char>(length);
-
-  char* moreData = new char[length];
+  auto moreData = std::make_unique<char[]>(length);
 
   music_fstream.clear();
   music_fstream.seekg(audio->size_consumed);
@@ -51,9 +50,7 @@ std::size_t OggReadCallback(void* ptr, std::size_t size,
   }
   audio->size_consumed += length;
 
-  std::memcpy(ptr, &moreData[0], length);
-
-  delete[] moreData;
+  std::memcpy(ptr, moreData.get(), length);
 
   music_fstream.clear();
   return length;
@@ -90,65 +87,44 @@ long OggTellCallback(void* datasource) {
   return audio->size_consumed;
 }
 
-MusicPool::MusicPool() {
-  for (int i = 0; i < faithful::config::max_active_music_num; ++i) {
-    active_instances_[i].internal_id = i;
-  }
-}
+MusicPool::DataType MusicPool::LoadImpl(
+    typename Base::TrackedDataType& instance_info) {
+  auto& music_stream = instance_info.data->fstream;
 
-/// at return value internal_id coincides external_id for Music
-AssetInstanceInfo MusicPool::Load(std::string&& music_path) {
-  auto [sound_id, ref_counter, is_new_id] = Base::AcquireId(music_path);
-  if (sound_id == -1) {
-    return {"", nullptr, default_id_, default_id_};
-  } else if (!is_new_id) {
-    return {std::move(music_path), ref_counter, sound_id, sound_id};
-  }
-  if (!LoadMusicData(sound_id)) {
-    return {"", nullptr, default_id_, default_id_};
-  }
-  return {std::move(music_path), ref_counter, sound_id, sound_id};
-}
-
-bool MusicPool::LoadMusicData(int music_id) {
-  auto& found_data = music_heap_data_[music_id];
-
-  auto& music_stream = found_data.fstream;
-
-  found_data.filename = active_instances_[music_id].path;
-  music_stream.open(found_data.filename, std::ios::binary);
+  instance_info.data->filename = instance_info.path;
+  music_stream.open(instance_info.data->filename, std::ios::binary);
   if(!music_stream.is_open()) {
     std::cerr << "MusicManager::LoadMusicData error: couldn't open file"
               << std::endl;
-    return false;
+    std::terminate();
   }
 
-  ResetStream(music_stream, found_data);
+  ResetStream(music_stream, *instance_info.data);
 
-  if(ov_open_callbacks(reinterpret_cast<void*>(&found_data),
-                        &found_data.ogg_vorbis_file, nullptr, -1,
+  if(ov_open_callbacks(reinterpret_cast<void*>(&*instance_info.data), // not sure &*
+                        &instance_info.data->ogg_vorbis_file, nullptr, -1,
                         GetOggCallbacks()) < 0) {
     std::cerr << "ERROR: Could not ov_open_callbacks" << std::endl;
-    return false;
+    std::terminate();
   }
 
-  vorbis_info* vorbis_info = ov_info(&found_data.ogg_vorbis_file, -1);
+  vorbis_info* vorbis_info = ov_info(&instance_info.data->ogg_vorbis_file, -1);
 
-  found_data.channels = vorbis_info->channels;
-  found_data.bits_per_sample = 16;
-  found_data.sample_rate = vorbis_info->rate;
+  instance_info.data->channels = vorbis_info->channels;
+  instance_info.data->bits_per_sample = 16;
+  instance_info.data->sample_rate = vorbis_info->rate;
 
   if(CheckStreamErrors(music_stream)) {
-    return false;
+    std::terminate();
   }
 
-  ALenum format = DeduceMusicFormat(found_data);
+  ALenum format = DeduceMusicFormat(*instance_info.data);
   if (format == AL_NONE) {
-    return false;
+    std::terminate();
   } else {
-    found_data.format = format;
+    instance_info.data->format = format;
   }
-  return true;
+  return instance_info.data;
 }
 
 bool MusicPool::CheckStreamErrors(std::ifstream& stream) {
@@ -196,15 +172,15 @@ ALenum MusicPool::DeduceMusicFormat(const MusicData& music_data) {
   if (float_ext_supported) {
     if (bits_per_sample == 8) {
       if (channels == 1) {
-        return AL_FORMAT_MONO_float32;
+        return AL_FORMAT_MONO_FLOAT32;
       } else if (channels == 2) {
-        return AL_FORMAT_STEREO_float32;
+        return AL_FORMAT_STEREO_FLOAT32;
       }
     } else if (bits_per_sample == 16) {
       if (channels == 1) {
-        return AL_FORMAT_MONO_float32;
+        return AL_FORMAT_MONO_FLOAT32;
       } else if (channels == 2) {
-        return AL_FORMAT_STEREO_float32;
+        return AL_FORMAT_STEREO_FLOAT32;
       }
     }
   } else {

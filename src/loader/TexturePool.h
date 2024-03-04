@@ -1,38 +1,30 @@
 #ifndef FAITHFUL_SRC_LOADER_TEXTUREPOOL_H_
 #define FAITHFUL_SRC_LOADER_TEXTUREPOOL_H_
 
-#include <array>
 #include <atomic>
 #include <memory>
-#include <string>
-#include <queue>
-
 #include <mutex>
+#include <string>
 
-//#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
 #include <Source/astcenc.h>
-//#endif
 
 #include "assets_data/TextureData.h"
+#include "../common/OpenGlContextAwareBase.h"
 
 #include "IAssetPool.h"
 #include "../../config/Loader.h"
-
 #include "../../utils/Function.h"
 
 namespace faithful {
 namespace details {
-
-class DisplayInteractionThreadPool;
-
 namespace assets {
 
-/// should be only 1 instance for the entire program
 class TexturePool
-    : public IAssetPool<TextureData, faithful::config::texture_cache_size> {
+    : public IAssetPool<TextureData, faithful::config::kTextureCacheSize>,
+      public OpenGlContextAwareBase {
  public:
-  using Base = IAssetPool<TextureData, faithful::config::texture_cache_size>;
-  using DataType = Base::DataType;
+  using Base = IAssetPool<TextureData, faithful::config::kTextureCacheSize>;
+  using DataType = typename Base::DataType;
 
   TexturePool();
   ~TexturePool();
@@ -41,15 +33,22 @@ class TexturePool
   TexturePool(const TexturePool&) = delete;
   TexturePool& operator=(const TexturePool&) = delete;
 
-  /// not movable (because of mutexes)
+  /// not movable (because of mutex)
   TexturePool(TexturePool&&) = delete;
   TexturePool& operator=(TexturePool&&) = delete;
 
-  void SetOpenGlContext(DisplayInteractionThreadPool* opengl_context);
-
-  void Assist();
+  /// returns true if there was executed a task,
+  /// otherwise false, what means all have been already processed
+  /// this is important for LoadingManager to understand phase of loading:
+  /// normal or stress
+  bool Assist();
 
  private:
+
+  int max_thread_per_hdr_ = 2;
+  int max_thread_per_ldr_ = 4;
+  int max_thread_per_nmap_ = 4;
+
   enum class TextureCategory {
     kLdr,
     kHdr,
@@ -66,19 +65,12 @@ class TexturePool
     uint8_t dim_z[3];
   };
 
-  // TODO: Is it blocking ? <<-- add thread-safety
+  /// thread-safe
   DataType LoadImpl(TrackedDataType& instance_info) override;
 
-
-//#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
   bool InitContextLdr();
   bool InitContextHdr();
   bool InitContextNmap();
-//#endif
-
-  void DecompressAstcTexture(TrackedDataType& instance_info,
-                             std::unique_ptr<uint8_t[]> data,
-                             int width, int height);
 
   astcenc_context* PrepareContext(TextureCategory category);
 
@@ -87,37 +79,46 @@ class TexturePool
   bool DetectHdr(const std::string& filename);
   bool DetectNmap(const std::string& filename);
 
-  struct ProcessingContext {
+  class ProcessingContext {
+   public:
     TexturePool::DataType data;
-    folly::Function<void(int)> decoding_function;
     astcenc_context* context;
+    TextureCategory category;
     int compressed_data_length;
     std::unique_ptr<uint8_t[]> compressed_data;
-    astcenc_image image; // width, height, decompressed_data
+    astcenc_image image; // + width, height, decompressed_data
     astcenc_swizzle swizzle;
 
-    std::atomic_bool success = false;
+    /// why not atomic:
+    /// - access to write is only to set false (nobody set true and
+    ///     it doesn't matters in which order threads set false)
+    /// - accessed to read only after all threads complete execution
+    ///     (nobody can write to it)
+    bool success = true;
 
-    // 2 or 8 -- not atomic, because in Assist() it Guarded by mutex
+    /// not atomic because accessed only by DecompressAstcTexture which
+    /// is for one thread only OR under the mutex in Assist()
     int free_thread_slots;
-    std::atomic<int> working_threads_left;
+    std::atomic<int> working_threads_left = 0;
+
+    bool completed = false;
+
+    void Decompress(int thread_id);
+
+   private:
+    void MakeComplete();
   };
 
   std::mutex mutex_processing_tasks_;
-  std::vector<ProcessingContext> processing_tasks_;
+  std::vector<std::unique_ptr<ProcessingContext>> processing_tasks_;
 
-  DisplayInteractionThreadPool* opengl_context_ = nullptr;
-
-
-//#ifndef FAITHFUL_OPENGL_SUPPORT_ASTC
   astcenc_context* context_ldr_ = nullptr;
   astcenc_context* context_hdr_ = nullptr;
   astcenc_context* context_nmap_ = nullptr;
-//#endif
 };
 
 } // namespace assets
 } // namespace details
-}  // namespace faithfu
+} // namespace faithful
 
 #endif  // FAITHFUL_SRC_LOADER_TEXTUREPOOL_H_

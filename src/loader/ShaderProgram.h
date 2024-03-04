@@ -1,31 +1,46 @@
 #ifndef FAITHFUL_SRC_LOADER_SHADERPROGRAM_H_
 #define FAITHFUL_SRC_LOADER_SHADERPROGRAM_H_
 
-#include "glad/glad.h"
+#include "AssetBase.h"
+#include "assets_data/ShaderProgramData.h"
 
-#include "IAsset.h"
-#include "../config/Loader.h"
-
-#include "ShaderObject.h"
+#include "../common/OpenGlContextAwareBase.h"
 
 namespace faithful {
-
 namespace details {
 namespace assets {
 
-class ShaderPool;
+class ShaderObjectPool;
 
 } // namespace assets
 } // namespace details
 
-class ShaderProgram : public details::assets::IAsset {
+class ShaderProgram
+    : public details::assets::AssetBase<details::assets::ShaderProgramData>,
+      public details::assets::OpenGlContextAwareBase {
  public:
-  using Base = details::assets::IAsset;
+  using Base = details::assets::AssetBase<details::assets::ShaderProgramData>;
   using Base::Base;
   using Base::operator=;
 
-  ShaderProgram(details::RefCounter* ref_counter, GLuint id,
-                details::assets::ShaderPool* shader_manager);
+  GLuint GetId() const {
+    return data_->id;
+  }
+
+  bool Ready() const {
+    return data_->ready;
+  }
+
+  bool Baked() const {
+    return data_->baked;
+  }
+
+  details::assets::ProgramShaders GetProgramShaders() const {
+    return data_->shaders;
+  }
+
+  void SetShaderObjectPool(details::assets::ShaderObjectPool*
+                               shader_object_pool);
 
   void Bind();
 
@@ -125,32 +140,15 @@ class ShaderProgram : public details::assets::IAsset {
   inline void SetUniformMat4x3v(const GLchar* name, GLsizei count,
                                 GLboolean transpose, const GLfloat* value);
 
+  static void CheckValidity(GLuint id);
+
  private:
-  struct ProgramShaders {
-    ShaderObject vertex;
-    ShaderObject fragment;
-    ShaderObject geometry;
-    ShaderObject tessellation_control;
-    ShaderObject tessellation_evaluation;
-    ShaderObject compute;
-  };
-
-  bool IsValidProgram() noexcept;
-
-  using Base::internal_id_;
-
-  details::assets::ShaderPool* shader_manager_;
-
-  /// there is possible only 6 types of shader by now
-  /// they comes in such order: vert, frag, geom, tess_control, tess_eval, comp
-  ProgramShaders shaders_;
-
-  /// if baked we can't attach shader objects
-  bool baked_ = false;
+  details::assets::ShaderObjectPool* shader_object_pool_;
+  using Base::data_;
 };
 
 }  // namespace faithful
 
-#include "Shader-inl.h"
+#include "ShaderProgram-inl.h"
 
 #endif  // FAITHFUL_SRC_LOADER_SHADERPROGRAM_H_

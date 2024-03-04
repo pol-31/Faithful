@@ -5,11 +5,18 @@
 
 namespace faithful {
 namespace details {
+
+class DisplayInteractionThreadPool;
+
 namespace assets {
 
 struct ShaderObjectData {
-  GLint id;
   GLenum type;
+  GLuint id = 0;
+  bool ready = false;
+  DisplayInteractionThreadPool* opengl_context = nullptr;
+
+  ~ShaderObjectData();
 };
 
 } // namespace assets

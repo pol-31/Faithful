@@ -1,15 +1,11 @@
 #ifndef FAITHFUL_SRC_LOADER_SOUNDPOOL_H_
 #define FAITHFUL_SRC_LOADER_SOUNDPOOL_H_
 
-#include <array>
-#include <string>
-
 #include <AL/al.h>
 
 #include "IAssetPool.h"
-#include "AssetInstanceInfo.h"
-#include "../config/Loader.h"
-#include "AudioData.h"
+#include "../../config/Loader.h"
+#include "assets_data/SoundData.h"
 
 namespace faithful {
 namespace details {
@@ -18,13 +14,14 @@ class AudioThreadPool;
 
 namespace assets {
 
-/// should be only 1 instance for the entire program
-class SoundPool : public IAssetPool<faithful::config::max_active_sound_num> {
+class SoundPool
+    : public IAssetPool<SoundData, faithful::config::kSoundCacheSize> {
  public:
-  using Base = IAssetPool<faithful::config::max_active_sound_num>;
+  using Base = IAssetPool<SoundData, faithful::config::kSoundCacheSize>;
+  using DataType = typename Base::DataType;
 
-  SoundPool();
-  ~SoundPool() = default;
+  SoundPool() = delete;
+  SoundPool(AudioThreadPool* audio_thread_pool);
 
   /// not copyable
   SoundPool(const SoundPool&) = delete;
@@ -33,13 +30,6 @@ class SoundPool : public IAssetPool<faithful::config::max_active_sound_num> {
   /// movable
   SoundPool(SoundPool&&) = default;
   SoundPool& operator=(SoundPool&&) = default;
-
-  // TODO: Is it blocking ? <<-- add thread-safety
-  AssetInstanceInfo Load(std::string&& sound_path);
-
- protected:
-  friend class faithful::details::AudioThreadPool;
-  std::array<SoundData, faithful::config::max_active_sound_num> sound_heap_data_;
 
  private:
   struct WavHeader {
@@ -58,16 +48,15 @@ class SoundPool : public IAssetPool<faithful::config::max_active_sound_num> {
     uint32_t subchunk2_size;
   };
 
-  bool LoadSoundData(int sound_id);
+  DataType LoadImpl(typename Base::TrackedDataType& instance_info) override;
+
   ALenum DeduceSoundFormat(const WavHeader& header);
 
-  using Base::active_instances_;
-  using Base::free_instances_;
-  using Base::default_id_;
+  AudioThreadPool* audio_thread_pool_;
 };
 
-}  // namespace assets
-}  // namespace details
+} // namespace assets
+} // namespace details
 } // namespace faithful
 
 #endif  // FAITHFUL_SRC_LOADER_SOUNDPOOL_H_

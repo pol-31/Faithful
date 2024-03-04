@@ -1,6 +1,8 @@
 #ifndef FAITHFUL_SRC_LOADER_ASSETBASE_H_
 #define FAITHFUL_SRC_LOADER_ASSETBASE_H_
 
+#include <memory>
+
 namespace faithful {
 namespace details {
 namespace assets {
@@ -17,17 +19,6 @@ class AssetBase {
   AssetBase& operator=(AssetBase&& other) = default;
 
   AssetBase(std::shared_ptr<T> data) : data_(data) {}
-
-  typename std::remove_extent_t<T>& GetData() {
-    return *data_.data;
-  }
-  const typename std::remove_extent_t<T>& GetData() const {
-    return *data_.data;
-  }
-
-  int GetId() const {
-    return data_.id;
-  }
 
  protected:
   std::shared_ptr<T> data_;

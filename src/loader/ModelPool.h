@@ -2,76 +2,149 @@
 #define FAITHFUL_SRC_LOADER_MODELPOOL_H_
 
 #include <string>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <vector>
 
-#include "AssetInstanceInfo.h"
+#include "../common/OpenGlContextAwareBase.h"
+#include "IAssetPool.h"
+#include "../../../config/Loader.h"
 
-#include "../entities/EntityTraits.h"
-#include "../config/Entities.h"
+#include "../entities/Ambient.h"
+#include "../entities/Boss.h"
+#include "../entities/Enemy.h"
+#include "../entities/Furniture.h"
+#include "../entities/Loot.h"
+#include "../entities/Npc.h"
+#include "../entities/Obstacle.h"
 
-#include "model/CreatureModelPools.h"
-#include "model/FurnitureModelPools.h"
-#include "model/ImmovableModelPools.h"
+#include "assets_data/ModelData.h"
+
+#define TINYGLTF_USE_RAPIDJSON_CRTALLOCATOR // TODO:
 
 namespace faithful {
 namespace details {
 namespace assets {
 
-/// Wrapper for all model types, serves as a connection point between
-/// user interface & implementation
-/// Handles all vao, vbo
-/// should be only 1 instance for the entire program
+class TexturePool;
+class SoundPool;
 
-// TODO: vao, vbo, ubo, etc...
-//  unsigned int vao_ = 0;
-//  unsigned int vbo_ = 0;
-//  unsigned int ebo_ = 0;
-//  unsigned int ebo_idx_num_ = 0;
-
-class ModelPool {
+/// Wrapper for all model types, serves as:
+///  - a connection point between user interface & implementation
+///  - a storage for data (other classes take models refs / copies from there)
+/// private inheritance from IAssetPool - we don't want Load(std::string),
+/// but other mechanic still useful
+class ModelPool:
+    private IAssetPool<ModelData, faithful::config::kModelCacheSize>,
+    public OpenGlContextAwareBase {
  public:
-  ModelPool();
-  ~ModelPool();
+  using Base = IAssetPool<ModelData, faithful::config::kModelCacheSize>;
+  using DataType = typename Base::DataType;
+
+  ModelPool() = delete;
+  ModelPool(SoundPool* sound_pool, TexturePool* texture_pool);
 
   /// not copyable
   ModelPool(const ModelPool&) = delete;
   ModelPool& operator=(const ModelPool&) = delete;
 
-  /// movable
-  ModelPool(ModelPool&&) = default;
-  ModelPool& operator=(ModelPool&&) = default;
+  /// not movable (because of mutex)
+  ModelPool(ModelPool&&) = delete;
+  ModelPool& operator=(ModelPool&&) = delete;
 
-  // TODO: Is it blocking ? <<-- add thread-safety
-  AssetInstanceInfo Load(std::string&& model_path, EntityType type_tag);
+  std::shared_ptr<ModelData> Load(int model_id);
+
+  /// returns true if there was executed a task,
+  /// otherwise false, what means all have been already processed
+  /// this is important for LoadingManager to understand phase of loading:
+  /// normal or stress
+  bool Assist();
+
+  void ClearModelCache();
+  void ClearModelInactive();
 
  private:
-  /// We've separated managing of types & instances, because
-  /// they are absolutely different things:
-  /// type: responsible for loading/uploading from memory, stores
-  ///       general for model info like vertex data, normals, materials
-  /// instance: responsible for distinct ubo/shader data, because
-  ///           at one point of time different instances might have different poses
+  struct ModelFileInfo {
+    std::string name;
+    std::string path;
+    std::vector<std::string> sound_paths;
+    char type;
+    int id;
+  };
 
-  /// unique types
-  CreatureModelTypePool<config::max_types::kAmbient> ambient_types_;
-  CreatureModelTypePool<config::max_types::kBoss> boss_types_;
-  CreatureModelTypePool<config::max_types::kEnemy> enemy_types_;
-  FurnitureModelTypePool<config::max_types::kFurniture> furniture_types_;
-  ImmovableModelTypePool<config::max_types::kLoot> loot_types_;
-  CreatureModelTypePool<config::max_types::kNPC> npc_types_;
-  ImmovableModelTypePool<config::max_types::kObstacle> obstacle_types_;
+  class ProcessingContext {
+   public:
+    tinygltf::Model model;
+    std::shared_ptr<ModelData> model_data;
+    ModelFileInfo* model_info;
 
-  /// unique instances
-  CreatureModelInstancePool<config::max_instances::kAmbient> ambient_instances_;
-  CreatureModelInstancePool<config::max_instances::kBoss> boss_instances_;
-  CreatureModelInstancePool<config::max_instances::kEnemy> enemy_instances_;
-  FurnitureModelInstancePool<config::max_instances::kFurniture> furniture_instances_;
-  ImmovableModelInstancePool<config::max_instances::kLoot> loot_instances_;
-  CreatureModelInstancePool<config::max_instances::kNPC> npc_instances_;
-  ImmovableModelInstancePool<config::max_instances::kObstacle> obstacle_instances_;
+    void Process();
+
+   private:
+    bool LoadModelFile(std::string filename);
+
+    /// collecting vertex data for computing bounding shapes
+    std::vector<glm::vec3> CollectModelVertices();
+
+    /// generating of vao / vbo, should be called from opengl_context
+    void BindMesh(std::map<int, GLuint>& vbos,
+                  tinygltf::Mesh &mesh);
+
+    void BindModelNodes(std::map<int, GLuint>& vbos,
+                        tinygltf::Node &node);
+
+    std::pair<GLuint, std::map<int, GLuint>> BindModel();
+  };
+
+  DataType LoadImpl(typename Base::TrackedDataType& instance_info) override {
+    return instance_info.data;
+  }
+
+  void Init();
+
+  void LoadTextures(tinygltf::Model& model, Material& material);
+
+  SoundPool* sound_pool_;
+  TexturePool* texture_pool_;
+
+  // TODO: std::unique_ptr<char[]> collision_buffer_;
+
+  /// "all" related to all from Faithful/assets/main/ with extension .gltf
+  /// initially sorted (at Init())
+  std::vector<ModelFileInfo> all_models_;
+
+  std::vector<Ambient> ambient_models_;
+  std::vector<Boss> boss_models_;
+  std::vector<Enemy> enemy_models_;
+  std::vector<Furniture> furniture_models_;
+  std::vector<Loot> loot_models_;
+  std::vector<Npc> npc_models_;
+  std::vector<Obstacle> obstacle_models_;
+
+  std::mutex mutex_processing_tasks_;
+  std::vector<std::unique_ptr<ProcessingContext>> processing_tasks_;
 };
+
+/// we're using only "url" property, but
+/// load inside the LoadTextures() with texture_pool_
+bool LoadImageData(tinygltf::Image *image, const int image_idx, std::string *err,
+                   std::string *warn, int req_width, int req_height,
+                   const unsigned char *bytes, int size, void *user_data) {
+  (void)image;
+  (void)image_idx;
+  (void)err;
+  (void)warn;
+  (void)req_width;
+  (void)req_height;
+  (void)bytes;
+  (void)size;
+  (void)user_data;
+  return true;
+}
 
 } // namespace assets
 } // namespace details
-}  // namespace faithful
+} // namespace faithful
 
 #endif  // FAITHFUL_SRC_LOADER_MODELPOOL_H_

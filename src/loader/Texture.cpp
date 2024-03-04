@@ -5,7 +5,7 @@
 namespace faithful {
 
 void Texture::Bind() {
-  glBindTexture(GL_TEXTURE_2D, internal_id_);
+  glBindTexture(GL_TEXTURE_2D, data_->id);
 }
 
 } // namespace faithful

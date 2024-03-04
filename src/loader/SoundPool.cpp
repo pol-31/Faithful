@@ -1,76 +1,59 @@
 #include "SoundPool.h"
 
-#include <array>
 #include <fstream>
 #include <iostream> // todo: replace by Logger
 #include <string>
 
 #include <AL/alext.h>
 
-#include "IAsset.h"
-
 namespace faithful {
 namespace details {
 namespace assets {
 
-SoundPool::SoundPool() {
-  for (int i = 0; i < faithful::config::max_active_sound_num; ++i) {
-    active_instances_[i].internal_id = i;
-  }
-}
+SoundPool::SoundPool(AudioThreadPool* audio_thread_pool_)
+    : audio_thread_pool_(audio_thread_pool_) {}
 
-/// at return value internal_id coincides external_id for Sound
-AssetInstanceInfo SoundPool::Load(std::string&& sound_path) {
-  auto [sound_id, ref_counter, is_new_id] = Base::AcquireId(sound_path);
-  if (sound_id == -1) {
-    return {"", nullptr, default_id_, default_id_};
-  } else if (!is_new_id) {
-    return {std::move(sound_path), ref_counter, sound_id, sound_id};
-  }
-  if (!LoadSoundData(sound_id)) {
-    return {"", nullptr, default_id_, default_id_};
-  }
-  return {std::move(sound_path), ref_counter, sound_id, sound_id};
-}
-
-bool SoundPool::LoadSoundData(int sound_id) {
-  auto& found_data = sound_heap_data_[sound_id];
-
-  auto sound_path = active_instances_[sound_id].path;
+SoundPool::DataType SoundPool::LoadImpl(
+    typename Base::TrackedDataType& instance_info) {
+  auto sound_path = instance_info.path;
   std::ifstream sound_file(sound_path, std::ios::binary);
   if (!sound_file.is_open()) {
     std::cerr << "Error: unable to open file: " << sound_path << std::endl;
-    return false;
+    std::terminate();
   }
 
   WavHeader header;
   sound_file.read(reinterpret_cast<char*>(&header), sizeof(WavHeader));
 
   if (sound_file.gcount() != sizeof(WavHeader)) {
-    std::cerr << "Error: unable to read WAV header from file: " << sound_path << std::endl;
-    return false;
+    std::cerr << "Error: unable to read WAV header from file: "
+              << sound_path << std::endl;
+    std::terminate();
   }
 
-  if (std::string(header.chunk_id, 4) != "RIFF" || std::string(header.format, 4) != "WAVE") {
+  if (std::string(header.chunk_id, 4) != "RIFF" ||
+      std::string(header.format, 4) != "WAVE") {
     std::cerr << "Error: not a valid WAV file: " << sound_path << std::endl;
-    return false;
+    std::terminate();
   }
 
-  found_data.filename = sound_path;
-  found_data.channels = header.num_channels;
-  found_data.sample_rate = header.sample_rate;
-  found_data.bits_per_sample = header.bits_per_sample;
-  found_data.size = header.subchunk2_size;
+  instance_info.data->filename = sound_path;
+  instance_info.data->channels = header.num_channels;
+  instance_info.data->sample_rate = header.sample_rate;
+  instance_info.data->bits_per_sample = header.bits_per_sample;
+  instance_info.data->size = header.subchunk2_size;
+
+  instance_info.data->audio_thread_pool = audio_thread_pool_;
 
   ALenum format = DeduceSoundFormat(header);
   if (format == AL_NONE) {
-    return false;
+    std::terminate();
   }
-  found_data.format = format;
+  instance_info.data->format = format;
 
-  found_data.data.reset(new char[header.subchunk2_size]);
-  sound_file.read(found_data.data.get(), header.subchunk2_size);
-  return true;
+  instance_info.data->data.reset(new char[header.subchunk2_size]);
+  sound_file.read(instance_info.data->data.get(), header.subchunk2_size);
+  return instance_info.data;
 }
 
 ALenum SoundPool::DeduceSoundFormat(const WavHeader& header) {
@@ -84,15 +67,15 @@ ALenum SoundPool::DeduceSoundFormat(const WavHeader& header) {
   if (float_ext_supported) {
     if (header.bits_per_sample == 8) {
       if (header.num_channels == 1) {
-        return AL_FORMAT_MONO_float32;
+        return AL_FORMAT_MONO_FLOAT32;
       } else if (header.num_channels == 2) {
-        return AL_FORMAT_STEREO_float32;
+        return AL_FORMAT_STEREO_FLOAT32;
       }
     } else if (header.bits_per_sample == 16) {
       if (header.num_channels == 1) {
-        return AL_FORMAT_MONO_float32;
+        return AL_FORMAT_MONO_FLOAT32;
       } else if (header.num_channels == 2) {
-        return AL_FORMAT_STEREO_float32;
+        return AL_FORMAT_STEREO_FLOAT32;
       }
     }
   } else {

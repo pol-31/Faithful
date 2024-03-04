@@ -1,41 +1,32 @@
 #ifndef FAITHFUL_SRC_LOADER_SHADEROBJECT_H_
 #define FAITHFUL_SRC_LOADER_SHADEROBJECT_H_
 
-#include "glad/glad.h"
-
-#include "IAsset.h"
-#include "../common/RefCounter.h"
+#include "AssetBase.h"
+#include "assets_data/ShaderObjectData.h"
 
 namespace faithful {
 
-class ShaderObject : public details::assets::IAsset {
+class ShaderObject
+    : public details::assets::AssetBase<details::assets::ShaderObjectData> {
  public:
-  using Base = details::assets::IAsset;
+  using Base = details::assets::AssetBase<details::assets::ShaderObjectData>;
   using Base::Base;
   using Base::operator=;
 
-  ShaderObject(details::RefCounter* ref_counter,
-               GLuint opengl_id, GLenum shader_type) {
-    ref_counter_ = ref_counter;
-    ref_counter_->Increment();
-    internal_id_ = opengl_id;
-    shader_type_ = shader_type;
+  bool Ready() const {
+    return data_->ready;
   }
 
-  GLenum GetShaderType() const {
-    return shader_type_;
+  GLuint GetId() const {
+    return data_->id;
   }
 
- protected:
-  friend class ShaderProgram;
-  details::RefCounter* GetRefCounter() const {
-    return ref_counter_;
+  GLenum GetType() const {
+    return data_->type;
   }
 
  private:
-  GLenum shader_type_;
-  using Base::internal_id_;
-  using Base::ref_counter_;
+  using Base::data_;
 };
 
 }  // namespace faithful
