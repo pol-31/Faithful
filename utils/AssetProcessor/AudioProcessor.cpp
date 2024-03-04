@@ -10,7 +10,7 @@ void AudioProcessor::ThreadData::Init(int channels, int sample_rate) {
   vorbis_info_init(&vi);
   vorbis_comment_init(&vc);
   vorbis_encode_init_vbr(&vi, channels, sample_rate,
-                         faithful::config::audio_comp_quality);
+                         faithful::config::kAudioCompQuality);
 
   vorbis_analysis_init(&vd, &vi);
   vorbis_block_init(&vd, &vb);
@@ -83,7 +83,7 @@ void AudioProcessor::Process(const std::filesystem::path& model_path,
 
 void AudioProcessor::EncodeMusic(const std::filesystem::path& audio_path) {
   std::cout << "Music processing ..." << std::endl;
-  size_t buffer_size = faithful::config::audio_comp_buffer_size * 4;
+  size_t buffer_size = faithful::config::kAudioCompBufferSize * 4;
   auto pcm_data = std::make_unique<float[]>(buffer_size);
   uint64_t frames;
 
@@ -140,7 +140,7 @@ void AudioProcessor::PrepareThreadInfo(int channels, int sample_rate) {
 
 void AudioProcessor::EncodeSound(const std::filesystem::path& audio_path) {
   // TODO: don't need buffer for Sound
-  size_t buffer_size = faithful::config::audio_comp_buffer_size * 4;
+  size_t buffer_size = faithful::config::kAudioCompBufferSize * 4;
   auto pcm_data = std::make_unique<float>(buffer_size);
   uint64_t frames;
 
@@ -153,10 +153,10 @@ void AudioProcessor::EncodeSound(const std::filesystem::path& audio_path) {
   frames = 0;
   size_t framesRead;
   while ((framesRead = drwav_read_pcm_frames_f32(
-              &drwav_context, faithful::config::audio_comp_buffer_size,
+              &drwav_context, faithful::config::kAudioCompBufferSize,
               pcm_data.get() + (frames * channels))) > 0) {
     frames += framesRead;
-    if (buffer_size < (frames + 2 * faithful::config::audio_comp_buffer_size) * channels) {
+    if (buffer_size < (frames + 2 * faithful::config::kAudioCompBufferSize) * channels) {
       std::cerr << "AudioProcessor::EncodeSound buffer too small" << std::endl;
       break;
     }
@@ -172,12 +172,12 @@ void AudioProcessor::DecompressMp3Chunk(drmp3& drmp3_context, float* pcm_data,
   *frames = 0;
   size_t framesRead;
   while ((framesRead = drmp3_read_pcm_frames_f32(
-              &drmp3_context, faithful::config::audio_comp_buffer_size / 8,
+              &drmp3_context, faithful::config::kAudioCompBufferSize,
               pcm_data + (*frames * channels))) > 0) {
     *frames += framesRead;
-    if (buffer_size < (*frames + faithful::config::audio_comp_buffer_size) * channels){
+    if (buffer_size < (*frames + faithful::config::kAudioCompBufferSize) * channels){
       std::cerr << buffer_size << " "
-                << ((*frames + faithful::config::audio_comp_buffer_size) * channels)
+                << ((*frames + faithful::config::kAudioCompBufferSize) * channels)
                 << std::endl;
       break;
     }
@@ -191,10 +191,10 @@ void AudioProcessor::DecompressFlacChunk(drflac& drflac_context, float* pcm_data
   *frames = 0;
   size_t framesRead;
   while ((framesRead = drflac_read_pcm_frames_f32(
-              &drflac_context, faithful::config::audio_comp_buffer_size,
+              &drflac_context, faithful::config::kAudioCompBufferSize,
               pcm_data + (*frames * channels))) > 0) {
     *frames += framesRead;
-    if (buffer_size < (*frames + 2 * faithful::config::audio_comp_buffer_size)
+    if (buffer_size < (*frames + 2 * faithful::config::kAudioCompBufferSize)
                           * channels)
       break;
   }
@@ -205,7 +205,7 @@ void AudioProcessor::CompressChunk(
     int channels, int sample_rate) {
   int thread_offset = frames / thread_number_;
 
-  int qwerty = faithful::config::audio_comp_chunk_size;
+  int qwerty = faithful::config::kAudioCompChunkSize;
 
   PrepareOggCompressionContexts(channels, sample_rate, thread_offset);
 
@@ -298,6 +298,8 @@ void AudioProcessor::WriteCompressedOggChunks(int thread_offset) {
 void AudioProcessor::PrepareCompressedOggDataFile(
     const std::string& to_where) {
 //  std::filesystem::remove(to_where);
+
+  std::cout << std::filesystem::current_path() << std::endl;
   cur_file_.open("audio_result.ogg", std::ios::app | std::ios::binary);
   if (!cur_file_.is_open()) {
     std::cerr
@@ -310,7 +312,7 @@ void AudioProcessor::PrepareCompressedOggDataFile(
 void AudioProcessor::InitThreadBuffers() {
   if (!thread_buffers_initialized_) {
     for (auto& thread_buffer : thread_buffers_) {
-      thread_buffer.data = std::make_unique<char[]>(faithful::config::audio_comp_buffer_size);
+      thread_buffer.data = std::make_unique<char[]>(faithful::config::kAudioCompBufferSize);
       thread_buffer.size = 0;
     }
     thread_buffers_initialized_ = true;

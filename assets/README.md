@@ -9,8 +9,9 @@ ___
 ### Assets formats:
 - Audio: Ogg/Vorbis (bitrate hasn't been chosen yet (*-TODO-*))
             OR .wav for short sounds
-- Models: gltf with full extracted buffers (.bin) and textures data.
-            Textures data for models are stored inside the models_textures/ dir
+- Models: (CAUTION: only 1 material)
+gltf with full extracted buffers (.bin) and textures data. 
+Textures data for models are stored inside the models_textures/ dir
 - Textures:
   * model textures: 8bit .astc (astc always has 4-channel images).
     normal map, metallic/roughness using swizzle rrrg (according to ARM ASTC Encoder

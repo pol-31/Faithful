@@ -158,7 +158,7 @@ bool ProcessAssetsZip(const std::filesystem::path& assets_zip_file,
     std::cerr << "Error: can't initialize miniz archive reader\n";
     return false;
   }
-  fs::path temp_dir(faithful::config::default_temp_dir_name);
+  fs::path temp_dir(faithful::config::kDefaultTempDirName);
   fs::remove_all(temp_dir);
   fs::create_directories(temp_dir);
 
@@ -243,13 +243,13 @@ bool DownloadFile(const std::string& file_url, const std::string& out_file,
 #elif defined(FAITHFUL_ASSET_PROCESSOR_WGET)
   /// 5 stands for null-termination symbols
   int needed_command_size =
-      std::strlen(faithful::config::default_url) + 5 +
+      std::strlen(faithful::config::kDefaultUrl) + 5 +
       out_file.length() +
-      std::strlen(faithful::config::default_wget_command);
+      std::strlen(faithful::config::kDefaultWgetCommand);
 
   std::string request_command;
   request_command.reserve(needed_command_size);
-  request_command += faithful::config::default_wget_command;
+  request_command += faithful::config::kDefaultWgetCommand;
   request_command += ' ';
   request_command += out_file;
   request_command += " \"";
@@ -377,8 +377,8 @@ int main(int argc, char** argv) {
   std::string out_assets_path_default(FAITHFUL_ASSET_PATH);
   std::string out_assets_path;
 
-  std::string assets_info_file(faithful::config::default_info_name);
-  std::string assets_info_url(faithful::config::asset_info_url);
+  std::string assets_info_file(faithful::config::kDefaultInfoName);
+  std::string assets_info_url(faithful::config::kAssetInfoUrl);
 
   if (argc > 2) {
     std::cerr << "Incorrect program arguments."

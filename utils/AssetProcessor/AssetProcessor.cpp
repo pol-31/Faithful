@@ -40,11 +40,11 @@ void AssetProcessor::Process(
 
   thread_pool_->Run();
 
-  /*ProcessAudio(&assets_info, &audio_processor);
+  ProcessAudio(&assets_info, &audio_processor);
   if (!encode_) {
     DecodeModelsTextures(&texture_processor);
-  }*/
-  ProcessModels(&assets_info, &model_processor);
+  }
+//  ProcessModels(&assets_info, &model_processor);
 //  ProcessTextures(&assets_info, &texture_processor, &model_processor);
 
   thread_pool_->Join();

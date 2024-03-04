@@ -157,7 +157,7 @@ class ConstexprVector {
 
  private:
   std::array<T, count> data_;
-  int last_element_idx = 0;
+  SizeType last_element_idx = 0;
 };
 
 } // namespace utils

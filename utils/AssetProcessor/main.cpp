@@ -129,8 +129,12 @@ int main(int argc, char** argv) {
   AssetProcessor processor(std::thread::hardware_concurrency());
 //  AssetProcessor processor(encode, thread_count - 1, FAITHFUL_ASSET_PATH, force);
   std::cout << "user's path " << user_path << std::endl;
-  processor.Process(encode, "/home/pavlo/Desktop/to",
+  processor.Process(encode, "/home/pavlo/Desktop/jj",
+                    "/home/pavlo/Desktop/test", force);
+/*
+processor.Process(encode, "/home/pavlo/Desktop/to",
                     "/home/pavlo/Desktop/from", force);
+*/
 
   // TODO: LogProcessingResult(FAITHFUL_ASSET_INFO_FILE, encode);
 

@@ -4,6 +4,11 @@
 #include <cstddef>
 #include <utility>
 
+
+/// PRECAUTION: this file is only for studying purposes
+///  it will be replaced by std::
+
+
 namespace faithful {
 namespace utility {
 

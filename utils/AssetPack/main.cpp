@@ -102,7 +102,7 @@ void CalculateHash(AssetsInfo& assets_info) {
 }
 
 bool GenerateInfoFile(const AssetsInfo& assets_info) {
-  std::ofstream assets_info_file(faithful::config::default_info_name,
+  std::ofstream assets_info_file(faithful::config::kDefaultInfoName,
                                  std::ios::binary);
   if (!assets_info_file.is_open()) {
     std::cerr << "Error: can't open file to write assets info" << std::endl;
@@ -121,7 +121,7 @@ bool GenerateInfoFile(const AssetsInfo& assets_info) {
 
 bool ReplaceZipIORequest() {
   std::cout << "The program will generate a new .zip in the current directory."
-            << "\nDo you want to replace " << faithful::config::default_zip_name
+            << "\nDo you want to replace " << faithful::config::kDefaultZipName
             << " located there?\nType \'y\' for \"yes\"" << std::endl;
   char response;
   std::cin >> response;
@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
     assets_dir = FAITHFUL_ASSET_PATH;
   }
 
-  if (std::filesystem::exists(faithful::config::default_zip_name)) {
+  if (std::filesystem::exists(faithful::config::kDefaultZipName)) {
     if (!ReplaceZipIORequest()) {
       std::cout << "Asset packing \"graceful failure\": replace request denied"
                 << std::endl;
@@ -170,9 +170,9 @@ int main(int argc, char** argv) {
   AssetsInfo assets_info;
   CountAssets(assets_dir, assets_info);
   assets_info.redirection_count =
-      faithful::config::default_url_redirections_count;
-  assets_info.url = faithful::config::default_url;
-  assets_info.zip_name = faithful::config::default_zip_name;
+      faithful::config::kDefaultUrlRedirectionsCount;
+  assets_info.url = faithful::config::kDefaultUrl;
+  assets_info.zip_name = faithful::config::kDefaultZipName;
 
   if (!GenerateZip(assets_dir, assets_info)) {
     return FaithfulAssetPackError::kZipGenerationFailure;
@@ -185,7 +185,7 @@ int main(int argc, char** argv) {
             << assets_info.zip_name << std::endl;
   std::cout << "CAUTION: link to assets & redirection count should be set"
             << "manually\nafter uploading "
-            << faithful::config::default_zip_name
+            << faithful::config::kDefaultZipName
             << " to (e.g.) Google Drive.\n"
             << "In case of Google Drive you should create direct link:\n"
             << "https://sites.google.com/site/gdocs2direct/\n"

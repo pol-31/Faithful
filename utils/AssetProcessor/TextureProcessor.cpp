@@ -64,15 +64,15 @@ bool TextureProcessor::SwitchToRG() {
 bool TextureProcessor::InitContextLdr() {
   using namespace faithful;  // for namespace faithful::config
   astcenc_config config;
-  config.block_x = config::tex_comp_block_x;
-  config.block_y = config::tex_comp_block_y;
-  config.block_z = config::tex_comp_block_z;
-  config.profile = config::tex_comp_profile_ldr;
+  config.block_x = config::kTexCompBlockX;
+  config.block_y = config::kTexCompBlockY;
+  config.block_z = config::kTexCompBlockZ;
+  config.profile = config::kTexCompProfileLdr;
 
   astcenc_error status = astcenc_config_init(
-      config::tex_comp_profile_ldr, config::tex_comp_block_x,
-      config::tex_comp_block_y, config::tex_comp_block_z,
-      config::tex_comp_quality, 0, &config);
+      config::kTexCompProfileLdr, config::kTexCompBlockX,
+      config::kTexCompBlockY, config::kTexCompBlockZ,
+      config::kTexCompQuality, 0, &config);
   if (status != ASTCENC_SUCCESS) {
     std::cerr << "Error: astc-enc ldr codec config init failed: "
               << astcenc_get_error_string(status) << std::endl;
@@ -92,15 +92,15 @@ bool TextureProcessor::InitContextLdr() {
 bool TextureProcessor::InitContextHdr() {
   using namespace faithful;  // for namespace faithful::config
   astcenc_config config;
-  config.block_x = config::tex_comp_block_x;
-  config.block_y = config::tex_comp_block_y;
-  config.block_z = config::tex_comp_block_z;
-  config.profile = config::tex_comp_profile_hdr;
+  config.block_x = config::kTexCompBlockX;
+  config.block_y = config::kTexCompBlockY;
+  config.block_z = config::kTexCompBlockZ;
+  config.profile = config::kTexCompProfileHdr;
 
   astcenc_error status = astcenc_config_init(
-      config::tex_comp_profile_hdr, config::tex_comp_block_x,
-      config::tex_comp_block_y, config::tex_comp_block_z,
-      config::tex_comp_quality, 0, &config);
+      config::kTexCompProfileHdr, config::kTexCompBlockX,
+      config::kTexCompBlockY, config::kTexCompBlockZ,
+      config::kTexCompQuality, 0, &config);
   if (status != ASTCENC_SUCCESS) {
     std::cerr << "Error: astc-enc hdr codec config init failed: "
               << astcenc_get_error_string(status) << std::endl;
@@ -120,10 +120,10 @@ bool TextureProcessor::InitContextHdr() {
 bool TextureProcessor::InitContextRG() {
   using namespace faithful;  // for namespace faithful::config
   astcenc_config config;
-  config.block_x = config::tex_comp_block_x;
-  config.block_y = config::tex_comp_block_y;
-  config.block_z = config::tex_comp_block_z;
-  config.profile = config::tex_comp_profile_ldr;
+  config.block_x = config::kTexCompBlockX;
+  config.block_y = config::kTexCompBlockY;
+  config.block_z = config::kTexCompBlockZ;
+  config.profile = config::kTexCompProfileLdr;
 
   unsigned int flags{0};
   flags |= ASTCENC_FLG_MAP_NORMAL;
@@ -131,9 +131,9 @@ bool TextureProcessor::InitContextRG() {
   config.flags |= flags;
 
   astcenc_error status = astcenc_config_init(
-      config::tex_comp_profile_ldr, config::tex_comp_block_x,
-      config::tex_comp_block_y, config::tex_comp_block_z,
-      config::tex_comp_quality, flags, &config);
+      config::kTexCompProfileLdr, config::kTexCompBlockX,
+      config::kTexCompBlockY, config::kTexCompBlockZ,
+      config::kTexCompQuality, flags, &config);
   if (status != ASTCENC_SUCCESS) {
     std::cerr << "Error: astc-enc rg codec config init failed: "
               << astcenc_get_error_string(status) << std::endl;
@@ -209,7 +209,7 @@ bool TextureProcessor::Encode(const std::filesystem::path& texture_path,
   image.dim_x = image_x;
   image.dim_y = image_y;
   image.dim_z = 1;
-  image.data_type = static_cast<astcenc_type>(config::tex_data_type);
+  image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
 
   image.data = reinterpret_cast<void**>(&image_data);
 //  image.data = reinterpret_cast<void**>(image_data_ptr.get());
@@ -218,7 +218,7 @@ bool TextureProcessor::Encode(const std::filesystem::path& texture_path,
   bool encode_success = true;
   thread_pool_->Execute([=, &image, &encode_success](int thread_id) {
     astcenc_error status = astcenc_compress_image(
-        context, &image, &config::tex_comp_swizzle,
+        context, &image, &config::kTexCompSwizzle,
         comp_data.get(), comp_len, thread_id);
     if (status != ASTCENC_SUCCESS)
       encode_success = false;
@@ -253,7 +253,7 @@ bool TextureProcessor::Encode(const std::filesystem::path& dest_path,
   image.dim_x = width;
   image.dim_y = height;
   image.dim_z = 1;
-  image.data_type = static_cast<astcenc_type>(config::tex_data_type);
+  image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
 
   //  image.data = reinterpret_cast<void**>(&image_data);
   auto data_ptr = reinterpret_cast<void*>(image_data.get());
@@ -263,7 +263,7 @@ bool TextureProcessor::Encode(const std::filesystem::path& dest_path,
   bool encode_success = true;
   thread_pool_->Execute([=, &image, &encode_success](int thread_id) {
     astcenc_error status = astcenc_compress_image(
-        context, &image, &config::tex_comp_swizzle,
+        context, &image, &config::kTexCompSwizzle,
         comp_data.get(), comp_len, thread_id);
     if (status != ASTCENC_SUCCESS)
       encode_success = false;
@@ -281,9 +281,9 @@ bool TextureProcessor::Encode(const std::filesystem::path& dest_path,
 int TextureProcessor::CalculateCompLen(int image_x, int image_y) {
   using namespace faithful;  // for namespace faithful::config
   int block_count_x =
-      (image_x + config::tex_comp_block_x - 1) / config::tex_comp_block_x;
+      (image_x + config::kTexCompBlockX - 1) / config::kTexCompBlockX;
   int block_count_y =
-      (image_y + config::tex_comp_block_y - 1) / config::tex_comp_block_y;
+      (image_y + config::kTexCompBlockY - 1) / config::kTexCompBlockY;
   return block_count_x * block_count_y * 16;
 }
 
@@ -354,8 +354,8 @@ bool TextureProcessor::WriteEncodedData(std::string filename,
   header.magic[2] = 0xA1;
   header.magic[3] = 0x5C;
 
-  header.block_x = config::tex_comp_block_x;
-  header.block_y = config::tex_comp_block_y;
+  header.block_x = config::kTexCompBlockX;
+  header.block_y = config::kTexCompBlockY;
   header.block_z = 1;
 
   header.dim_x[2] = static_cast<uint8_t>(image_x >> 16);
@@ -395,7 +395,7 @@ bool TextureProcessor::Decode(const std::filesystem::path& texture_path,
   image.dim_x = image_x;
   image.dim_y = image_y;
   image.dim_z = 1;
-  image.data_type = static_cast<astcenc_type>(config::tex_data_type);
+  image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
   image.data = reinterpret_cast<void**>(&image_data);
 
   // no need to make it atomic, only "fail"-thread write
@@ -403,7 +403,7 @@ bool TextureProcessor::Decode(const std::filesystem::path& texture_path,
   thread_pool_->Execute([=, &image, &decode_success](int thread_id) {
     astcenc_error status = astcenc_decompress_image(
         context, comp_data, comp_len, &image,
-        &config::tex_comp_swizzle, thread_id);
+        &config::kTexCompSwizzle, thread_id);
     if (status != ASTCENC_SUCCESS)
       decode_success = false;
   });

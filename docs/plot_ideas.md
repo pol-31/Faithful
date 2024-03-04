@@ -14,7 +14,7 @@
 *forbidden, etc. (as in location that we consider for previous game) Need to
 *find N artifacts (there is N biomes) Part IV: bigger nature degradation, some
 *extra locations(hidden), more location-specific weather, new creatures "not
-*from our world" Need to kill/пощадить N bosses from each locations, banishing
+*from our world" Need to kill/spare N bosses from each locations, banishing
 *evil "from our lands" Part V: before final extra bosses, extra locations -
 *dangeons (randomly generated) Part VI: end of the World, full collapse Part
 *VII: realizing, who we are and that all was our imagination... (or not?)

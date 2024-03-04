@@ -6,25 +6,20 @@
 namespace faithful {
 namespace config {
 
-inline constexpr char window_title[] = "Faithful";
-inline constexpr int max_monitors = 5;
-inline constexpr int max_monitor_modes = 10;
+inline constexpr char kWindowTitle[] = "Faithful";
+inline constexpr int kMaxMonitors = 10; // enough?)
 
 /// Camera
-inline constexpr float camera_fov = 0.7854; // 45 degrees
-inline constexpr float camera_pitch = -45.0f;
-inline constexpr float camera_yaw = 0.0f;
+inline constexpr float kCameraFov = 0.7854; // 45 degrees
+inline constexpr float kCameraPitch = -45.0f;
+inline constexpr float kCameraYaw = 0.0f;
 
-inline constexpr float camera_perspective_near = 0.01f;
-inline constexpr float camera_perspective_far = 1000.0f;
+inline constexpr float kCameraPerspectiveNear = 0.01f;
+inline constexpr float kCameraPerspectiveFar = 1000.0f;
 
-inline constexpr glm::vec3 camera_dir_world_up{0.0f, 1.0f, 0.0f};
+inline constexpr glm::vec3 kCameraDirWorldUp{0.0f, 1.0f, 0.0f};
 
-inline constexpr glm::vec3 camera_dir_position{0.0f, 5.0f, -5.0f};
-
-// TODO: add fov
-
-
+inline constexpr glm::vec3 kCameraDirPosition{0.0f, 5.0f, -5.0f};
 
 } // config
 } // faithful

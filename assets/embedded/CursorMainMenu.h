@@ -6,10 +6,10 @@
 namespace faithful {
 namespace embedded {
 
-inline constexpr int cursor_main_menu_width = 8;
-inline constexpr int cursor_main_menu_height = 8;
+inline constexpr int kCursorMainMenuWidth = 8;
+inline constexpr int kCursorMainMenuHeight = 8;
 
-inline constexpr uint8_t cursor_main_menu_data[] = {
+inline constexpr uint8_t kCursorMainMenuData[] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,

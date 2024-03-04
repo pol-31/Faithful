@@ -1,0 +1,2 @@
+1;Test1;a;2,4,6,3;/home/pavlo/Desktop/assets/Test1.gltf;
+2;Test2;a;6,1,6,3;/home/pavlo/Desktop/assets/Test2.gltf;

@@ -31,20 +31,20 @@ bool DetectTexRGSuffix(const std::filesystem::path& filename) {
 
 AssetCategory DeduceAssetEncodeCategory(const std::filesystem::path& filename) {
   using namespace faithful;
-  for (const auto& audio_format : config::audio_comp_formats) {
+  for (const auto& audio_format : config::kAudioCompFormats) {
     if (filename.extension().string() == audio_format) {
-      if (file_size(filename) > config::audio_comp_thread_threshold) {
+      if (file_size(filename) > config::kAudioCompThreadThreshold) {
         return AssetCategory::kAudioMusic;
       } else {
         return AssetCategory::kAudioSound;
       }
     }
   }
-  for (const auto& model_format : config::model_comp_formats) {
+  for (const auto& model_format : config::kModelCompFormats) {
     if (filename.extension().string() == model_format)
       return AssetCategory::kModel;
   }
-  for (const auto& image_format : config::tex_comp_formats) {
+  for (const auto& image_format : config::kTexCompFormats) {
     if (filename.extension().string() == image_format) {
       if (DetectTexHdrExtension(filename)) {
         return AssetCategory::kTextureHdr;

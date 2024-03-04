@@ -1,0 +1,6 @@
+#ifndef FAITHFUL_ASSETS_EMBEDDED_NOISE_H_
+#define FAITHFUL_ASSETS_EMBEDDED_NOISE_H_
+
+// TODO: Perlin Noise data there ?
+
+#endif  // FAITHFUL_ASSETS_EMBEDDED_NOISE_H_

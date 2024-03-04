@@ -11,11 +11,9 @@ namespace utils {
 
 // TODO: constexpressness
 
-// Does NOT allocate memory, but stores pointer with size
-// and provides access to _contiguous_ memory.
-// One-dimensional, copyable, movable
+/// Purpose: this is c++17 project so we don't have std::span from c++20
 template <typename T>
-class Span {
+class Span { // TODO: need const version of it ?
  public:
   class Iterator {
    public:
@@ -160,9 +158,9 @@ class Span {
   using ValueType = std::remove_cv_t<T>;
   using SizeType = size_t;
   using DifferenceType = std::ptrdiff_t;
-  using Pointer = T*;
+  using Pointer = std::conditional_t<std::is_const<T>::value, const T*, T*>;
   using ConstPointer = const T*;
-  using Reference = T&;
+  using Reference = std::conditional_t<std::is_const<T>::value, const T&, T&>;
   using ConstReference = const T&;
   using IteratorType = Iterator;
   using ConstIteratorType = utility::MakeConstIterator<Iterator>;
@@ -174,16 +172,15 @@ class Span {
   constexpr Span(const Span& other) = default;
   constexpr Span(Span&& other) = default;
 
+  constexpr Span& operator=(const Span& other) = default;
+  constexpr Span& operator=(Span&& span) = default;
+
   constexpr Span(SizeType size, Pointer data) noexcept
       : data_(data), size_(size) {}
 
   operator Span<const T>() const {
     return Span<const T>(get_size(), data_);
   }
-
-  constexpr Span& operator=(const Span& other) = default;
-
-  constexpr Span& operator=(Span&& span) = default;
 
   constexpr bool Empty() const noexcept {
     return data_ == nullptr;
@@ -268,7 +265,7 @@ class Span {
   template <typename U>
   friend void swap(Span<U>& sp1, Span<U>& sp2) noexcept;
 
- protected:
+ private:
   Pointer data_ = nullptr;
   SizeType size_ = 0;
 };

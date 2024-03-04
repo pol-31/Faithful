@@ -6,10 +6,10 @@
 namespace faithful {
 namespace embedded {
 
-inline constexpr int cursor_main_game_width = 8;
-inline constexpr int cursor_main_game_height = 8;
+inline constexpr int kCursorMainGameWidth = 8;
+inline constexpr int kCursorMainGameHeight = 8;
 
-inline constexpr uint8_t cursor_main_game_data[] = {
+inline constexpr uint8_t kCursorMainGameData[] = {
     0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0,
     0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0,
     0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0,
