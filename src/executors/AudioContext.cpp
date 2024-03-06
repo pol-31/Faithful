@@ -1,4 +1,4 @@
-#include "AudioThreadPool.h"
+#include "AudioContext.h"
 
 #include "../../utils/Logger.h"
 
@@ -7,158 +7,113 @@
 #include "../loader/SoundPool.h"
 #include "../loader/Sound.h"
 
-#include "queues/LifoBoundedMPSCBlockingQueue.h"
-
 namespace faithful {
 namespace details {
 
 // TODO: alSourceRewind(source); for Play(Sound) to pleyback from the beginning
 
-AudioThreadPool::AudioThreadPool() {
-  task_queue_ = new queue::LifoBoundedMPSCBlockingQueue<TaskType>;
-}
-AudioThreadPool::~AudioThreadPool() {
-  delete task_queue_;
+AudioContext::AudioContext() {
+  InitContext();
+  InitOpenALBuffersAndSources();
 }
 
-void AudioThreadPool::Join() {
-  state_ = State::kJoined;
-
-  // TODO: change state and only wait in while(true) <-- blocking, non-intervening
-
-  // TODO: Join() from main thread and Run() from AudioThread intersecting there
-  //   need synchronization
-  while (!task_queue_->Empty()) {
-    (task_queue_->Front())();
-  }
-  for (auto& thread : threads_) {
-    thread.join();
-  }
+AudioContext::~AudioContext() {
+  DeInitOpenALBuffersAndSources();
+  DeInitContext();
 }
 
-void AudioThreadPool::InitContext() {
-  if (openal_initialized_) {
-    return;
+void AudioContext::Update() {
+  if (!task_queue_.empty()) {
+    (task_queue_.front())();
   }
+  for(auto& music : music_sources_) {
+    UpdateMusicStream(music);
+  }
+  if (background_gain_step_ != 0) {
+    BackgroundSmoothTransition();
+  }
+  ReleaseSources();
+}
+
+void AudioContext::InitContext() {
   ALCdevice* device = alcOpenDevice(nullptr);
   if (!device) {
     std::cerr << "Failed to initialize OpenAL device" << std::endl;
-    return;
+    std::terminate();
   }
 
   ALCcontext* context = alcCreateContext(device, nullptr);
   if (!context) {
     std::cerr << "Failed to create OpenAL context" << std::endl;
     alcCloseDevice(device);
-    return;
+    std::terminate();
   }
-  /// we have only one OpenAL context TODO: static assert?
   alcMakeContextCurrent(context);
   std::cerr << "OpenAL contect initialized" << std::endl;
-  openal_initialized_ = true;
-}
-void AudioThreadPool::DeinitContext() {
-  if (openal_initialized_) {
-    alcMakeContextCurrent(nullptr);
-    alcDestroyContext(openal_context_);
-    alcCloseDevice(openal_device_);
-    openal_initialized_ = false;
-  }
 }
 
-void AudioThreadPool::InitOpenALBuffersAndSources() {
+void AudioContext::DeInitContext() {
+  alcMakeContextCurrent(nullptr);
+  alcDestroyContext(openal_context_);
+  alcCloseDevice(openal_device_);
+}
+
+void AudioContext::InitOpenALBuffersAndSources() {
   int total_sources_num = sound_sources_.size() +
                           music_sources_.size();
-  ALuint source_ids[total_sources_num];
-  AL_CALL(alGenSources, total_sources_num, source_ids);
+  std::vector<ALuint> sources_ids(total_sources_num);
+  AL_CALL(alGenSources, total_sources_num, sources_ids.data());
 
   int total_buffers_num = sound_sources_.size() +
                           faithful::config::kOpenalBuffersPerMusic *
                               music_sources_.size();
-  ALuint buffer_ids[total_buffers_num];
-  AL_CALL(alGenBuffers, total_buffers_num, buffer_ids);
+  std::vector<ALuint> buffers_ids(total_buffers_num);
+  AL_CALL(alGenBuffers, total_buffers_num, buffers_ids.data());
 
-  for (int i = 0; i < sound_sources_.size(); ++i) {
-    sound_sources_[i].source_id = source_ids[i];
-    sound_sources_[i].buffer_id = buffer_ids[i];
+  for (std::size_t i = 0; i < sound_sources_.size(); ++i) {
+    sound_sources_[i].source_id = sources_ids[i];
+    sound_sources_[i].buffer_id = buffers_ids[i];
     /// pitch, gain, position, velocity, etc - by default
     AL_CALL(alSourcei, sound_sources_[i].source_id, AL_LOOPING, AL_FALSE);
   }
 
-  for (int i = 0; i < music_sources_.size(); ++i) { // <-- todo; write to documentation (order of source/buffer)
-    music_sources_[i].source_id = source_ids[i + sound_sources_.size()];
+  for (std::size_t i = 0; i < music_sources_.size(); ++i) { // <-- todo; write to documentation (order of source/buffer)
+    music_sources_[i].source_id = sources_ids[i + sound_sources_.size()];
     for (int j = 0; j < faithful::config::kOpenalBuffersPerMusic; ++j) {
-      music_sources_[i].buffers_id[j] = buffer_ids[i * j + j + sound_sources_.size()];
+      music_sources_[i].buffers_id[j] = buffers_ids[i * j + j + sound_sources_.size()];
     }
     /// pitch, gain, position, velocity, etc - by default
     AL_CALL(alSourcei, music_sources_[i].source_id, AL_LOOPING, AL_TRUE);
   }
-  openal_initialized_ = true;
 }
-void AudioThreadPool::DeinitOpenALBuffersAndSources() {
+void AudioContext::DeInitOpenALBuffersAndSources() {
   int total_sources_num = sound_sources_.size() +
                           music_sources_.size();
-  ALuint source_ids[total_sources_num];
+  std::vector<ALuint> sources_ids(total_sources_num);
 
   int total_buffers_num = sound_sources_.size() +
                           faithful::config::kOpenalBuffersPerMusic *
                               music_sources_.size();
-  ALuint buffer_ids[total_buffers_num];
+  std::vector<ALuint> buffers_ids(total_buffers_num);
 
-  for (int i = 0; i < sound_sources_.size(); ++i) {
-    source_ids[i] = sound_sources_[i].source_id;
-    buffer_ids[i] = sound_sources_[i].buffer_id;
+  for (std::size_t i = 0; i < sound_sources_.size(); ++i) {
+    sources_ids[i] = sound_sources_[i].source_id;
+    buffers_ids[i] = sound_sources_[i].buffer_id;
   }
 
-  for (int i = 0; i < music_sources_.size(); ++i) {
-    source_ids[i + sound_sources_.size()] = music_sources_[i].source_id;
+  for (std::size_t i = 0; i < music_sources_.size(); ++i) {
+    sources_ids[i + sound_sources_.size()] = music_sources_[i].source_id;
     for (int j = 0; j < faithful::config::kOpenalBuffersPerMusic; ++j) {
-      buffer_ids[i * j + j + sound_sources_.size()] = music_sources_[i].buffers_id[j];
+      buffers_ids[i * j + j + sound_sources_.size()] = music_sources_[i].buffers_id[j];
     }
   }
 
-  AL_CALL(alDeleteSources, total_sources_num, source_ids);
-  AL_CALL(alDeleteBuffers, total_buffers_num, buffer_ids);
-}
-
-
-void AudioThreadPool::Run() {
-  if (state_ != State::kNotStarted) {
-    return;
-  }
-
-  threads_[0] = std::thread([this]() {
-    /// initialization
-    InitContext();
-    if (!openal_initialized_) {
-      std::cerr << "Can't create OpenAL context" << std::endl;
-      std::terminate(); // TODO: replace by Logger::LogIF OR FAITHFUL_TERMINATE
-    }
-    InitOpenALBuffersAndSources();
-
-    /// main loop
-    state_ = State::kRunning;
-    while(state_ != State::kJoined) {
-      if (!task_queue_->Empty()) {
-        (task_queue_->Front())();
-      }
-      for(auto& music : music_sources_) {
-        UpdateMusicStream(music);
-      }
-      if (background_gain_step_ != 0) {
-        BackgroundSmoothTransition();
-      }
-      ReleaseSources();
-    }
-
-    /// deinitialization
-    DeinitOpenALBuffersAndSources();
-    DeinitContext();
-  });
+  AL_CALL(alDeleteSources, total_sources_num, sources_ids.data());
+  AL_CALL(alDeleteBuffers, total_buffers_num, buffers_ids.data());
 }
 
 // internally in thread, so AL_CALL safe
-void AudioThreadPool::ReleaseSources() {
+void AudioContext::ReleaseSources() {
   // TODO: possible SIMD optimization
   ALint state;
   for (auto& source : sound_sources_) {
@@ -178,7 +133,7 @@ void AudioThreadPool::ReleaseSources() {
 }
 
 // internally in thread, so AL_CALL safe
-void AudioThreadPool::BackgroundSmoothTransition() {
+void AudioContext::BackgroundSmoothTransition() {
   background_gain_ -= background_gain_step_;
   AL_CALL(alSourcei, music_sources_[0].source_id, AL_GAIN, background_gain_);
   if (background_gain_ == 0) {
@@ -192,8 +147,8 @@ void AudioThreadPool::BackgroundSmoothTransition() {
   }
 }
 
-int AudioThreadPool::GetAvailableSoundSourceId() {
-  for (int i = 0; i < sound_sources_.size(); ++i) {
+int AudioContext::GetAvailableSoundSourceId() {
+  for (std::size_t i = 0; i < sound_sources_.size(); ++i) {
     if (!sound_sources_[i].busy) { // TODO: CAS? OR only one consumer ?
       sound_sources_[i].busy = true;
       return i;
@@ -201,9 +156,9 @@ int AudioThreadPool::GetAvailableSoundSourceId() {
   }
   return -1;
 }
-int AudioThreadPool::GetAvailableMusicSourceId() {
+int AudioContext::GetAvailableMusicSourceId() {
   /// we're starting from 1 because 0 for background music (always busy)
-  for (int i = 0; i < music_sources_.size(); ++i) {
+  for (std::size_t i = 0; i < music_sources_.size(); ++i) {
     if (!music_sources_[i].busy) { // TODO: CAS? OR only one consumer ?
       music_sources_[i].busy = true;
       return i;
@@ -216,14 +171,14 @@ int AudioThreadPool::GetAvailableMusicSourceId() {
  * then when the queue is full (we didn't have enough time to process them all),
  * -> we just rewrite the older by newer
  * */
-void AudioThreadPool::Play(Sound& sound) {
+void AudioContext::Play(Sound& sound) {
   int source_id = GetAvailableSoundSourceId();
   if (source_id == -1) {
     std::cerr << "can't get available id for sound" << std::endl;
     // FAITHFUL_DEBUG log warning
     return; // all busy, can skip <-- todo; write to documentation
   }
-  task_queue_->Push([=]() {
+  task_queue_.push([=, this]() {
     std::cout << "inside the task_queue_" << std::endl;
     AL_CALL(alBufferData, sound_sources_[source_id].buffer_id,
             sound.GetFormat(), sound.GetData().get(), sound.GetSize(),
@@ -235,7 +190,7 @@ void AudioThreadPool::Play(Sound& sound) {
     /// non-blocking, continue spinning in thread pool run-loop
   });
 }
-void AudioThreadPool::Play(Music& music) {
+void AudioContext::Play(Music& music) {
   int source_id = GetAvailableMusicSourceId();
   if (source_id == -1) {
     std::cerr << "can't get available id for music" << std::endl;
@@ -247,8 +202,7 @@ void AudioThreadPool::Play(Music& music) {
   auto buffers_num = faithful::config::kOpenalBuffersPerMusic;
 
     auto data = std::make_unique<char>(buffer_size);
-    int dataSoFar = 0;
-  task_queue_->Push([buffer_size, buffers_num, this, source_id, &music] {
+  task_queue_.push([buffer_size, buffers_num, this, source_id, &music] {
     auto data = std::make_unique<char>(buffer_size);
     for (int i = 0; i < buffers_num; ++i) {
       int dataSoFar = 0;
@@ -273,13 +227,13 @@ void AudioThreadPool::Play(Music& music) {
 }
 
 /// should be called only from one thread
-void AudioThreadPool::SetBackground(faithful::Music* music) {
+void AudioContext::SetBackground(faithful::Music* music) {
   next_background_music_ = music;
   background_gain_step_ = faithful::config::kDefaultBackgroundGainStep;
 }
 
 // internally in thread, so AL_CALL safe
-void AudioThreadPool::UpdateMusicStream(MusicSourceData& music_data) {
+void AudioContext::UpdateMusicStream(MusicSourceData& music_data) {
   ALint buffersProcessed = 0;
   AL_CALL(alGetSourcei, music_data.source_id, AL_BUFFERS_PROCESSED, &buffersProcessed);
   if (buffersProcessed <= 0) {
@@ -341,7 +295,7 @@ void AudioThreadPool::UpdateMusicStream(MusicSourceData& music_data) {
 
 
 // internally in thread, so AL_CALL safe
-bool AudioThreadPool::CheckOggOvErrors(int code, int buffer_id) {
+bool AudioContext::CheckOggOvErrors(int code, int buffer_id) {
   if (code == OV_HOLE) {
     std::cerr << "ERROR: OV_HOLE found in initial read of buffer "
               << buffer_id << std::endl;
@@ -361,7 +315,7 @@ bool AudioThreadPool::CheckOggOvErrors(int code, int buffer_id) {
 }
 
 // internally in thread, so AL_CALL safe
-bool AudioThreadPool::CheckOggOvLoopErrors(int code) {
+bool AudioContext::CheckOggOvLoopErrors(int code) {
   if (code == OV_ENOSEEK) {
     std::cerr << "ERROR: OV_ENOSEEK found when trying to loop" << std::endl;
   } else if (code == OV_EINVAL) {

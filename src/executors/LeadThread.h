@@ -1,5 +1,5 @@
-#ifndef FAITHFUL_SRC_EXECUTORS_DISPLAYINTERACTIONTHREADPOOL_H_
-#define FAITHFUL_SRC_EXECUTORS_DISPLAYINTERACTIONTHREADPOOL_H_
+#ifndef FAITHFUL_SRC_EXECUTORS_LEADTHREAD_H_
+#define FAITHFUL_SRC_EXECUTORS_LEADTHREAD_H_
 
 #include "IExecutor.h"
 
@@ -22,27 +22,22 @@ namespace details {
 class DrawManager;
 class InputManager;
 
+class AudioContext;
+
 void GlfwWindowCloseCallback(GLFWwindow* window);
 void GlfwErrorCallback(int error, const char *description);
 void GlfwFramebufferSizeCallback(GLFWwindow* window, int width, int height);
 
-/// Stands for both Input handling(ProcessInput()) and rendering (Drawing()),
-/// which violated Single-Responsibility principle, but currently it's not
-/// possible to separate these entities due to GLFW and Glad requirements
-/// where both should be run from the same thread (main render function,
-/// calls both to OpenGL and GLFW functions (e.g. glfwPollEvents(), glClear()))
-/// Neither StaticThreadPool nor DynamicThreadPool
-/// This should be run from Main Thread and its blocking (after Run())
-class DisplayInteractionThreadPool : public IExecutor {
+/// TODO: explain GLFW / contention problem
+/// in charge of Render / input / Audio processing
+class LeadThread {
  public:
-  DisplayInteractionThreadPool() = delete;
-  DisplayInteractionThreadPool(DrawManager* draw_manager,
-                               InputManager* input_manager);
+  LeadThread() = delete;
+  LeadThread(DrawManager* draw_manager,
+             InputManager* input_manager,
+             AudioContext* audio_context);
 
-  ~DisplayInteractionThreadPool();
-
-  void Run() override;
-  void Join() override;
+  void Run();
 
  protected:
   friend class ExecutionEnvironment;
@@ -84,6 +79,8 @@ class DisplayInteractionThreadPool : public IExecutor {
   DrawManager* draw_manager_;
   InputManager* input_manager_;
 
+  AudioContext* audio_context_;
+
   /// We don't use our own task_queue_
   // NOT using Base::task_queue_;
 
@@ -94,4 +91,4 @@ class DisplayInteractionThreadPool : public IExecutor {
 } // namespace details
 } // namespace faithful
 
-#endif  // FAITHFUL_SRC_EXECUTORS_DISPLAYINTERACTIONTHREADPOOL_H_
+#endif  // FAITHFUL_SRC_EXECUTORS_LEADTHREAD_H_

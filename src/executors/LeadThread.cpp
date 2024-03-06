@@ -1,4 +1,4 @@
-#include "DisplayInteractionThreadPool.h"
+#include "LeadThread.h"
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -8,6 +8,8 @@
 #include "../common/InputManager.h"
 
 #include "ExecutionEnvironment.h"
+
+// TODO: include & integrate AufioContext
 
 namespace faithful {
 namespace details {
@@ -28,7 +30,7 @@ void GlfwFramebufferSizeCallback(GLFWwindow* window __attribute__((unused)),
   glViewport(0, 0, width, height);
 }
 
-DisplayInteractionThreadPool::GlfwInitializer::GlfwInitializer() {
+LeadThread::GlfwInitializer::GlfwInitializer() {
   if (!glfwInit()) {
     std::cerr << "glfw init error" << std::endl;
     std::terminate();
@@ -36,22 +38,23 @@ DisplayInteractionThreadPool::GlfwInitializer::GlfwInitializer() {
   glfwSetErrorCallback(GlfwErrorCallback);
   // TODO: set OpenGL & GLFW error callbacks depends on FAITHFUL_DEBUG / ext
 }
-DisplayInteractionThreadPool::GlfwInitializer::~GlfwInitializer() {
+LeadThread::GlfwInitializer::~GlfwInitializer() {
   glfwTerminate();
 }
 
-void DisplayInteractionThreadPool::SetGlfwWindowUserPointer(void* data) {
+void LeadThread::SetGlfwWindowUserPointer(void* data) {
   glfwSetWindowUserPointer(window_.Glfw(), data);
 }
-void DisplayInteractionThreadPool::UnSetGlfwWindowUserPointer() {
+void LeadThread::UnSetGlfwWindowUserPointer() {
   glfwSetWindowUserPointer(window_.Glfw(), nullptr);
 }
 
 /// such weird constructor because Cursor and Camera classes have
 /// explicitly deleted ctor (there's no sense to use it) and
 /// should be initialized with class faithful::Window
-DisplayInteractionThreadPool::DisplayInteractionThreadPool(
-    DrawManager* draw_manager, InputManager* input_manager)
+LeadThread::LeadThread(DrawManager* draw_manager,
+                       InputManager* input_manager,
+                       AudioContext* audio_context)
     : glfw_initializer_(), // glfw initialized here
       window_(),
       camera_game_(window_.GetResolution()),
@@ -63,23 +66,12 @@ DisplayInteractionThreadPool::DisplayInteractionThreadPool(
                      faithful::embedded::kCursorMainGameHeight),
       current_cursor_(&cursor_arrow_),
       draw_manager_(draw_manager),
-      input_manager_(input_manager) {
+      input_manager_(input_manager),
+      audio_context_(audio_context) {
   Init();
 }
 
-DisplayInteractionThreadPool::~DisplayInteractionThreadPool() {
-  if (state_ == IExecutor::State::kRunning) {
-    Join();
-  }
-}
-
-void DisplayInteractionThreadPool::Join() {
-  state_ = IExecutor::State::kJoined;
-  processing_state_ = ProcessingState::kJoined;
-  while (state_ != IExecutor::State::kJoined) {}
-}
-
-void DisplayInteractionThreadPool::Init() {
+void LeadThread::Init() {
   /// set GlfwMonitorUserPointer for getting info about monitor connect/disconnect
   window_.GetMonitorInfoRef()
       .InitUpdateRef(reinterpret_cast<void*>(&need_to_update_monitor_));
@@ -94,7 +86,8 @@ void DisplayInteractionThreadPool::Init() {
   glClearColor(0.2, 0.2, 0.2, 1.0);
 }
 
-void DisplayInteractionThreadPool::Run() {
+void LeadThread::Run() {
+  // TODO: glfwWindowShouldClose... / OR Poison Pill (task to shared task queue)
   while (state_ != State::kJoined) {
     while (processing_state_ == ProcessingState::kMenu) {
       draw_manager_->Update();

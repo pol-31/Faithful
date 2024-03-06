@@ -1,14 +1,15 @@
-#ifndef FAITHFUL_SRC_EXECUTORS_AUDIOTHREADPOOL_H_
-#define FAITHFUL_SRC_EXECUTORS_AUDIOTHREADPOOL_H_
+#ifndef FAITHFUL_SRC_EXECUTORS_AUDIOCONTEXT_H_
+#define FAITHFUL_SRC_EXECUTORS_AUDIOCONTEXT_H_
 
 #include <array>
 
 #include <AL/al.h>
 #include <AL/alc.h>
 
-#include "IExecutor.h"
-
 #include "../../config/Loader.h"
+#include "../../utils/Function.h"
+
+#include <queue> // TODO: do we need to replace it?
 
 namespace faithful {
 
@@ -17,24 +18,11 @@ class Sound;
 
 namespace details {
 
-/** AudioThreadPool purpose:
- * - encapsulate OpenAL
- * - create & handle 6 sources:
- *   - play background music
- *   - play extra background effect#1 (e.g. weather)
- *   - play extra background effect#2 (e.g. someone speak)
- *   - 3 for sounds
- *
- * */
-
-/// "1" - because we need only ONE openAL context
-class AudioThreadPool : public IStaticExecutor<1> {
+// TODO: refactor limitation to caching
+class AudioContext {
  public:
-  using Base = IStaticExecutor<1>;
-
-  AudioThreadPool();
-
-  ~AudioThreadPool();
+  AudioContext();
+  ~AudioContext();
 
   void Play(Sound& sound);
   void Play(Music& music);
@@ -43,8 +31,7 @@ class AudioThreadPool : public IStaticExecutor<1> {
   // TODO 2: if already set -> smooth transmission
   void SetBackground(Music* music);
 
-  void Run() override;
-  void Join() override;
+  void Update();
 
  private:
   /// Sound: .wav
@@ -65,10 +52,10 @@ class AudioThreadPool : public IStaticExecutor<1> {
   void ReleaseSources(); // TODO: rename
 
   void InitContext();
-  void DeinitContext();
+  void DeInitContext();
 
   void InitOpenALBuffersAndSources();
-  void DeinitOpenALBuffersAndSources();
+  void DeInitOpenALBuffersAndSources();
 
   /// return id in sound_sources_ / music_sources_, NOT directly OpenAL id <--- todo: to documentation
   int GetAvailableSoundSourceId();
@@ -80,6 +67,8 @@ class AudioThreadPool : public IStaticExecutor<1> {
 
   bool CheckOggOvErrors(int code, int buffer_id);
   bool CheckOggOvLoopErrors(int code);
+
+  std::queue<folly::Function<void()>> task_queue_;
 
   ALCcontext* openal_context_;
   ALCdevice* openal_device_;
@@ -94,11 +83,9 @@ class AudioThreadPool : public IStaticExecutor<1> {
 
   float background_gain_ = 1.0f;
   float background_gain_step_ = 0.0f; // for smooth transition between two streams
-
-  bool openal_initialized_ = false;
 };
 
 } // namespace details
 } // namespace faithful
 
-#endif  // FAITHFUL_SRC_EXECUTORS_AUDIOTHREADPOOL_H_
+#endif  // FAITHFUL_SRC_EXECUTORS_AUDIOCONTEXT_H_
