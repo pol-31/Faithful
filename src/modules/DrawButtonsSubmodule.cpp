@@ -2,16 +2,15 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#include "../loader/ShaderObjectPool.h"
+#include "../common/UiPreset.h"
 #include "../../config/MainMenuLayout.h"
-#include "../gui/HudPreset.h"
 
 namespace faithful {
 
 namespace details {
 
 DrawButtonsSubmodule::DrawButtonsSubmodule(
-    assets::ShaderObjectPool* shader_object_pool)
+    assets::ShaderObjectPool& shader_object_pool)
     : shader_object_pool_(shader_object_pool) {
   InitButtons();
   InitButtonsPicking();
@@ -58,8 +57,8 @@ void DrawButtonsSubmodule::DrawButtonsPicking(HudPreset& cur_hud_preset) {
 
 void DrawButtonsSubmodule::InitButtons() {
   /// init shader
-  ShaderObject button_vert_shader = shader_object_pool_->Load("Button.vert");
-  ShaderObject button_frag_shader = shader_object_pool_->Load("Button.frag");
+  ShaderObject button_vert_shader = shader_object_pool_.Load("Button.vert");
+  ShaderObject button_frag_shader = shader_object_pool_.Load("Button.frag");
   button_shader_program_ = ShaderProgram(shader_object_pool_);
   button_shader_program_.AttachShader(button_vert_shader);
   button_shader_program_.AttachShader(button_frag_shader);
@@ -86,8 +85,8 @@ void DrawButtonsSubmodule::InitButtons() {
 
 void DrawButtonsSubmodule::InitButtonsPicking() {
   /// init shader
-  ShaderObject button_picking_vert_shader = shader_object_pool_->Load("ButtonPicking.vert");
-  ShaderObject button_picking_frag_shader = shader_object_pool_->Load("ButtonPicking.frag");
+  ShaderObject button_picking_vert_shader = shader_object_pool_.Load("ButtonPicking.vert");
+  ShaderObject button_picking_frag_shader = shader_object_pool_.Load("ButtonPicking.frag");
   button_picking_shader_program_ = ShaderProgram(shader_object_pool_);
   button_picking_shader_program_.AttachShader(button_picking_vert_shader);
   button_picking_shader_program_.AttachShader(button_picking_frag_shader);

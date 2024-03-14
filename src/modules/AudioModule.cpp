@@ -1,10 +1,8 @@
-#include "AudioContext.h"
+#include "AudioModule.h"
 
 #include "../../utils/Logger.h"
 
-#include "../loader/MusicPool.h"
 #include "../loader/Music.h"
-#include "../loader/SoundPool.h"
 #include "../loader/Sound.h"
 
 namespace faithful {
@@ -12,17 +10,17 @@ namespace details {
 
 // TODO: alSourceRewind(source); for Play(Sound) to pleyback from the beginning
 
-AudioContext::AudioContext() {
+AudioModule::AudioModule() {
   InitContext();
   InitOpenALBuffersAndSources();
 }
 
-AudioContext::~AudioContext() {
+AudioModule::~AudioModule() {
   DeInitOpenALBuffersAndSources();
   DeInitContext();
 }
 
-void AudioContext::Update() {
+void AudioModule::Update() {
   if (!task_queue_.empty()) {
     (task_queue_.front())();
   }
@@ -35,7 +33,7 @@ void AudioContext::Update() {
   ReleaseSources();
 }
 
-void AudioContext::InitContext() {
+void AudioModule::InitContext() {
   ALCdevice* device = alcOpenDevice(nullptr);
   if (!device) {
     std::cerr << "Failed to initialize OpenAL device" << std::endl;
@@ -52,13 +50,13 @@ void AudioContext::InitContext() {
   std::cerr << "OpenAL contect initialized" << std::endl;
 }
 
-void AudioContext::DeInitContext() {
+void AudioModule::DeInitContext() {
   alcMakeContextCurrent(nullptr);
   alcDestroyContext(openal_context_);
   alcCloseDevice(openal_device_);
 }
 
-void AudioContext::InitOpenALBuffersAndSources() {
+void AudioModule::InitOpenALBuffersAndSources() {
   int total_sources_num = sound_sources_.size() +
                           music_sources_.size();
   std::vector<ALuint> sources_ids(total_sources_num);
@@ -86,7 +84,7 @@ void AudioContext::InitOpenALBuffersAndSources() {
     AL_CALL(alSourcei, music_sources_[i].source_id, AL_LOOPING, AL_TRUE);
   }
 }
-void AudioContext::DeInitOpenALBuffersAndSources() {
+void AudioModule::DeInitOpenALBuffersAndSources() {
   int total_sources_num = sound_sources_.size() +
                           music_sources_.size();
   std::vector<ALuint> sources_ids(total_sources_num);
@@ -113,7 +111,7 @@ void AudioContext::DeInitOpenALBuffersAndSources() {
 }
 
 // internally in thread, so AL_CALL safe
-void AudioContext::ReleaseSources() {
+void AudioModule::ReleaseSources() {
   // TODO: possible SIMD optimization
   ALint state;
   for (auto& source : sound_sources_) {
@@ -133,7 +131,7 @@ void AudioContext::ReleaseSources() {
 }
 
 // internally in thread, so AL_CALL safe
-void AudioContext::BackgroundSmoothTransition() {
+void AudioModule::BackgroundSmoothTransition() {
   background_gain_ -= background_gain_step_;
   AL_CALL(alSourcei, music_sources_[0].source_id, AL_GAIN, background_gain_);
   if (background_gain_ == 0) {
@@ -147,7 +145,7 @@ void AudioContext::BackgroundSmoothTransition() {
   }
 }
 
-int AudioContext::GetAvailableSoundSourceId() {
+int AudioModule::GetAvailableSoundSourceId() {
   for (std::size_t i = 0; i < sound_sources_.size(); ++i) {
     if (!sound_sources_[i].busy) { // TODO: CAS? OR only one consumer ?
       sound_sources_[i].busy = true;
@@ -156,7 +154,7 @@ int AudioContext::GetAvailableSoundSourceId() {
   }
   return -1;
 }
-int AudioContext::GetAvailableMusicSourceId() {
+int AudioModule::GetAvailableMusicSourceId() {
   /// we're starting from 1 because 0 for background music (always busy)
   for (std::size_t i = 0; i < music_sources_.size(); ++i) {
     if (!music_sources_[i].busy) { // TODO: CAS? OR only one consumer ?
@@ -171,7 +169,7 @@ int AudioContext::GetAvailableMusicSourceId() {
  * then when the queue is full (we didn't have enough time to process them all),
  * -> we just rewrite the older by newer
  * */
-void AudioContext::Play(Sound& sound) {
+void AudioModule::Play(Sound& sound) {
   int source_id = GetAvailableSoundSourceId();
   if (source_id == -1) {
     std::cerr << "can't get available id for sound" << std::endl;
@@ -190,7 +188,7 @@ void AudioContext::Play(Sound& sound) {
     /// non-blocking, continue spinning in thread pool run-loop
   });
 }
-void AudioContext::Play(Music& music) {
+void AudioModule::Play(Music& music) {
   int source_id = GetAvailableMusicSourceId();
   if (source_id == -1) {
     std::cerr << "can't get available id for music" << std::endl;
@@ -201,7 +199,7 @@ void AudioContext::Play(Music& music) {
   auto buffer_size = faithful::config::kOpenalBuffersSize;
   auto buffers_num = faithful::config::kOpenalBuffersPerMusic;
 
-    auto data = std::make_unique<char>(buffer_size);
+  auto data = std::make_unique<char>(buffer_size);
   task_queue_.push([buffer_size, buffers_num, this, source_id, &music] {
     auto data = std::make_unique<char>(buffer_size);
     for (int i = 0; i < buffers_num; ++i) {
@@ -227,13 +225,13 @@ void AudioContext::Play(Music& music) {
 }
 
 /// should be called only from one thread
-void AudioContext::SetBackground(faithful::Music* music) {
+void AudioModule::SetBackground(faithful::Music* music) {
   next_background_music_ = music;
   background_gain_step_ = faithful::config::kDefaultBackgroundGainStep;
 }
 
 // internally in thread, so AL_CALL safe
-void AudioContext::UpdateMusicStream(MusicSourceData& music_data) {
+void AudioModule::UpdateMusicStream(MusicSourceData& music_data) {
   ALint buffersProcessed = 0;
   AL_CALL(alGetSourcei, music_data.source_id, AL_BUFFERS_PROCESSED, &buffersProcessed);
   if (buffersProcessed <= 0) {
@@ -295,7 +293,7 @@ void AudioContext::UpdateMusicStream(MusicSourceData& music_data) {
 
 
 // internally in thread, so AL_CALL safe
-bool AudioContext::CheckOggOvErrors(int code, int buffer_id) {
+bool AudioModule::CheckOggOvErrors(int code, int buffer_id) {
   if (code == OV_HOLE) {
     std::cerr << "ERROR: OV_HOLE found in initial read of buffer "
               << buffer_id << std::endl;
@@ -315,7 +313,7 @@ bool AudioContext::CheckOggOvErrors(int code, int buffer_id) {
 }
 
 // internally in thread, so AL_CALL safe
-bool AudioContext::CheckOggOvLoopErrors(int code) {
+bool AudioModule::CheckOggOvLoopErrors(int code) {
   if (code == OV_ENOSEEK) {
     std::cerr << "ERROR: OV_ENOSEEK found when trying to loop" << std::endl;
   } else if (code == OV_EINVAL) {

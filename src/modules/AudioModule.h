@@ -1,5 +1,5 @@
-#ifndef FAITHFUL_SRC_EXECUTORS_AUDIOCONTEXT_H_
-#define FAITHFUL_SRC_EXECUTORS_AUDIOCONTEXT_H_
+#ifndef FAITHFUL_SRC_MODULES_AUDIOMODULE_H_
+#define FAITHFUL_SRC_MODULES_AUDIOMODULE_H_
 
 #include <array>
 
@@ -19,10 +19,10 @@ class Sound;
 namespace details {
 
 // TODO: refactor limitation to caching
-class AudioContext {
+class AudioModule {
  public:
-  AudioContext();
-  ~AudioContext();
+  AudioModule();
+  ~AudioModule();
 
   void Play(Sound& sound);
   void Play(Music& music);
@@ -88,4 +88,4 @@ class AudioContext {
 } // namespace details
 } // namespace faithful
 
-#endif  // FAITHFUL_SRC_EXECUTORS_AUDIOCONTEXT_H_
+#endif  // FAITHFUL_SRC_MODULES_AUDIOMODULE_H_

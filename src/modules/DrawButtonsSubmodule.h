@@ -3,8 +3,9 @@
 
 #include <glad/glad.h>
 
-#include "../loader/Texture.h"
+#include "../loader/ShaderObjectPool.h"
 #include "../loader/ShaderProgram.h"
+#include "../loader/Texture.h"
 
 namespace faithful {
 
@@ -21,7 +22,7 @@ class ShaderObjectPool;
 class DrawButtonsSubmodule {
  public:
   DrawButtonsSubmodule() = delete;
-  DrawButtonsSubmodule(assets::ShaderObjectPool* shader_object_pool);
+  DrawButtonsSubmodule(assets::ShaderObjectPool& shader_object_pool);
   ~DrawButtonsSubmodule();
 
   void DrawButtons(HudPreset& cur_hud_preset);
@@ -31,7 +32,7 @@ class DrawButtonsSubmodule {
   void InitButtons();
   void InitButtonsPicking();
 
-  assets::ShaderObjectPool* shader_object_pool_;
+  assets::ShaderObjectPool& shader_object_pool_;
 
   ShaderProgram button_shader_program_;
   GLuint button_vao_;

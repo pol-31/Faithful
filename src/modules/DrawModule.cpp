@@ -12,37 +12,36 @@
 #include "../loader/ModelPool.h"
 #include "../player/PlayerCharacter.h"
 
+#include "../../config/MainMenuLayout.h"
+
 namespace faithful {
 namespace details {
 
-DrawModule::DrawModule(assets::ShaderObjectPool* shader_object_pool,
-                       assets::ModelPool* model_manager,
-                       PhenomenonAreaPool* phenomenon_area_pool,
-                       PlayerCharacter* player_character,
-                       LiquidHandler* liquid_handler,
-                       SkyHandler* sky_handler,
-                       TerrainHandler* terrain_handler,
-                       VegetationHandler* vegetation_handler,
-                       WeatherHandler* weather_handler)
+DrawModule::DrawModule(
+    assets::ShaderObjectPool& shader_object_pool,
+    assets::ModelPool& model_pool,
+    Environment& environment,
+    PhenomenonAreaPool& phenomenon_area_pool,
+    PlayerCharacter& player_character)
     : draw_text_submodule_(shader_object_pool),
-      model_manager_(model_manager),
+      draw_buttons_submodule_(shader_object_pool),
+      model_pool_(model_pool),
       phenomenon_area_pool_(phenomenon_area_pool),
       player_character_(player_character),
-      liquid_handler_(liquid_handler),
-      sky_handler_(sky_handler),
-      terrain_handler_(terrain_handler),
-      vegetation_handler_(vegetation_handler),
-      weather_handler_(weather_handler) {}
+      liquid_handler_(environment.liquid_handler),
+      sky_handler_(environment.sky_handler),
+      terrain_handler_(environment.terrain_handler),
+      vegetation_handler_(environment.vegetation_handler),
+      weather_handler_(environment.weather_handler) {}
 
 
 void DrawModule::Init() {
-  InitPickingFramebuffer();
+  InitPickingFrameBuffer();
 
   // TODO: init hud texture
   button_texture_ = Texture(texture_pool_->Load("buttons.astc"));
-  glActiveTexture(hud_texture);
+  glActiveTexture(config::menu::hud_texture);
   button_texture_.Bind();
-  glBindTexture(GL_TEXTURE_2D, &button_texture_);
 
   // TODO: add ALL shader_program, ubo creation to DrawManager::Init()
   unsigned int new_ubo;
@@ -61,12 +60,13 @@ void DrawModule::Init() {
   glClearColor(0.2, 0.2, 0.2, 1.0);
 }
 
-void DrawModule::InitPickingFramebuffer() {
+void DrawModule::InitPickingFrameBuffer() {
   glGenFramebuffers(1, &picking_framebuffer_);
   glBindFramebuffer(GL_FRAMEBUFFER, picking_framebuffer_);
 
   glGenTextures(1, &picking_texture_);
   glBindTexture(GL_TEXTURE_2D, picking_texture_);
+  // TODO: need to update texture::resolution when window resolution changes
   glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI,
                window_.GetResolution().x, window_.GetResolution().y,
                0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
@@ -89,8 +89,40 @@ void DrawModule::DrawBackground() {
    * */
 }
 
-void DrawModule::Update() {
-  // TODO: process frame + all from task_queue_
+void DrawModule::SetupMenu() {
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glEnable(GL_CULL_FACE);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+}
+
+void DrawModule::SetupGame() {
+  //
+}
+
+void DrawModule::Draw(HudPreset& cur_hud_preset) {
+  draw_buttons_submodule_.DrawButtons(cur_hud_preset);
+  DrawBackground();
+  draw_text_submodule_.DrawMainMenuText(cur_hud_preset);
+}
+
+GLuint DrawModule::GetFrameBufferPixel(const glm::vec2& coord) {
+
+  glBindFramebuffer(GL_FRAMEBUFFER, picking_framebuffer_);
+  GLuint object_id;
+  glReadPixels(static_cast<GLint>(coord.x),
+               static_cast<GLint>(coord.y),
+               1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &object_id);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  return object_id;
+}
+
+void DrawModule::DrawPicking(HudPreset& cur_hud_preset) {
+  glClearTexImage(picking_texture_, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+  glBindFramebuffer(GL_FRAMEBUFFER, picking_framebuffer_);
+  draw_buttons_submodule_.DrawButtonsPicking(cur_hud_preset);
+  DrawModelPicking();
 }
 
 } // namespace details

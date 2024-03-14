@@ -1,27 +1,21 @@
-#ifndef FAITHFUL_SRC_COMMON_LOADINGMANAGER_H_
-#define FAITHFUL_SRC_COMMON_LOADINGMANAGER_H_
+#ifndef FAITHFUL_SRC_MODULES_LOADINGMODULE_H_
+#define FAITHFUL_SRC_MODULES_LOADINGMODULE_H_
 
 #include <memory>
 
 #include "../loader/assets_data/ModelData.h"
-#include "GlobalStateAwareBase.h"
+#include "../loader/TexturePool.h"
+#include "../loader/ModelPool.h"
 
 namespace faithful {
 namespace details {
 
-namespace assets {
-
-class ModelPool;
-class TexturePool;
-
-} // namespace assets
-
-class LoadingManager : public GlobalStateAwareBase {
+class LoadingModule {
  public:
-  LoadingManager() = delete;
-  LoadingManager(
-      assets::ModelPool* model_pool,
-      assets::TexturePool* texture_pool);
+  LoadingModule() = delete;
+  LoadingModule(
+      assets::ModelPool& model_pool,
+      assets::TexturePool& texture_pool);
 
   /// textures / sounds loaded by models;
   /// hdr sky texture and music handled not there,
@@ -40,8 +34,8 @@ class LoadingManager : public GlobalStateAwareBase {
 
  private:
 
-  assets::ModelPool* model_pool_;
-  assets::TexturePool* texture_pool_;
+  assets::ModelPool& model_pool_;
+  assets::TexturePool& texture_pool_;
 
   bool stress_loading_ = false;
 };
@@ -49,4 +43,4 @@ class LoadingManager : public GlobalStateAwareBase {
 } // namespace details
 } // namespace faithful
 
-#endif  // FAITHFUL_SRC_COMMON_LOADINGMANAGER_H_
+#endif  // FAITHFUL_SRC_MODULES_LOADINGMODULE_H_

@@ -7,13 +7,13 @@
 #include "../loader/ShaderObjectPool.h"
 #include "../../config/MainMenuLayout.h"
 #include "../../config/FontInfo.h"
-#include "../gui/HudPreset.h"
+#include "../common/UiPreset.h"
 
 namespace faithful {
 namespace details {
 
 DrawTextSubmodule::DrawTextSubmodule(
-    assets::ShaderObjectPool* shader_object_pool)
+    assets::ShaderObjectPool& shader_object_pool)
     : shader_object_pool_(shader_object_pool) {
   InitFonts();
 }
@@ -146,15 +146,15 @@ void DrawTextSubmodule::InitFonts() {
   LoadFontBitmap(font::GameStorytelling_Constantia);
 
   /// init shader
-  ShaderObject button_vert_shader = shader_object_pool_->Load("Text.vert");
-  ShaderObject button_frag_shader = shader_object_pool_->Load("Text.frag");
+  ShaderObject button_vert_shader = shader_object_pool_.Load("Text.vert");
+  ShaderObject button_frag_shader = shader_object_pool_.Load("Text.frag");
   text_shader_program_ = ShaderProgram(shader_object_pool_);
   text_shader_program_.AttachShader(button_vert_shader);
   text_shader_program_.AttachShader(button_frag_shader);
   text_shader_program_.Bake();
 
-  ShaderObject textured_button_vert_shader = shader_object_pool_->Load("TexturedText.vert");
-  ShaderObject textured_button_frag_shader = shader_object_pool_->Load("TexturedText.frag");
+  ShaderObject textured_button_vert_shader = shader_object_pool_.Load("TexturedText.vert");
+  ShaderObject textured_button_frag_shader = shader_object_pool_.Load("TexturedText.frag");
   textured_text_shader_program_ = ShaderProgram(shader_object_pool_);
   textured_text_shader_program_.AttachShader(textured_button_vert_shader);
   textured_text_shader_program_.AttachShader(textured_button_frag_shader);

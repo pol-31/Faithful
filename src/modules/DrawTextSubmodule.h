@@ -8,8 +8,11 @@
 
 #include "../../utils/ConstexprVector.h"
 
-#include "../loader/Texture.h"
+#include "../loader/ShaderObjectPool.h"
 #include "../loader/ShaderProgram.h"
+#include "../loader/Texture.h"
+
+#include "../common/Font.h"
 
 namespace faithful {
 
@@ -26,7 +29,7 @@ class ShaderObjectPool;
 class DrawTextSubmodule {
  public:
   DrawTextSubmodule() = delete;
-  DrawTextSubmodule(assets::ShaderObjectPool* shader_object_pool);
+  DrawTextSubmodule(assets::ShaderObjectPool& shader_object_pool);
   ~DrawTextSubmodule();
 
   /// both for simple and textured text (just pass a different shader)
@@ -40,7 +43,7 @@ class DrawTextSubmodule {
 
   void LoadFontBitmap(const Font& font);
 
-  assets::ShaderObjectPool* shader_object_pool_;
+  assets::ShaderObjectPool& shader_object_pool_;
 
   Texture menu_button_font_texture_;
   Texture menu_description_font_texture_;
