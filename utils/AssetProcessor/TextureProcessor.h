@@ -68,18 +68,13 @@ class TextureProcessor {
   /// be deduced as a relative to user_asset_root_dir_ from asset_destination_
   bool Decode(const std::filesystem::path& texture_path,
               AssetCategory category);
-  /// NOT IMPLEMENTED YET
-  bool Decode(const std::filesystem::path& dest_path,
-              std::unique_ptr<uint8_t[]> image_data,
-              int width, int height,
-              AssetCategory category);
 
   bool WriteEncodedData(std::string filename, unsigned int image_x,
                         unsigned int image_y, int comp_data_size,
                         const uint8_t* comp_data);
   bool WriteDecodedData(std::string filename, unsigned int image_x,
                         unsigned int image_y, AssetCategory category,
-                        std::shared_ptr<uint8_t> image_data);
+                        std::unique_ptr<uint8_t[]> image_data);
 
   int CalculateCompLen(int image_x, int image_y);
 
@@ -89,7 +84,7 @@ class TextureProcessor {
   astcenc_context* ProvideDecodeContext(AssetCategory category);
 
   bool ReadAstcFile(const std::string& path, int& width, int& height,
-                    int& comp_len, uint8_t*& comp_data);
+                    int& comp_len, std::unique_ptr<uint8_t[]>& comp_data);
 
   std::filesystem::path asset_destination_;
   std::filesystem::path user_asset_root_dir_;

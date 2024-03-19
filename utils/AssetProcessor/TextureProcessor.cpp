@@ -12,8 +12,6 @@
 #include "AssetCategory.h"
 #include "AssetLoadingThreadPool.h"
 
-// TODO: memory allocation (+ STBI_MALLOC/etc...)
-
 TextureProcessor::TextureProcessor(
     bool encode,
     const std::filesystem::path& asset_destination,
@@ -25,44 +23,62 @@ TextureProcessor::TextureProcessor(
       encode_(encode) {}
 
 TextureProcessor::~TextureProcessor() {
-  if (context_ldr_)
+  if (context_ldr_) {
     astcenc_context_free(context_ldr_);
-  if (context_hdr_)
+  }
+  if (context_hdr_) {
     astcenc_context_free(context_hdr_);
-  if (context_rg_)
+  }
+  if (context_rg_) {
     astcenc_context_free(context_rg_);
+  }
 }
 
 bool TextureProcessor::SwitchToLdr() {
-  if (context_hdr_)
+  if (context_hdr_) {
     astcenc_context_free(context_hdr_);
-  if (context_rg_)
+    context_hdr_= nullptr;
+  }
+  if (context_rg_) {
     astcenc_context_free(context_rg_);
-  if (!context_ldr_)
+    context_rg_= nullptr;
+  }
+  if (!context_ldr_) {
     return InitContextLdr();
+  }
   return true;
 }
 bool TextureProcessor::SwitchToHdr() {
-  if (context_ldr_)
+  if (context_ldr_) {
     astcenc_context_free(context_ldr_);
-  if (context_rg_)
+    context_ldr_= nullptr;
+  }
+  if (context_rg_) {
     astcenc_context_free(context_rg_);
-  if (!context_hdr_)
+    context_rg_= nullptr;
+  }
+  if (!context_hdr_) {
     return InitContextHdr();
+  }
   return true;
 }
 bool TextureProcessor::SwitchToRG() {
-  if (context_ldr_)
+  if (context_ldr_) {
     astcenc_context_free(context_ldr_);
-  if (context_hdr_)
+    context_ldr_= nullptr;
+  }
+  if (context_hdr_) {
     astcenc_context_free(context_hdr_);
-  if (!context_rg_)
+    context_hdr_= nullptr;
+  }
+  if (!context_rg_) {
     return InitContextRG();
+  }
   return true;
 }
 
 bool TextureProcessor::InitContextLdr() {
-  using namespace faithful;  // for namespace faithful::config
+  using namespace faithful;
   astcenc_config config;
   config.block_x = config::kTexCompBlockX;
   config.block_y = config::kTexCompBlockY;
@@ -79,9 +95,8 @@ bool TextureProcessor::InitContextLdr() {
     return false;
   }
 
-  status =
-      astcenc_context_alloc(&config, thread_pool_->GetThreadNumber(),
-                            &context_ldr_);
+  status = astcenc_context_alloc(
+      &config, thread_pool_->GetThreadNumber(), &context_ldr_);
   if (status != ASTCENC_SUCCESS) {
     std::cerr << "Error: astc-enc ldr codec context alloc failed: "
               << astcenc_get_error_string(status) << std::endl;
@@ -90,7 +105,7 @@ bool TextureProcessor::InitContextLdr() {
   return true;
 }
 bool TextureProcessor::InitContextHdr() {
-  using namespace faithful;  // for namespace faithful::config
+  using namespace faithful;
   astcenc_config config;
   config.block_x = config::kTexCompBlockX;
   config.block_y = config::kTexCompBlockY;
@@ -107,9 +122,8 @@ bool TextureProcessor::InitContextHdr() {
     return false;
   }
 
-  status =
-      astcenc_context_alloc(&config, thread_pool_->GetThreadNumber(),
-                            &context_hdr_);
+  status = astcenc_context_alloc(
+      &config, thread_pool_->GetThreadNumber(), &context_hdr_);
   if (status != ASTCENC_SUCCESS) {
     std::cerr << "Error: astc-enc hdr codec context alloc failed: "
               << astcenc_get_error_string(status) << std::endl;
@@ -118,7 +132,7 @@ bool TextureProcessor::InitContextHdr() {
   return true;
 }
 bool TextureProcessor::InitContextRG() {
-  using namespace faithful;  // for namespace faithful::config
+  using namespace faithful;
   astcenc_config config;
   config.block_x = config::kTexCompBlockX;
   config.block_y = config::kTexCompBlockY;
@@ -140,9 +154,8 @@ bool TextureProcessor::InitContextRG() {
     return false;
   }
 
-  status =
-      astcenc_context_alloc(&config, thread_pool_->GetThreadNumber(),
-                            &context_rg_);
+  status = astcenc_context_alloc(
+      &config, thread_pool_->GetThreadNumber(), &context_rg_);
   if (status != ASTCENC_SUCCESS) {
     std::cerr << "Error: astc-enc rg codec context alloc failed: "
               << astcenc_get_error_string(status) << std::endl;
@@ -160,7 +173,6 @@ void TextureProcessor::Process(const std::filesystem::path& texture_path,
   }
 }
 
-
 void TextureProcessor::Process(const std::filesystem::path& dest_path,
                                std::unique_ptr<uint8_t[]> image_data,
                                int width, int height,
@@ -168,27 +180,26 @@ void TextureProcessor::Process(const std::filesystem::path& dest_path,
   if (encode_) {
     Encode(dest_path, std::move(image_data), width, height, category);
   } else {
-    Decode(dest_path, std::move(image_data), width, height, category);
+    std::cerr
+        << "TextureProcessor::Process as a decoder with nested data NOT EXIST"
+        << std::endl;
+    std::terminate();
   }
 }
 
 bool TextureProcessor::Encode(const std::filesystem::path& texture_path,
                               AssetCategory category) {
-  using namespace faithful;  // for namespace faithful::config
+  using namespace faithful;
   int image_x, image_y, image_c;
   // force 4 component (astc codec requires it)
-  auto image_data =
-      (uint8_t*)stbi_load(texture_path.string().c_str(),
-                          &image_x, &image_y, &image_c, 4);
+  auto image_data = (uint8_t*)stbi_load(
+      texture_path.string().c_str(), &image_x, &image_y, &image_c, 4);
   if (!image_data) {
     std::cerr << "Error: stb_image texture loading failed: " << texture_path
               << std::endl;
     return false;
   }
-  std::shared_ptr<uint8_t> image_data_ptr(
-      image_data, [](uint8_t* ptr) {
-        delete[] ptr;
-      });
+  std::unique_ptr<uint8_t[]> image_data_ptr(image_data);
 
   /// extension replaced inside the ProvideEncodeContextAndFilename()
   auto dest_path = asset_destination_ /
@@ -199,29 +210,30 @@ bool TextureProcessor::Encode(const std::filesystem::path& texture_path,
   astcenc_context* context = res.first;
   std::string out_filename = res.second;
 
-  std::cout << "DEST PATH: " << dest_path << std::endl;
-  std::cout << "OUT PATH: " << out_filename << std::endl;
-
   int comp_len = CalculateCompLen(image_x, image_y);
-  auto comp_data = std::make_shared<uint8_t>(comp_len);
+  auto comp_data = std::make_unique<uint8_t[]>(comp_len);
 
   astcenc_image image;
   image.dim_x = image_x;
   image.dim_y = image_y;
   image.dim_z = 1;
-  image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
-
+  if (category != AssetCategory::kTextureHdr) {
+    image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
+  } else {
+    image.data_type = static_cast<astcenc_type>(config::kTexHdrDataType);
+  }
   image.data = reinterpret_cast<void**>(&image_data);
-//  image.data = reinterpret_cast<void**>(image_data_ptr.get());
 
   // no need to make it atomic, only "fail"-thread write
   bool encode_success = true;
-  thread_pool_->Execute([=, &image, &encode_success](int thread_id) {
+  thread_pool_->Execute([=, comp_data_get = comp_data.get(),
+                         &image, &encode_success](int thread_id) {
     astcenc_error status = astcenc_compress_image(
         context, &image, &config::kTexCompSwizzle,
-        comp_data.get(), comp_len, thread_id);
-    if (status != ASTCENC_SUCCESS)
+        comp_data_get, comp_len, thread_id);
+    if (status != ASTCENC_SUCCESS) {
       encode_success = false;
+    }
   });
 
   if (!encode_success) {
@@ -237,9 +249,7 @@ bool TextureProcessor::Encode(const std::filesystem::path& dest_path,
                               std::unique_ptr<uint8_t[]> image_data,
                               int width, int height,
                               AssetCategory category) {
-
-  using namespace faithful;  // for namespace faithful::config
-
+  using namespace faithful;
   // structure binding can't be used with capturing (used in lambda further)
   std::pair<astcenc_context*, std::string> res =
       ProvideEncodeContextAndFilename(dest_path, category);
@@ -247,26 +257,33 @@ bool TextureProcessor::Encode(const std::filesystem::path& dest_path,
   auto out_filename = res.second;
 
   int comp_len = CalculateCompLen(width, height);
-  auto comp_data = std::make_shared<uint8_t>(comp_len);
+  auto comp_data = std::make_unique<uint8_t[]>(comp_len);
 
   astcenc_image image;
   image.dim_x = width;
   image.dim_y = height;
   image.dim_z = 1;
-  image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
+  if (category != AssetCategory::kTextureHdr) {
+    image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
+  } else {
+    image.data_type = static_cast<astcenc_type>(config::kTexHdrDataType);
+  }
 
-  //  image.data = reinterpret_cast<void**>(&image_data);
+  /// need valid l-value pointer line further
   auto data_ptr = reinterpret_cast<void*>(image_data.get());
   image.data = reinterpret_cast<void**>(&data_ptr);
 
   // no need to make it atomic, only "fail"-thread write
   bool encode_success = true;
-  thread_pool_->Execute([=, &image, &encode_success](int thread_id) {
+  thread_pool_->Execute([context, comp_len,
+                         comp_data_get = comp_data.get(),
+                         &image, &encode_success](int thread_id) {
     astcenc_error status = astcenc_compress_image(
         context, &image, &config::kTexCompSwizzle,
-        comp_data.get(), comp_len, thread_id);
-    if (status != ASTCENC_SUCCESS)
+        comp_data_get, comp_len, thread_id);
+    if (status != ASTCENC_SUCCESS) {
       encode_success = false;
+    }
   });
 
   if (!encode_success) {
@@ -279,14 +296,13 @@ bool TextureProcessor::Encode(const std::filesystem::path& dest_path,
 }
 
 int TextureProcessor::CalculateCompLen(int image_x, int image_y) {
-  using namespace faithful;  // for namespace faithful::config
+  using namespace faithful;
   int block_count_x =
       (image_x + config::kTexCompBlockX - 1) / config::kTexCompBlockX;
   int block_count_y =
       (image_y + config::kTexCompBlockY - 1) / config::kTexCompBlockY;
   return block_count_x * block_count_y * 16;
 }
-
 
 std::pair<astcenc_context*, std::string>
     TextureProcessor::ProvideEncodeContextAndFilename(
@@ -299,7 +315,6 @@ std::pair<astcenc_context*, std::string>
     case AssetCategory::kTextureLdr:
       SwitchToLdr();
       context = context_ldr_;
-      new_filename.replace_extension("astc");
       break;
     case AssetCategory::kTextureHdr:
       SwitchToHdr();
@@ -308,10 +323,9 @@ std::pair<astcenc_context*, std::string>
       /// texture still can have such category if some models
       /// will identify it as a normal map or MetallicRoughness
       if (DetectTexHdrSuffix(dest_path)) {
-        new_filename.replace_extension("astc");
       } else {
         auto new_stem = dest_path.stem().string();
-        new_stem += "_rrrg.astc";
+        new_stem += "_rrrg";
         new_filename.replace_filename(new_stem);
       }
       break;
@@ -322,16 +336,16 @@ std::pair<astcenc_context*, std::string>
       /// texture still can have such category if some models
       /// will identify it as a normal map or MetallicRoughness
       if (DetectTexRGSuffix(dest_path)) {
-        new_filename.replace_extension("astc");
       } else {
         auto new_stem = dest_path.stem().string();
-        new_stem += "_rrrg.astc";
+        new_stem += "_rrrg";
         new_filename.replace_filename(new_stem);
       }
       break;
     default:
-      break;
+      std::terminate(); // you shouldn't be there
   }
+  new_filename.replace_extension("astc");
 
   astcenc_compress_reset(context);
   return {context, new_filename};
@@ -342,7 +356,7 @@ bool TextureProcessor::WriteEncodedData(std::string filename,
                                         unsigned int image_y,
                                         int comp_data_size,
                                         const uint8_t* comp_data) {
-  using namespace faithful;  // for namespace faithful::config
+  using namespace faithful;
   std::ofstream out_file(filename, std::ios::binary);
   if (!out_file.is_open()) {
     std::cerr << "Error: failed to create file for encoded data" << std::endl;
@@ -377,35 +391,37 @@ bool TextureProcessor::WriteEncodedData(std::string filename,
 
 bool TextureProcessor::Decode(const std::filesystem::path& texture_path,
                               AssetCategory category) {
-  using namespace faithful;  // for namespace faithful::config
+  using namespace faithful;
   auto context = ProvideDecodeContext(category);
 
   int image_x, image_y, comp_len;
-  uint8_t* comp_data; // protected with std::shared_ptr going forward
+  std::unique_ptr<uint8_t[]> comp_data;
   if (!ReadAstcFile(texture_path.string(), image_x, image_y, comp_len, comp_data)) {
     return false;
   }
-  auto image_data = std::make_shared<uint8_t>(image_x * image_y * 4);
-  std::shared_ptr<uint8_t> comp_data_ptr(
-       comp_data, [](uint8_t* ptr) {
-        delete[] ptr;
-      });
+  auto image_data = std::make_unique<uint8_t[]>(image_x * image_y * 4);
 
   astcenc_image image;
   image.dim_x = image_x;
   image.dim_y = image_y;
   image.dim_z = 1;
-  image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
+  if (category != AssetCategory::kTextureHdr) {
+    image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
+  } else {
+    image.data_type = static_cast<astcenc_type>(config::kTexHdrDataType);
+  }
   image.data = reinterpret_cast<void**>(&image_data);
 
   // no need to make it atomic, only "fail"-thread write
   bool decode_success = true;
-  thread_pool_->Execute([=, &image, &decode_success](int thread_id) {
+  thread_pool_->Execute([=, comp_data_get = comp_data.get(),
+                         &image, &decode_success](int thread_id) {
     astcenc_error status = astcenc_decompress_image(
-        context, comp_data, comp_len, &image,
+        context, comp_data_get, comp_len, &image,
         &config::kTexCompSwizzle, thread_id);
-    if (status != ASTCENC_SUCCESS)
+    if (status != ASTCENC_SUCCESS) {
       decode_success = false;
+    }
   });
 
   if (!decode_success) {
@@ -439,20 +455,12 @@ bool TextureProcessor::Decode(const std::filesystem::path& texture_path,
       std::terminate();
   }
   return WriteDecodedData(dest_path.string(), image_x, image_y,
-                   category, image_data);
-}
-
-bool TextureProcessor::Decode(const std::filesystem::path& dest_path,
-                              std::unique_ptr<uint8_t[]> image_data,
-                              int width, int height,
-                              AssetCategory category) {
-  std::cerr << "TextureProcessor::Decode from memory NOT IMPLEMENTED" << std::endl;
-  return false;
+                          category, std::move(image_data));
 }
 
 bool TextureProcessor::WriteDecodedData(
     std::string filename, unsigned int image_x, unsigned int image_y,
-    AssetCategory category, std::shared_ptr<uint8_t> image_data) {
+    AssetCategory category, std::unique_ptr<uint8_t[]> image_data) {
   if (category != AssetCategory::kTextureHdr) {
     if (stbi_write_png(filename.c_str(), image_x, image_y, 4,
                        image_data.get(), 4 * image_x)) {
@@ -471,7 +479,7 @@ bool TextureProcessor::WriteDecodedData(
 
 bool TextureProcessor::ReadAstcFile(const std::string& path, int& width,
                                     int& height, int& comp_len,
-                                    uint8_t*& comp_data) {
+                                    std::unique_ptr<uint8_t[]>& comp_data) {
   std::ifstream file(path, std::ios::binary);
   if (!file.is_open()) {
     std::cerr << "Error: texture loading failed: " << path << std::endl;
@@ -497,8 +505,8 @@ bool TextureProcessor::ReadAstcFile(const std::string& path, int& width,
   height = header.dim_y[0] | header.dim_y[1] << 8 | header.dim_y[2] << 16;
 
   comp_len = CalculateCompLen(width, height);
-  comp_data = new uint8_t[comp_len];
-  file.read(reinterpret_cast<char*>(comp_data), comp_len);
+  comp_data = std::make_unique<uint8_t[]>(comp_len);
+  file.read(reinterpret_cast<char*>(comp_data.get()), comp_len);
   return true;
 }
 
