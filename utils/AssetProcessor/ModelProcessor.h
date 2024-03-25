@@ -2,77 +2,68 @@
 #define ASSETPROCESSOR_MODELPROCESSOR_H
 
 #include <filesystem>
+#include <memory>
 #include <string>
+#include <string_view>
 
-#include "AssetCategory.h"
-#include "../../config/Paths.h"
+#include <tiny_gltf.h>
 
-class TextureProcessor;
+#include "TextureProcessor.h"
+#include "ReplaceRequest.h"
 
-#include "tinygltf/tiny_gltf.h"
+/// while decompression we load images on our own because of ".astc" extension,
+/// which is not supported by GLTF 2.0 spec
+bool TinygltfLoadTextureStub(tinygltf::Image *image, const int image_idx,
+                             std::string *err, std::string *warn, int req_width,
+                             int req_height, const unsigned char *bytes,
+                             int size, void *user_data);
 
-// TODO: for HDR we still need prefix, still using u8 only
-// TODO: function SafeDelete() which will delete model / Scan
-//     all textures and check are they still used --> NOT DELETE BUT
-//     AT LEAST PROVIDE INFO
-// TODO: in case of tilemap make intend 6x6 on borders of textures
-// TODO: explicitly say about not supporting of float16 / short int types
-//     - we use only 8bit
-
-
-// blocking, not thread-safe (crt not used in current RapidJSON "version")
 class ModelProcessor {
  public:
-  // used in TextureProcessor to know does the images was already processed
-  struct ProcessedImage {
-    std::string path;
-    int id;
-  };
+  ModelProcessor() = delete;
+  ModelProcessor(TextureProcessor& texture_processor,
+                 ReplaceRequest& replace_request);
 
-  ModelProcessor(
-      bool encode,
-      const std::filesystem::path& asset_destination,
-      const std::filesystem::path& user_asset_root_dir,
-      TextureProcessor* texture_processor);
+  void Encode(const std::filesystem::path& path);
+  void Decode(const std::filesystem::path& path);
 
-  void Process(std::filesystem::path model_path);
-
-  const std::vector<ProcessedImage>& GetProcessedImagesList() const {
+  const std::vector<std::string>& GetProcessedImages() const {
     return processed_images_;
   }
 
+  void SetDestinationDirectory(const std::filesystem::path& path);
+
   private:
+   struct ModelTextureConfig {
+     std::filesystem::path out_path;
+     TextureProcessor::TextureCategory category;
+   };
   bool Read();
   bool Write(const std::string& destination);
 
   void CompressTextures();
   void DecompressTextures();
 
-  // for assets/{external, embedded}
-  void FindLastTextureId();
+  ModelTextureConfig DeduceEncodeTextureCategory(int model_image_id);
 
-  int MarkImageAsAProcessed(const std::string& image_path);
-  AssetCategory DeduceTextureCategory(int image_id);
+  /// filename stem as an input parameter
+  ModelTextureConfig DeduceDecodeTextureCategory(std::string_view path);
 
-  bool OptimizeModel(const std::string& destination);
+  bool OptimizeModel(const std::string& path);
 
-  mutable TextureProcessor* texture_processor_;
-  mutable std::filesystem::path asset_destination_;
+  /// in case if texture embedded, we directly ask texture processor to process
+  TextureProcessor& texture_processor_;
 
-  mutable std::filesystem::path user_asset_root_dir_;
-  mutable bool encode_;
+  ReplaceRequest& replace_request_;
 
-  // not thread-safe, not safe at calling from multiple instances
-  mutable int last_texture_id_ = 0;
+  std::vector<std::string> processed_images_;
 
-  mutable std::vector<ProcessedImage> processed_images_;
-
-  mutable std::filesystem::path cur_model_path_;
-
-  mutable tinygltf::Model model_;
-  mutable tinygltf::TinyGLTF loader_;
-  mutable std::string error_string_;
-  mutable std::string warning_string_;
+  std::filesystem::path cur_model_path_;
+  std::unique_ptr<tinygltf::Model> model_;
+  tinygltf::TinyGLTF loader_;
+  std::string error_string_;
+  std::string warning_string_;
+  std::filesystem::path models_destination_path_;
 };
 
 #endif  // ASSETPROCESSOR_MODELPROCESSOR_H

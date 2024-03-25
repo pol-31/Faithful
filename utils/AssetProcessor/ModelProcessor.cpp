@@ -1,56 +1,80 @@
 #include "ModelProcessor.h"
 
 #include <iostream>
-#include <filesystem>
 
-#include "TextureProcessor.h"
+#include "../../config/Paths.h"
 
-#include "rapidjson/document.h"
-#include "rapidjson/filereadstream.h"
-#include "rapidjson/filewritestream.h"
-#include "rapidjson/prettywriter.h"
-#include <cstdio>
-#include <string>
-
-ModelProcessor::ModelProcessor(
-    bool encode,
-    const std::filesystem::path& asset_destination,
-    const std::filesystem::path& user_asset_root_dir,
-    TextureProcessor* texture_processor)
-    : texture_processor_(texture_processor),
-      asset_destination_(asset_destination),
-      user_asset_root_dir_(user_asset_root_dir),
-      encode_(encode) {
-  FindLastTextureId();
-  loader_.SetPreserveImageChannels(true); //  4-channel loading
+bool TinygltfLoadTextureStub(tinygltf::Image *image, const int image_idx,
+                             std::string *err, std::string *warn, int req_width,
+                             int req_height, const unsigned char *bytes,
+                             int size, void *user_data) {
+  (void)image, (void)image_idx, (void)err, (void)warn, (void)req_width,
+      (void)req_height, (void)bytes, (void)size, (void)user_data;
+  /// main logic provided by ModelProcessor::DecompressTextures()
+  return true;
 }
 
-// TODO: use exceptions instead of bool return values
+ModelProcessor::ModelProcessor(
+    TextureProcessor& texture_processor,
+    ReplaceRequest& replace_request)
+    : texture_processor_(texture_processor),
+      replace_request_(replace_request) {
+  /// force 4-channel loading, mandatory for astc
+  loader_.SetPreserveImageChannels(true);
+  /// while decompression we load images on our own because of ".astc" extension,
+  /// which is not supported by GLTF 2.0 spec
+  loader_.SetImageWriter(nullptr, nullptr);
+}
 
-void ModelProcessor::Process(std::filesystem::path model_path) {
-  cur_model_path_ = model_path;
-  std::cout << cur_model_path_ << " - Source path" << std::endl;
-  Read();
-  if (encode_) {
-    CompressTextures();
-  } else {
-    DecompressTextures();
-  }
-  auto suffix = model_path.lexically_relative(user_asset_root_dir_);
-  auto destination = asset_destination_ / suffix;
-  destination.replace_extension("gltf");
-  if (Write(destination.string())) {
-    return;
-  }
-  if (encode_) {
-    if (OptimizeModel(destination.string())) {
+void ModelProcessor::SetDestinationDirectory(
+    const std::filesystem::path& path) {
+  models_destination_path_ = path / "models";
+  std::filesystem::create_directories(models_destination_path_);
+}
+
+// TODO: exceptions
+
+void ModelProcessor::Encode(const std::filesystem::path& path) {
+  std::string out_filename =
+      (models_destination_path_ / path.filename().
+                                  replace_extension(".gltf")).string();
+  if (std::filesystem::exists(out_filename)) {
+    std::string request{out_filename};
+    request += "\nalready exist. Do you want to replace it?";
+    if (!replace_request_(std::move(request))) {
       return;
     }
   }
+  processed_images_.clear();
+  cur_model_path_ = path;
+  loader_.SetImageLoader(&tinygltf::LoadImageData, nullptr);
+  Read();
+  CompressTextures();
+  Write(out_filename);
+  OptimizeModel(out_filename);
+}
+void ModelProcessor::Decode(const std::filesystem::path& path) {
+  /// extension already ".astc"
+  std::string out_filename =
+      (models_destination_path_ / path.filename()).string();
+  if (std::filesystem::exists(out_filename)) {
+    std::string request{out_filename};
+    request += "\nalready exist. Do you want to replace it?";
+    if (!replace_request_(std::move(request))) {
+      return;
+    }
+  }
+  processed_images_.clear();
+  cur_model_path_ = path;
+  loader_.SetImageLoader(TinygltfLoadTextureStub, nullptr);
+  Read();
+  DecompressTextures();
+  Write(out_filename);
 }
 
 bool ModelProcessor::Read() {
-  bool ret = loader_.LoadASCIIFromFile(&model_, &error_string_,
+  model_ = std::make_unique<tinygltf::Model>();
+  bool ret = loader_.LoadASCIIFromFile(model_.get(), &error_string_,
                                        &warning_string_, cur_model_path_);
   if (!warning_string_.empty()) {
     std::cerr << "Warning: " << warning_string_ << std::endl;
@@ -66,9 +90,8 @@ bool ModelProcessor::Read() {
   return true;
 }
 
-
 bool ModelProcessor::Write(const std::string& destination) {
-  bool ret = loader_.WriteGltfSceneToFile(&model_, destination,
+  bool ret = loader_.WriteGltfSceneToFile(model_.get(), destination,
                                          false, false, true, false);
   if (!ret) {
     std::cerr << "Failed to write GLTF file: " << destination << std::endl;
@@ -80,149 +103,100 @@ bool ModelProcessor::Write(const std::string& destination) {
 }
 
 void ModelProcessor::CompressTextures() {
-  std::string out_texture_name;
-//  TODO: out_texture_name.reserve(7);
-  int cur_id;
-  for (int i = 0; i < model_.images.size(); ++i) {
-    tinygltf::Image& image = model_.images[i];
-    std::cout << image.uri << " - Image uri" << std::endl;
+  for (std::size_t i = 0; i < model_->images.size(); ++i) {
+    tinygltf::Image& image = model_->images[i];
     if (!image.uri.empty()) {
-      cur_id = MarkImageAsAProcessed(image.uri);
-    } else {
-      cur_id = ++last_texture_id_;
+      processed_images_.push_back((cur_model_path_ / image.uri).lexically_normal());
     }
-    out_texture_name += std::to_string(cur_id);
-    auto category = DeduceTextureCategory(i);
-    if (category == AssetCategory::kTextureRG) {
-      out_texture_name += "_rrrg";
-    }
-    out_texture_name += ".astc";
+    auto model_texture_config = DeduceEncodeTextureCategory(i);
 
-    std::cout << image.image.size() << " SIZE" << std::endl;
-
-    int width = image.width;
-    int height = image.height;
-    int total_len = width * height * 4;
-
+    // forced 4 channels (see ctor)
+    int total_len = image.width * image.height * 4;
     auto image_data = std::make_unique<uint8_t[]>(total_len);
-    std::memcpy(image_data.get(), image.image.data(), total_len);
-//    std::move(image.image.begin(), image.image.end(), image_data.get());
-//    image.image.clear();
+    std::move(image.image.begin(), image.image.end(), image_data.get());
+    image.image.clear();
 
-    std::cerr << cur_model_path_.string() << "--" << std::endl;
-//    std::filesystem::path texture_path = "/home/pavlo/Desktop/from/damaged_helmet/untitled.gltf";//cur_model_path_.string();
-//    texture_path = texture_path.parent_path();
-//    std::cerr << texture_path.string() << "--" << std::endl;
-//    texture_path /= out_texture_name;
-    texture_processor_->Process("/home/pavlo/Desktop/to/damaged_helmet/1.png", std::move(image_data),
-                                width, height, category);
+    /// relative path (i.e. in the same directory)
+    image.uri = model_texture_config.out_path.filename().string();
+    image.mimeType.clear();
+    image.name.clear();
 
-//    image.uri = out_texture_name;
-//    image.mimeType.clear();
-//    image.name.clear();
+    texture_processor_.Encode(
+        model_texture_config.out_path, std::move(image_data),
+        image.width, image.height, model_texture_config.category);
   }
-}
-
-AssetCategory ModelProcessor::DeduceTextureCategory(int image_id) {
-  auto category = AssetCategory::kTextureLdr;
-  for (const auto& material : model_.materials) {
-    if (image_id == material.normalTexture.index ||
-        image_id == material.pbrMetallicRoughness.baseColorTexture.index ||
-        image_id == material.pbrMetallicRoughness.metallicRoughnessTexture.index ||
-        image_id == material.occlusionTexture.index) {
-      category = AssetCategory::kTextureRG;
-      // can't be Hdr (according to gltf 2.0)
-    }
-  }
-  return category;
-}
-
-int ModelProcessor::MarkImageAsAProcessed(const std::string& image_path) {
-  std::cout << processed_images_.size() << std::endl;
-  for (const auto& img : processed_images_) {
-    if (img.path == image_path) {
-      return img.id;
-    }
-  }
-  processed_images_.push_back({"", 1});
-  processed_images_.push_back({"", 1});
-  processed_images_.push_back({"", 1});
-  int new_id = ++last_texture_id_;
-  processed_images_.push_back({image_path, new_id});
-  return new_id;
 }
 
 void ModelProcessor::DecompressTextures() {
-  /// as an input we have model ONLY with uri of images
-  // rapidjson requires std::FILE
-  std::FILE* fp = fopen(cur_model_path_.c_str(), "rb");
-  char buffer[65536]; // TODO: may have sense take less size
-  rapidjson::FileReadStream is(fp, buffer, sizeof(buffer));
-  rapidjson::Document doc;
-  doc.ParseStream(is);
-  fclose(fp);
+  for (std::size_t i = 0; i < model_->images.size(); ++i) {
+    tinygltf::Image& image = model_->images[i];
+    auto texture_path = (cur_model_path_.parent_path() / image.uri);
+    processed_images_.push_back(texture_path.string());
 
-  if (!doc.IsObject()) {
-    std::cerr << "ModelProcessor::DecompressTextures Invalid GLTF file format"
-              << std::endl;
-  }
-  rapidjson::Value& images = doc["images"];
-  if (!images.IsArray()) {
-    std::cerr << "ModelProcessor::DecompressTextures No images found in GLTF file"
-              << std::endl;
-  }
+    auto model_texture_config = DeduceDecodeTextureCategory(
+        texture_path.stem().string());
 
-  for (rapidjson::SizeType i = 0; i < images.Size(); ++i) {
-    rapidjson::Value& image = images[i];
-    if (image.HasMember("uri") && image["uri"].IsString()) {
-      std::string uri = image["uri"].GetString();
-      size_t dotPos = uri.find_last_of(".");
-      if (dotPos != std::string::npos) {
-        /// textures decoded to png
-        uri.replace(dotPos, uri.length() - dotPos, ".png");
-        rapidjson::Value newUri;
-        newUri.SetString(uri.c_str(), static_cast<rapidjson::SizeType>(uri.length()),
-                         doc.GetAllocator());
-        image["uri"] = newUri;
-      }
-    }
-  }
-
-  auto json_destination = asset_destination_ /
-                     cur_model_path_.lexically_relative(user_asset_root_dir_);
-  FILE* fpOut = fopen(json_destination.c_str(), "wb");
-  rapidjson::FileWriteStream os(fpOut, buffer, sizeof(buffer));
-  rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
-  doc.Accept(writer);
-  fclose(fpOut);
-
-  auto bin_file = cur_model_path_.replace_extension("bin");
-  if (std::filesystem::exists(bin_file)) {
-    auto bin_destination = asset_destination_ /
-                           bin_file.lexically_relative(user_asset_root_dir_);
-    std::filesystem::rename(bin_file, bin_destination);
-  }
-
-  // models textures are already processed by AssetProcessor
-}
-
-void ModelProcessor::FindLastTextureId() {
-  for (const auto& image : std::filesystem::directory_iterator(
-           asset_destination_ / "../models_textures")) {
-    int number = std::stoi(image.path().stem());
-    if (last_texture_id_ < number) {
-      last_texture_id_ = number;
-    }
+    image.uri = std::filesystem::path(image.uri)
+                    .replace_extension(".png").string();
+    std::cout << "Load from " << texture_path << " to " << model_texture_config.out_path << std::endl;
+    texture_processor_.Decode(
+        texture_path, model_texture_config.out_path,
+        model_texture_config.category);
   }
 }
 
-// in-place gltfpack
+// TODO: rename
+ModelProcessor::ModelTextureConfig ModelProcessor::DeduceEncodeTextureCategory(
+    int model_image_id) {
+  auto out_path = (models_destination_path_ / cur_model_path_.stem()).string();
+  TextureProcessor::TextureCategory category;
+  /// our models consist only of one material, so we use it
+  if (model_image_id == model_->materials[0].pbrMetallicRoughness
+                            .metallicRoughnessTexture.index) {
+    out_path += "_met_rough.astc";
+    category = TextureProcessor::TextureCategory::kLdrRg;
+  } else if (model_image_id == model_->materials[0].normalTexture.index) {
+    out_path += "_normal.astc";
+    category = TextureProcessor::TextureCategory::kLdrRgNmap;
+  } else if (model_image_id == model_->materials[0].occlusionTexture.index) {
+    out_path += "_occlusion.astc";
+    category = TextureProcessor::TextureCategory::kLdrR;
+  } else if (model_image_id == model_->materials[0].emissiveTexture.index) {
+    out_path += "_emissive.astc";
+    category = TextureProcessor::TextureCategory::kLdrRgb;
+  } else { // albedo (material.pbrMetallicRoughness.baseColorTexture.index)
+    out_path += "_albedo.astc";
+    category = TextureProcessor::TextureCategory::kLdrRgba;
+  }
+  return {out_path, category};
+}
+
+ModelProcessor::ModelTextureConfig ModelProcessor::DeduceDecodeTextureCategory(
+    std::string_view path) {
+  auto out_path = (models_destination_path_ / path).replace_extension(".png")
+                      .string();
+  TextureProcessor::TextureCategory category;
+  if (path.ends_with("_met_rough")) {
+    category = TextureProcessor::TextureCategory::kLdrRg;
+  } else if (path.ends_with("_normal")) {
+    category = TextureProcessor::TextureCategory::kLdrRgNmap;
+  } else if (path.ends_with("_occlusion")) {
+    category = TextureProcessor::TextureCategory::kLdrR;
+  } else if (path.ends_with("_emissive")) {
+    category = TextureProcessor::TextureCategory::kLdrRgb;
+  } else { // probably for "_albedo"
+    category = TextureProcessor::TextureCategory::kLdrRgba;
+  }
+  return {out_path, category};
+}
+
+// TODO: constexpr std::string?
 bool ModelProcessor::OptimizeModel(const std::string& destination) {
   std::string command;
   command.reserve(std::strlen(FAITHFUL_GLTFPACK_PATH) +
-                  destination.size() * 2 + 12); // 12 for flags, whitespaces
+                  destination.size() * 2 + 17); // 17 for flags, whitespaces
   command = FAITHFUL_GLTFPACK_PATH;
-  command += " -tr -i "; // no changes for textures
+  command += " -tr -noq -i "; // no changes for textures
   command += destination;
   command += " -o ";
   command += destination;

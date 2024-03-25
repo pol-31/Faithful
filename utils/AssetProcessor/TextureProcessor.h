@@ -5,11 +5,10 @@
 #include <memory>
 #include <string>
 
-//#include <astc-encoder/Source/astcenc.h>
-#include "../../external/astc-encoder/Source/astcenc.h"
+#include <astc-encoder/Source/astcenc.h>
 
-enum class AssetCategory;
-class AssetLoadingThreadPool;
+#include "AssetLoadingThreadPool.h"
+#include "ReplaceRequest.h"
 
 struct AstcHeader {
   uint8_t magic[4];  /// format identifier
@@ -21,80 +20,93 @@ struct AstcHeader {
   uint8_t dim_z[3];
 };
 
-// TODO: explain about "rg" (2-channel swizzle)
-
-/** Faithful project doesn't uses cases with a lot of small
- * images (because i won't), so all textures are encoded/decoded
- * one by one, so Codec creates only 1 context (per hdr, ldr, rg) with
- * utilizing of all created threads
- * */
 class TextureProcessor {
  public:
-  TextureProcessor(bool encode,
-                   const std::filesystem::path& asset_destination,
-                   const std::filesystem::path& user_asset_root_dir,
-                   AssetLoadingThreadPool* thread_pool);
+  enum class TextureCategory {
+    kLdrR,
+    kLdrRg,
+    kLdrRgb,
+    kLdrRgba,
+    kLdrRgNmap,
+    kHdrRgb
+  };
+
+  TextureProcessor() = delete;
+  TextureProcessor(AssetLoadingThreadPool& thread_pool,
+                   ReplaceRequest& replace_request);
 
   ~TextureProcessor();
 
-  bool SwitchToLdr();
-  bool SwitchToHdr();
-  bool SwitchToRG();
+  void Encode(const std::filesystem::path& path);
 
-  /// processing from file and memory
-  /// for file processing we don't need destination path because it'll
-  /// be deduced as a relative to user_asset_root_dir_ from asset_destination_
-  void Process(const std::filesystem::path& texture_path,
-               AssetCategory category);
-  void Process(const std::filesystem::path& dest_path,
-               std::unique_ptr<uint8_t[]> image_data,
-               int width, int height,
-               AssetCategory category);
-
- private:
-  bool InitContextLdr();
-  bool InitContextHdr();
-  bool InitContextRG();
-
-  bool Encode(const std::filesystem::path& texture_path,
-              AssetCategory category);
-  bool Encode(const std::filesystem::path& dest_path,
+  // used by ModelProcessor
+  void Encode(const std::filesystem::path& out_path,
               std::unique_ptr<uint8_t[]> image_data,
               int width, int height,
-              AssetCategory category);
+              TextureCategory category);
 
-  /// currently decompresses only as a 4-channels image
-  /// we also don't need destination path there because it'll
-  /// be deduced as a relative to user_asset_root_dir_ from asset_destination_
-  bool Decode(const std::filesystem::path& texture_path,
-              AssetCategory category);
+  void Decode(const std::filesystem::path& path);
 
-  bool WriteEncodedData(std::string filename, unsigned int image_x,
+  // used by ModelProcessor
+  void Decode(const std::filesystem::path& in_path,
+              const std::filesystem::path& out_path,
+              TextureCategory category);
+
+  void SetDestinationDirectory(const std::filesystem::path& path);
+
+ private:
+  struct TextureConfig {
+    std::string out_path;
+    astcenc_swizzle swizzle;
+    astcenc_context* context;
+    TextureCategory category;
+    astcenc_type type;
+  };
+
+  void InitContexts();
+  void DeInitContexts();
+
+  void InitContext(astcenc_config config, astcenc_context*& context);
+
+  bool MakeReplaceRequest(const std::filesystem::path& filename);
+
+  void DecodeImpl(const std::filesystem::path& path,
+                  TextureConfig texture_config);
+
+  void WriteEncodedData(std::string filename, unsigned int image_x,
                         unsigned int image_y, int comp_data_size,
-                        const uint8_t* comp_data);
-  bool WriteDecodedData(std::string filename, unsigned int image_x,
-                        unsigned int image_y, AssetCategory category,
+                        std::unique_ptr<uint8_t[]> comp_data);
+  void WriteDecodedData(std::string filename, unsigned int image_x,
+                        unsigned int image_y, TextureCategory category,
                         std::unique_ptr<uint8_t[]> image_data);
 
   int CalculateCompLen(int image_x, int image_y);
 
-  std::pair<astcenc_context*, std::string> ProvideEncodeContextAndFilename(
-      const std::filesystem::path& dest_path, AssetCategory category);
-
-  astcenc_context* ProvideDecodeContext(AssetCategory category);
+  TextureConfig ProvideEncodeTextureConfig(const std::filesystem::path& path);
+  TextureConfig ProvideEncodeTextureConfig(TextureCategory category);
+  TextureConfig ProvideDecodeTextureConfig(const std::filesystem::path& path);
+  TextureConfig ProvideDecodeTextureConfig(TextureCategory category);
 
   bool ReadAstcFile(const std::string& path, int& width, int& height,
                     int& comp_len, std::unique_ptr<uint8_t[]>& comp_data);
 
-  std::filesystem::path asset_destination_;
-  std::filesystem::path user_asset_root_dir_;
+  bool HasMapPrefix(const std::filesystem::path& path);
+  bool HasNoisePrefix(const std::filesystem::path& path);
+  bool HasFontPrefix(const std::filesystem::path& path);
+  bool HasHdrPrefix(const std::filesystem::path& path);
+  bool HasHdrExtension(const std::filesystem::path& path);
+
+  AssetLoadingThreadPool& thread_pool_;
+  ReplaceRequest replace_request_;
 
   astcenc_context* context_ldr_ = nullptr;
   astcenc_context* context_hdr_ = nullptr;
-  astcenc_context* context_rg_ = nullptr;
-  AssetLoadingThreadPool* thread_pool_ = nullptr;
+  astcenc_context* context_ldr_normal_ = nullptr;
+  astcenc_context* context_ldr_alpha_perceptual_ = nullptr;
 
-  bool encode_;
+  std::filesystem::path default_destination_path_;
+  std::filesystem::path maps_destination_path_;
+  std::filesystem::path noises_destination_path_;
 };
 
 #endif  // ASSETPROCESSOR_IMAGEPROCESSOR_H

@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.26)
 project(AssetProcessor)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
-add_executable(AssetProcessor main.cpp
-        AssetCategory.cpp
+add_executable(AssetProcessor
+        main.cpp
         AssetLoadingThreadPool.cpp
         AssetProcessor.cpp
         AssetsAnalyzer.cpp
-        TextureProcessor.cpp
-        ModelProcessor.cpp
         AudioProcessor.cpp
+        ModelProcessor.cpp
+        TextureProcessor.cpp
 )
 target_compile_options(AssetProcessor PRIVATE ${FAITHFUL_COMPILE_OPTIONS})
 target_link_options(AssetProcessor PRIVATE ${FAITHFUL_EXE_LINK_OPTIONS})
@@ -23,12 +23,8 @@ target_link_libraries(AssetProcessor
         PRIVATE vorbis
         PRIVATE ogg
         PRIVATE tinygltf
+        PRIVATE astcenc-native-static
 )
-
-if(FAITHFUL_BUILD_ASTC_ENCODER)
-    target_link_libraries(AssetProcessor PUBLIC astcenc-native-static)
-    target_include_directories(AssetProcessor PRIVATE ${FAITHFUL_SOURCE_DIR}/external)
-endif()
 
 add_dependencies(AssetProcessor meshoptimizer)
 
@@ -39,5 +35,6 @@ target_include_directories(AssetProcessor
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/tinygltf
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/vorbis/include
         PRIVATE ${FAITHFUL_SOURCE_DIR}/external/ogg/include
+        PRIVATE ${FAITHFUL_SOURCE_DIR}/external
 )
 

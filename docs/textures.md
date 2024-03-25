@@ -4,7 +4,9 @@
 1 rgba texture for rgba vfx (default grey/channel packing)
 N rrr1 textures for noises (throwing powder, phenomenon area, vfx_noise, other effects)
 
-===
+___________________________________________
+Notes:
+___________________________________________
 Compression quality/speed:
 From:
 "https://chromium.googlesource.com/external/github.com/ARM-software/astc-encoder/+/HEAD/Docs/FormatOverview.md"
@@ -19,42 +21,29 @@ using uniform format for all allows us not to check it each time
 before compression and always use 4x4 for fast decompression.
 (- asm instruction for reading textures headers)
 
-===
-
-If decompression (game): hdr | ldr + build_DECOMPRESSION_ONLY
-If decompression: hdr | ldr ASTCENC_FLG_DECOMPRESS_ONLY
-If compression: hdr, ldr, ldr_normal, ldr_alpha_perceptual
-where:
-hdr:{ibl};
-ldr_normal:{model_normal_map};
-ASTCENC_FLG_MAP_NORMAL (+recover z-coord in shader)
-ldr_alpha_perceptual{model_albedo, UI, VFX};
-ASTCENC_FLG_USE_ALPHA_WEIGHT ASTCENC_FLG_USE_PERCEPTUAL
-ldr:{other: maps, other model_textures, etc.}
-
 ___________________________________________
-Notes:
 *For HDR we don't need rbga, because we need only light effect,
-so swizzle is rgb1
-
+  so swizzle is rgb1
+  
 *Terrain cavity - for ssao ("dynamic occlusion")
 *Terrain occlusion - baked from higher resolution for "static occlusion"
 *map_topo_ecotopes - we always should track closest ecotope(ecotope_middle_point)
 *map_topo_water - vertex color - flow/vorticity types, so we removed them:
-- map_water_flow (2 channels?)        1.0 m     uint8 rrrg      ldr
-- map_water_vorticity                 1.0 m     uint8 rrr1      ldr
-- type (type of liquid)
-- width defined by terrain / terrain_/water_-height_map
-  *map_topo_roads - vertex color - width, type
+ - map_water_flow (2 channels?)        1.0 m     uint8 rrrg      ldr
+ - map_water_vorticity                 1.0 m     uint8 rrr1      ldr
+ - type (type of liquid)
+ - width defined by terrain / terrain_/water_-height_map
+*map_topo_roads - vertex color - width, type
 
 *grass/folliage - very simple objects (no veins, NO TEXTURES - only shader params,
-so we don't need translucency there), drawn by 5-11 triangles (tesselation from lines/points)
+ so we don't need translucency there), drawn by 5-11 triangles (tesselation from lines/points)
 folliage params:
 - color - tex1d (vector)
 - glossy - tex1d (vector)
 - physics (weight, bending, Bezie's curve params, etc)
 - ssao
 
+___________________________________________
 what is Ecotope (need to somehow blend for each):
 1) int ground_type_id {main, strand, etc}
 2) int sky_type_id {day, night}
@@ -72,17 +61,17 @@ Threre is 2 types of maps:
 __solid single map__:
 - default open with all main events
 - default open but "scary" in which you can reach only
-  through special entrance objects. Layout absolutely the same,
-  but map_topo_objects / map_topo_ecotope differs
-  __separate 1km x 1km zone__:
+ through special entrance objects. Layout absolutely the same,
+ but map_topo_objects / map_topo_ecotope differs
+__separate 1km x 1km zone__:
 - dreams - while sleeping
 - special zones (e.g. cavens, boss location, bonus - hidden, etc.)
 
 when dynamically load another one map tile, we should
-look at object_height_priority, so then enemy (lowest priority) will
-be placed after all buildings (highest prioriy), so
-we indeed have map_height_object, BUT it computed dynamically,
-as well as navmesh, which is also generated dynamically
+ look at object_height_priority, so then enemy (lowest priority) will
+ be placed after all buildings (highest prioriy), so
+ we indeed have map_height_object, BUT it computed dynamically,
+ as well as navmesh, which is also generated dynamically
 
 DYNAMIC NAVMESH GENERATION: each 0.5 m sq we have height (which calculated
 dynamically wrt objects_height) and (possibly) object with its own information
@@ -96,6 +85,7 @@ TODO: object parkour for each object mesh
 TODO: define all types of roads, liquid, weather, folliage, etc...
 TODO: we need tool to "fly and draw" in real-time (read about flood-fill algorithm (a*?))
 
+___________________________________________
 ___________________________________________
 OVERVIEW
 ___________________________________________
@@ -140,18 +130,20 @@ __________________________________________________
 DECOMPRESSION
 __________________________________________________
 MECHANIC:
-./maps/ -> uint8 raaa ldr
-./noises/ -> uint8 raaa ldr
-./models/ -> wrt type from {name}_{type}.astc, where
-type is either {albedo, metal_rough, normal, emission, ao} -> uint8 raaa ldr
-./ if prefix == font -> uint8 raaa ldr
-./ else -> rgba
+if (prefix == map) { uint8 rgba ldr }
+else if (prefix == noise) { uing8 rgba ldr }
+else if (prefix == font) { uing8 rgba ldr }
+else if (prefix == hdr) { float32 rgba hdr } (prefix + "hdr_")
+else { uint8 rgba ldr } (the same name, no suffixes, no prefixes)
+
+rrrg and rrrg normal categories directly passed (they both only from model)
 
 MODES (total 3 swizzles, 2 contexts):
 rgba --> rgba ldr
-rrr1 --> raaa ldr
+rrr1 --> rgba ldr
 rgb1 --> rgba ldr
-rrrg --> ra11 ldr
+rrrg --> ra01 ldr
+rrrg normal --> raz1 (ASTCENC_SWIZZLE_Z) ldr
 hdr  --> rgba hdr
 __________________________________________________
 assets_info.txt
@@ -169,8 +161,6 @@ else {
 for each directory std::filesystem::dir_interator() + check if not exist ++id
 }
 __________________________________________________
-TODO: models with equal names (even dirs different) can't be processed, replace request to user
-__________________________________________________
 __________________________________________________
 
 
@@ -181,7 +171,7 @@ vfx main                             -       uint8 rgba      ldr_alpha_perceptua
 ui                                   -       uint8 rgba      ldr_alpha_perceptual
 noise_vfx                            -       uint8 rrr1      ldr
 noise_{other}                        -       uint8 rrr1      ldr
-fonts                                -       uint8 raw        -
+fonts                                -       uint8 rrr1       -
 
 ___IBL
 ibl                                  -       float32 rgb1    hdr
@@ -194,7 +184,7 @@ emission                             -       uint8 rgb1      ldr
 normal                               -       uint8 rrrg      ldr_normal
 
 ___Map textures
-map_height_terrain                 0.5 m     uint8 rrr1       -
+map_height_terrain                 0.5 m     uint8 rrr1       - // TODO: is it enough?
 map_height_water                   0.5 m     uint8 rrr1       -
 
 map_erosion_wear                   0.5 m     uint8 rrr1      ldr
@@ -217,3 +207,4 @@ map_topo_water (+ flow + vorticity)  -       graph mesh       -
 
 map_topo_objects                     -       point mesh       -
 map_topo_ecotope                     -       point mesh       -
+

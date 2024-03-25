@@ -2,365 +2,423 @@
 
 #include <iostream>
 #include <fstream>
-#include <filesystem>
 
 #include <stb_image.h>
 #include <stb_image_write.h>
 
 #include "../../config/AssetFormats.h"
 
-#include "AssetCategory.h"
-#include "AssetLoadingThreadPool.h"
-
 TextureProcessor::TextureProcessor(
-    bool encode,
-    const std::filesystem::path& asset_destination,
-    const std::filesystem::path& user_asset_root_dir,
-    AssetLoadingThreadPool* thread_pool)
-    : asset_destination_(asset_destination),
-      user_asset_root_dir_(user_asset_root_dir),
-      thread_pool_(thread_pool),
-      encode_(encode) {}
+    AssetLoadingThreadPool& thread_pool,
+    ReplaceRequest& replace_request)
+    : thread_pool_(thread_pool),
+      replace_request_(replace_request) {
+  InitContexts();
+}
 
 TextureProcessor::~TextureProcessor() {
-  if (context_ldr_) {
-    astcenc_context_free(context_ldr_);
-  }
-  if (context_hdr_) {
-    astcenc_context_free(context_hdr_);
-  }
-  if (context_rg_) {
-    astcenc_context_free(context_rg_);
-  }
+  DeInitContexts();
 }
 
-bool TextureProcessor::SwitchToLdr() {
-  if (context_hdr_) {
-    astcenc_context_free(context_hdr_);
-    context_hdr_= nullptr;
-  }
-  if (context_rg_) {
-    astcenc_context_free(context_rg_);
-    context_rg_= nullptr;
-  }
-  if (!context_ldr_) {
-    return InitContextLdr();
-  }
-  return true;
-}
-bool TextureProcessor::SwitchToHdr() {
-  if (context_ldr_) {
-    astcenc_context_free(context_ldr_);
-    context_ldr_= nullptr;
-  }
-  if (context_rg_) {
-    astcenc_context_free(context_rg_);
-    context_rg_= nullptr;
-  }
-  if (!context_hdr_) {
-    return InitContextHdr();
-  }
-  return true;
-}
-bool TextureProcessor::SwitchToRG() {
-  if (context_ldr_) {
-    astcenc_context_free(context_ldr_);
-    context_ldr_= nullptr;
-  }
-  if (context_hdr_) {
-    astcenc_context_free(context_hdr_);
-    context_hdr_= nullptr;
-  }
-  if (!context_rg_) {
-    return InitContextRG();
-  }
-  return true;
+void TextureProcessor::InitContexts() {
+  InitContext(faithful::config::kTextureConfigLdr, context_ldr_);
+  InitContext(faithful::config::kTextureConfigHdr, context_hdr_);
+  InitContext(faithful::config::kTextureConfigLdrNormal,
+              context_ldr_normal_);
+  InitContext(faithful::config::kTextureConfigLdrAlphaPerceptual,
+              context_ldr_alpha_perceptual_);
 }
 
-bool TextureProcessor::InitContextLdr() {
-  using namespace faithful;
-  astcenc_config config;
-  config.block_x = config::kTexCompBlockX;
-  config.block_y = config::kTexCompBlockY;
-  config.block_z = config::kTexCompBlockZ;
-  config.profile = config::kTexCompProfileLdr;
-
+void TextureProcessor::InitContext(astcenc_config config,
+                                   astcenc_context*& context) {
+  auto config_copy = config;
   astcenc_error status = astcenc_config_init(
-      config::kTexCompProfileLdr, config::kTexCompBlockX,
-      config::kTexCompBlockY, config::kTexCompBlockZ,
-      config::kTexCompQuality, 0, &config);
+      config.profile, config.block_x,
+      config.block_y, config.block_z,
+      faithful::config::kTexCompQuality, config.flags, &config_copy);
   if (status != ASTCENC_SUCCESS) {
-    std::cerr << "Error: astc-enc ldr codec config init failed: "
+    std::cerr << "Error: TextureProcessor::InitContext astcenc_config_init:\n"
               << astcenc_get_error_string(status) << std::endl;
-    return false;
+    throw;
   }
-
   status = astcenc_context_alloc(
-      &config, thread_pool_->GetThreadNumber(), &context_ldr_);
+      &config_copy, thread_pool_.GetThreadNumber(), &context);
   if (status != ASTCENC_SUCCESS) {
-    std::cerr << "Error: astc-enc ldr codec context alloc failed: "
+    std::cerr << "Error: TextureProcessor::InitContext astcenc_context_alloc:\n"
               << astcenc_get_error_string(status) << std::endl;
-    return false;
+    throw;
   }
-  return true;
-}
-bool TextureProcessor::InitContextHdr() {
-  using namespace faithful;
-  astcenc_config config;
-  config.block_x = config::kTexCompBlockX;
-  config.block_y = config::kTexCompBlockY;
-  config.block_z = config::kTexCompBlockZ;
-  config.profile = config::kTexCompProfileHdr;
-
-  astcenc_error status = astcenc_config_init(
-      config::kTexCompProfileHdr, config::kTexCompBlockX,
-      config::kTexCompBlockY, config::kTexCompBlockZ,
-      config::kTexCompQuality, 0, &config);
-  if (status != ASTCENC_SUCCESS) {
-    std::cerr << "Error: astc-enc hdr codec config init failed: "
-              << astcenc_get_error_string(status) << std::endl;
-    return false;
-  }
-
-  status = astcenc_context_alloc(
-      &config, thread_pool_->GetThreadNumber(), &context_hdr_);
-  if (status != ASTCENC_SUCCESS) {
-    std::cerr << "Error: astc-enc hdr codec context alloc failed: "
-              << astcenc_get_error_string(status) << std::endl;
-    return false;
-  }
-  return true;
-}
-bool TextureProcessor::InitContextRG() {
-  using namespace faithful;
-  astcenc_config config;
-  config.block_x = config::kTexCompBlockX;
-  config.block_y = config::kTexCompBlockY;
-  config.block_z = config::kTexCompBlockZ;
-  config.profile = config::kTexCompProfileLdr;
-
-  unsigned int flags{0};
-  flags |= ASTCENC_FLG_MAP_NORMAL;
-
-  config.flags |= flags;
-
-  astcenc_error status = astcenc_config_init(
-      config::kTexCompProfileLdr, config::kTexCompBlockX,
-      config::kTexCompBlockY, config::kTexCompBlockZ,
-      config::kTexCompQuality, flags, &config);
-  if (status != ASTCENC_SUCCESS) {
-    std::cerr << "Error: astc-enc rg codec config init failed: "
-              << astcenc_get_error_string(status) << std::endl;
-    return false;
-  }
-
-  status = astcenc_context_alloc(
-      &config, thread_pool_->GetThreadNumber(), &context_rg_);
-  if (status != ASTCENC_SUCCESS) {
-    std::cerr << "Error: astc-enc rg codec context alloc failed: "
-              << astcenc_get_error_string(status) << std::endl;
-    return false;
-  }
-  return true;
 }
 
-void TextureProcessor::Process(const std::filesystem::path& texture_path,
-                               AssetCategory category) {
-  if (encode_) {
-    Encode(texture_path, category);
+void TextureProcessor::DeInitContexts() {
+  astcenc_context_free(context_ldr_);
+  astcenc_context_free(context_hdr_);
+  astcenc_context_free(context_ldr_normal_);
+  astcenc_context_free(context_ldr_alpha_perceptual_);
+}
+
+void TextureProcessor::SetDestinationDirectory(
+    const std::filesystem::path& path) {
+  default_destination_path_ = path;
+  maps_destination_path_ = path / "maps";
+  noises_destination_path_ = path / "noises";
+  std::filesystem::create_directories(default_destination_path_);
+  std::filesystem::create_directories(maps_destination_path_);
+  std::filesystem::create_directories(noises_destination_path_);
+}
+
+TextureProcessor::TextureConfig TextureProcessor::ProvideEncodeTextureConfig(
+    const std::filesystem::path& path) {
+  std::string out_filename = path.filename().replace_extension(".astc").string();
+  if (HasMapPrefix(path)) {
+    return {
+        (maps_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRrr1,
+        context_ldr_,
+        TextureCategory::kLdrR,
+        faithful::config::kTexLdrDataType
+    };
+  } else if (HasNoisePrefix(path)) {
+    return {
+        (noises_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRrr1,
+        context_ldr_,
+        TextureCategory::kLdrR,
+        faithful::config::kTexLdrDataType
+    };
+  } else if (HasFontPrefix(path)) {
+    return {
+        (default_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRrr1,
+        context_ldr_,
+        TextureCategory::kLdrR,
+        faithful::config::kTexLdrDataType
+    };
+  } else if (HasHdrExtension(path)) {
+    out_filename = "hdr_" + out_filename;
+    return {
+        (default_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRgb1,
+        context_hdr_,
+        TextureCategory::kHdrRgb,
+        faithful::config::kTexHdrDataType
+    };
   } else {
-    Decode(texture_path, category);
+    return {
+        (default_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRgba,
+        context_ldr_alpha_perceptual_,
+        TextureCategory::kLdrRgba,
+        faithful::config::kTexLdrDataType
+    };
   }
 }
 
-void TextureProcessor::Process(const std::filesystem::path& dest_path,
-                               std::unique_ptr<uint8_t[]> image_data,
-                               int width, int height,
-                               AssetCategory category) {
-  if (encode_) {
-    Encode(dest_path, std::move(image_data), width, height, category);
+TextureProcessor::TextureConfig TextureProcessor::ProvideEncodeTextureConfig(
+    TextureCategory category) {
+  switch (category) {
+    case TextureCategory::kLdrR:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRrr1,
+          context_ldr_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kLdrRg:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRrrg,
+          context_ldr_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kLdrRgb:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRgb1,
+          context_ldr_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kLdrRgba:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRgba,
+          context_ldr_alpha_perceptual_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kLdrRgNmap:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRrrg,
+          context_ldr_normal_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kHdrRgb:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRgb1,
+          context_hdr_,
+          category,
+          faithful::config::kTexHdrDataType
+      };
+  }
+}
+
+TextureProcessor::TextureConfig TextureProcessor::ProvideDecodeTextureConfig(
+    const std::filesystem::path& path) {
+  std::string out_filename = path.filename().replace_extension(".png").string();
+  if (HasMapPrefix(path)) {
+    return {
+        (maps_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRrr1,
+        context_ldr_,
+        TextureCategory::kLdrR,
+        faithful::config::kTexLdrDataType
+    };
+  } else if (HasNoisePrefix(path)) {
+    return {
+        (noises_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRrr1,
+        context_ldr_,
+        TextureCategory::kLdrR,
+        faithful::config::kTexLdrDataType
+    };
+  } else if (HasFontPrefix(path)) {
+    return {
+        (default_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRrr1,
+        context_ldr_,
+        TextureCategory::kLdrR,
+        faithful::config::kTexLdrDataType
+    };
+  } else if (HasHdrPrefix(path)) {
+    out_filename.substr(4); // remove prefix hdr_
+    return {
+        (default_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRgb1,
+        context_hdr_,
+        TextureCategory::kHdrRgb,
+        faithful::config::kTexHdrDataType
+    };
   } else {
+    return {
+        (default_destination_path_ / std::move(out_filename)).string(),
+        faithful::config::kTextureSwizzleRgba,
+        context_ldr_,
+        TextureCategory::kLdrRgba,
+        faithful::config::kTexLdrDataType
+    };
+  }
+}
+
+TextureProcessor::TextureConfig TextureProcessor::ProvideDecodeTextureConfig(
+    TextureCategory category) {
+  switch (category) {
+    case TextureCategory::kLdrR:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRgba,
+          context_ldr_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kLdrRg:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRa01,
+          context_ldr_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kLdrRgb:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRgba,
+          context_ldr_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kLdrRgba:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRgba,
+          context_ldr_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kLdrRgNmap:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRaz1,
+          context_ldr_,
+          category,
+          faithful::config::kTexLdrDataType
+      };
+    case TextureCategory::kHdrRgb:
+      return {
+          "",
+          faithful::config::kTextureSwizzleRgba,
+          context_hdr_,
+          category,
+          faithful::config::kTexHdrDataType
+      };
+  }
+}
+
+bool TextureProcessor::HasMapPrefix(const std::filesystem::path& path) {
+  auto path_string = path.filename().string();
+  return path_string.size() >= 4 && path_string.substr(0, 4) == "map_";
+}
+
+bool TextureProcessor::HasNoisePrefix(const std::filesystem::path& path) {
+  auto path_string = path.filename().string();
+  return path_string.size() >= 6 && path_string.substr(0, 6) == "noise_";
+}
+
+bool TextureProcessor::HasFontPrefix(const std::filesystem::path& path) {
+  auto path_string = path.filename().string();
+  return path_string.size() >= 5 && path_string.substr(0, 5) == "font_";
+}
+
+bool TextureProcessor::HasHdrPrefix(const std::filesystem::path& path) {
+  auto path_string = path.filename().string();
+  return path_string.size() >= 4 && path_string.substr(0, 4) == "hdr_";
+}
+
+bool TextureProcessor::HasHdrExtension(const std::filesystem::path& path) {
+  return path.extension() == ".hdr" || path.extension() == ".HDR";
+}
+
+bool TextureProcessor::MakeReplaceRequest(
+    const std::filesystem::path& filename) {
+  if (std::filesystem::exists(filename)) {
+    std::string request{filename};
+    request += "\nalready exist. Do you want to replace it?";
+    if (!replace_request_(std::move(request))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void TextureProcessor::Encode(const std::filesystem::path& path) {
+  auto texture_config = ProvideEncodeTextureConfig(path);
+  if (!MakeReplaceRequest(texture_config.out_path)) {
+    return;
+  }
+  astcenc_compress_reset(texture_config.context);
+  /// We add the prefix "hdr_" to the file {actual_name}.hdr to distinguish
+  /// between LDR and HDR textures during decompression (ASTC header doesn't
+  /// provide this information). However, it's possible that the user has
+  /// already added this prefix, and if they added it to an LDR file, it
+  /// will be decoded as an HDR file during decompression because of the prefix.
+  /// Therefore, we're skipping it and politely asking the user to rename it.
+  if (texture_config.category != TextureCategory::kHdrRgb &&
+      HasHdrPrefix(path)) {
     std::cerr
-        << "TextureProcessor::Process as a decoder with nested data NOT EXIST"
+        << "Skipped: \"" << path
+        << "\" because it has the prefix \"hdr_\" for an LDR texture."
+        << "\nPlease rename it (\"hdr_\" is used in decompression as a hint)."
         << std::endl;
-    std::terminate();
+    return;
   }
-}
 
-bool TextureProcessor::Encode(const std::filesystem::path& texture_path,
-                              AssetCategory category) {
-  using namespace faithful;
   int image_x, image_y, image_c;
-  // force 4 component (astc codec requires it)
-  auto image_data = (uint8_t*)stbi_load(
-      texture_path.string().c_str(), &image_x, &image_y, &image_c, 4);
+  // force 4 component (astc requirement)
+  auto image_data = static_cast<uint8_t*>(stbi_load(
+      path.string().c_str(),&image_x, &image_y, &image_c, 4));
   if (!image_data) {
-    std::cerr << "Error: stb_image texture loading failed: " << texture_path
+    std::cerr << "Error: stb_image texture loading failed: " << path
               << std::endl;
-    return false;
+    throw;
   }
   std::unique_ptr<uint8_t[]> image_data_ptr(image_data);
-
-  /// extension replaced inside the ProvideEncodeContextAndFilename()
-  auto dest_path = asset_destination_ /
-                   texture_path.lexically_relative(user_asset_root_dir_);
-  // structure binding can't be used with capturing (context used in lambda further)
-  std::pair<astcenc_context*, std::string> res =
-      ProvideEncodeContextAndFilename(dest_path, category);
-  astcenc_context* context = res.first;
-  std::string out_filename = res.second;
 
   int comp_len = CalculateCompLen(image_x, image_y);
   auto comp_data = std::make_unique<uint8_t[]>(comp_len);
 
-  astcenc_image image;
-  image.dim_x = image_x;
-  image.dim_y = image_y;
-  image.dim_z = 1;
-  if (category != AssetCategory::kTextureHdr) {
-    image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
-  } else {
-    image.data_type = static_cast<astcenc_type>(config::kTexHdrDataType);
-  }
-  image.data = reinterpret_cast<void**>(&image_data);
+  astcenc_image image {
+      static_cast<unsigned int>(image_x), static_cast<unsigned int>(image_y),
+      1, texture_config.type, reinterpret_cast<void**>(&image_data)
+  };
 
-  // no need to make it atomic, only "fail"-thread write
+  // no need to make it atomic, only "fail"-thread write;
+  // order doesn't matter, need only true/false
   bool encode_success = true;
-  thread_pool_->Execute([=, comp_data_get = comp_data.get(),
-                         &image, &encode_success](int thread_id) {
-    astcenc_error status = astcenc_compress_image(
-        context, &image, &config::kTexCompSwizzle,
-        comp_data_get, comp_len, thread_id);
-    if (status != ASTCENC_SUCCESS) {
-      encode_success = false;
-    }
-  });
+  thread_pool_.Execute(
+      [&, comp_len, comp_data_get = comp_data.get()](int thread_id) {
+        astcenc_error status = astcenc_compress_image(
+            texture_config.context, &image, &texture_config.swizzle,
+            comp_data_get, comp_len, thread_id);
+        if (status != ASTCENC_SUCCESS) {
+          encode_success = false;
+        }
+      });
 
   if (!encode_success) {
-    std::cerr << "Error: astc-enc texture compression failed" << std::endl;
-    return false;
+    std::cerr << "Error: texture compression failed for: "
+              << path << std::endl;
+    return;
   }
 
-  return WriteEncodedData(out_filename, image_x, image_y,
-                          comp_len, comp_data.get());
+  WriteEncodedData(texture_config.out_path, image_x, image_y,
+                   comp_len, std::move(comp_data));
 }
 
-bool TextureProcessor::Encode(const std::filesystem::path& dest_path,
+void TextureProcessor::Encode(const std::filesystem::path& out_path,
                               std::unique_ptr<uint8_t[]> image_data,
                               int width, int height,
-                              AssetCategory category) {
-  using namespace faithful;
-  // structure binding can't be used with capturing (used in lambda further)
-  std::pair<astcenc_context*, std::string> res =
-      ProvideEncodeContextAndFilename(dest_path, category);
-  astcenc_context* context = res.first;
-  auto out_filename = res.second;
+                              TextureCategory category) {
+  auto texture_config = ProvideEncodeTextureConfig(category);
+  if (!MakeReplaceRequest(out_path)) {
+    return;
+  }
+  astcenc_compress_reset(texture_config.context);
 
   int comp_len = CalculateCompLen(width, height);
   auto comp_data = std::make_unique<uint8_t[]>(comp_len);
 
-  astcenc_image image;
-  image.dim_x = width;
-  image.dim_y = height;
-  image.dim_z = 1;
-  if (category != AssetCategory::kTextureHdr) {
-    image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
-  } else {
-    image.data_type = static_cast<astcenc_type>(config::kTexHdrDataType);
-  }
-
-  /// need valid l-value pointer line further
+  /// need valid l-value pointer for astcenc_image initializing further
   auto data_ptr = reinterpret_cast<void*>(image_data.get());
-  image.data = reinterpret_cast<void**>(&data_ptr);
 
-  // no need to make it atomic, only "fail"-thread write
+  astcenc_image image {
+      static_cast<unsigned int>(width), static_cast<unsigned int>(height),
+      1, texture_config.type, reinterpret_cast<void**>(&data_ptr)
+  };
+
+  // no need to make it atomic, only "fail"-thread write;
+  // order doesn't matter, need only true/false
   bool encode_success = true;
-  thread_pool_->Execute([context, comp_len,
-                         comp_data_get = comp_data.get(),
-                         &image, &encode_success](int thread_id) {
-    astcenc_error status = astcenc_compress_image(
-        context, &image, &config::kTexCompSwizzle,
-        comp_data_get, comp_len, thread_id);
-    if (status != ASTCENC_SUCCESS) {
-      encode_success = false;
-    }
-  });
+  thread_pool_.Execute(
+      [&, comp_len, comp_data_get = comp_data.get()](int thread_id) {
+        astcenc_error status = astcenc_compress_image(
+            texture_config.context, &image, &texture_config.swizzle,
+            comp_data_get, comp_len, thread_id);
+        if (status != ASTCENC_SUCCESS) {
+          encode_success = false;
+        }
+      });
 
   if (!encode_success) {
-    std::cerr << "Error: astc-enc texture compression failed" << std::endl;
-    return false;
+    std::cerr << "Error: texture compression failed for: "
+              << out_path << std::endl;
+    return;
   }
 
-  return WriteEncodedData(out_filename, width, height,
-                          comp_len, comp_data.get());
+  WriteEncodedData(out_path, width, height, comp_len, std::move(comp_data));
 }
 
-int TextureProcessor::CalculateCompLen(int image_x, int image_y) {
-  using namespace faithful;
-  int block_count_x =
-      (image_x + config::kTexCompBlockX - 1) / config::kTexCompBlockX;
-  int block_count_y =
-      (image_y + config::kTexCompBlockY - 1) / config::kTexCompBlockY;
-  return block_count_x * block_count_y * 16;
-}
-
-std::pair<astcenc_context*, std::string>
-    TextureProcessor::ProvideEncodeContextAndFilename(
-    const std::filesystem::path& dest_path, AssetCategory category) {
-  std::cout << "__" << dest_path.string() << std::endl;
-  std::filesystem::create_directories(dest_path.parent_path());
-  astcenc_context* context;
-  std::filesystem::path new_filename = dest_path;
-  switch (category) {
-    case AssetCategory::kTextureLdr:
-      SwitchToLdr();
-      context = context_ldr_;
-      break;
-    case AssetCategory::kTextureHdr:
-      SwitchToHdr();
-      context = context_hdr_;
-      /// if we don't have "_hdr" we should add it here
-      /// texture still can have such category if some models
-      /// will identify it as a normal map or MetallicRoughness
-      if (DetectTexHdrSuffix(dest_path)) {
-      } else {
-        auto new_stem = dest_path.stem().string();
-        new_stem += "_rrrg";
-        new_filename.replace_filename(new_stem);
-      }
-      break;
-    case AssetCategory::kTextureRG:
-      SwitchToRG();
-      context = context_rg_;
-      /// if we don't have "_rrrg" we should add it here
-      /// texture still can have such category if some models
-      /// will identify it as a normal map or MetallicRoughness
-      if (DetectTexRGSuffix(dest_path)) {
-      } else {
-        auto new_stem = dest_path.stem().string();
-        new_stem += "_rrrg";
-        new_filename.replace_filename(new_stem);
-      }
-      break;
-    default:
-      std::terminate(); // you shouldn't be there
-  }
-  new_filename.replace_extension("astc");
-
-  astcenc_compress_reset(context);
-  return {context, new_filename};
-}
-
-bool TextureProcessor::WriteEncodedData(std::string filename,
-                                        unsigned int image_x,
-                                        unsigned int image_y,
-                                        int comp_data_size,
-                                        const uint8_t* comp_data) {
-  using namespace faithful;
+void TextureProcessor::WriteEncodedData(
+    std::string filename, unsigned int image_x, unsigned int image_y,
+    int comp_data_size, std::unique_ptr<uint8_t[]> comp_data) {
   std::ofstream out_file(filename, std::ios::binary);
   if (!out_file.is_open()) {
     std::cerr << "Error: failed to create file for encoded data" << std::endl;
-    return false;
+    return;
   }
   AstcHeader header;
   header.magic[0] = 0x13;
@@ -368,8 +426,8 @@ bool TextureProcessor::WriteEncodedData(std::string filename,
   header.magic[2] = 0xA1;
   header.magic[3] = 0x5C;
 
-  header.block_x = config::kTexCompBlockX;
-  header.block_y = config::kTexCompBlockY;
+  header.block_x = faithful::config::kTexCompBlockX;
+  header.block_y = faithful::config::kTexCompBlockY;
   header.block_z = 1;
 
   header.dim_x[2] = static_cast<uint8_t>(image_x >> 16);
@@ -385,96 +443,91 @@ bool TextureProcessor::WriteEncodedData(std::string filename,
   header.dim_z[2] = 0;
 
   out_file.write(reinterpret_cast<const char*>(&header), sizeof(AstcHeader));
-  out_file.write(reinterpret_cast<const char*>(comp_data), comp_data_size);
-  return true;
+  out_file.write(reinterpret_cast<const char*>(comp_data.get()), comp_data_size);
 }
 
-bool TextureProcessor::Decode(const std::filesystem::path& texture_path,
-                              AssetCategory category) {
-  using namespace faithful;
-  auto context = ProvideDecodeContext(category);
+void TextureProcessor::Decode(const std::filesystem::path& path) {
+  auto texture_config = ProvideDecodeTextureConfig(path);
+  DecodeImpl(path, std::move(texture_config));
+}
+
+
+void TextureProcessor::Decode(const std::filesystem::path& in_path,
+                              const std::filesystem::path& out_path,
+                              TextureCategory category) {
+  auto texture_config = ProvideDecodeTextureConfig(category);
+  texture_config.out_path = out_path;
+  DecodeImpl(in_path, std::move(texture_config));
+}
+
+void TextureProcessor::DecodeImpl(
+    const std::filesystem::path& path,
+    TextureProcessor::TextureConfig texture_config) {
+  if (!MakeReplaceRequest(texture_config.out_path)) {
+    return;
+  }
+  astcenc_compress_reset(texture_config.context);
 
   int image_x, image_y, comp_len;
   std::unique_ptr<uint8_t[]> comp_data;
-  if (!ReadAstcFile(texture_path.string(), image_x, image_y, comp_len, comp_data)) {
-    return false;
+  if (!ReadAstcFile(path, image_x, image_y, comp_len, comp_data)) {
+    return;
   }
+
   auto image_data = std::make_unique<uint8_t[]>(image_x * image_y * 4);
 
-  astcenc_image image;
-  image.dim_x = image_x;
-  image.dim_y = image_y;
-  image.dim_z = 1;
-  if (category != AssetCategory::kTextureHdr) {
-    image.data_type = static_cast<astcenc_type>(config::kTexLdrDataType);
-  } else {
-    image.data_type = static_cast<astcenc_type>(config::kTexHdrDataType);
-  }
-  image.data = reinterpret_cast<void**>(&image_data);
+  astcenc_image image {
+      static_cast<unsigned int>(image_x), static_cast<unsigned int>(image_y),
+      1, texture_config.type, reinterpret_cast<void**>(&image_data)
+  };
 
-  // no need to make it atomic, only "fail"-thread write
+  // no need to make it atomic, only "fail"-thread write;
+  // order doesn't matter, need only true/false
   bool decode_success = true;
-  thread_pool_->Execute([=, comp_data_get = comp_data.get(),
-                         &image, &decode_success](int thread_id) {
-    astcenc_error status = astcenc_decompress_image(
-        context, comp_data_get, comp_len, &image,
-        &config::kTexCompSwizzle, thread_id);
-    if (status != ASTCENC_SUCCESS) {
-      decode_success = false;
-    }
-  });
+  thread_pool_.Execute(
+      [&, comp_len, comp_data_get = comp_data.get()](int thread_id) {
+        astcenc_error status = astcenc_decompress_image(
+            texture_config.context, comp_data_get, comp_len,
+            &image, &texture_config.swizzle, thread_id);
+        if (status != ASTCENC_SUCCESS) {
+          decode_success = false;
+        }
+      });
 
   if (!decode_success) {
-    std::cerr << "Error: astc-enc texture decompression failed" << std::endl;
-    return false;
+    std::cerr << "Error: texture decompression failed for: "
+              << path << std::endl;
+    return;
   }
 
-  /// extension replaced inside the ProvideEncodeContextAndFilename()
-  auto dest_path = asset_destination_ /
-                   texture_path.lexically_relative(user_asset_root_dir_);
-  std::filesystem::create_directories(dest_path.parent_path());
-  switch (category) {
-    case AssetCategory::kTextureLdr:
-      [[fallthrough]];
-    case AssetCategory::kTextureRG:
-      dest_path.replace_extension("png");
-      break;
-    case AssetCategory::kTextureHdr:
-      dest_path.replace_extension("hdr");
-      {
-        /// all compressed hdr files have suffix "_hdr"
-        /// if not - data wasn't been encoded by AssetProcessor
-        auto new_stem = dest_path.stem().string();
-        new_stem[new_stem.size() - 4] = '.'; // suffix_hdr -> .hdr
-        new_stem += ".hdr";
-        dest_path.replace_filename(new_stem);
-      }
-      break;
-    default:
-      std::cerr << "TextureProcessor::Decode incorrect category" << std::endl;
-      std::terminate();
-  }
-  return WriteDecodedData(dest_path.string(), image_x, image_y,
-                          category, std::move(image_data));
+  WriteDecodedData(texture_config.out_path, image_x, image_y,
+                   texture_config.category, std::move(image_data));
 }
 
-bool TextureProcessor::WriteDecodedData(
+void TextureProcessor::WriteDecodedData(
     std::string filename, unsigned int image_x, unsigned int image_y,
-    AssetCategory category, std::unique_ptr<uint8_t[]> image_data) {
-  if (category != AssetCategory::kTextureHdr) {
+    TextureCategory category, std::unique_ptr<uint8_t[]> image_data) {
+  if (category != TextureCategory::kHdrRgb) {
     if (stbi_write_png(filename.c_str(), image_x, image_y, 4,
                        image_data.get(), 4 * image_x)) {
       std::cerr << "Error: stb_image_write failed to save texture" << std::endl;
-      return false;
     }
   } else {
     if (stbi_write_hdr(filename.c_str(), image_x, image_y, 4,
                        reinterpret_cast<const float*>(image_data.get()))) {
       std::cerr << "Error: stb_image_write failed to save texture" << std::endl;
-      return false;
     }
   }
-  return true;
+}
+
+int TextureProcessor::CalculateCompLen(int image_x, int image_y) {
+  int block_count_x =
+      (image_x + faithful::config::kTexCompBlockX - 1)
+      / faithful::config::kTexCompBlockX;
+  int block_count_y =
+      (image_y + faithful::config::kTexCompBlockY - 1)
+      / faithful::config::kTexCompBlockY;
+  return block_count_x * block_count_y * 16;
 }
 
 bool TextureProcessor::ReadAstcFile(const std::string& path, int& width,
@@ -499,6 +552,14 @@ bool TextureProcessor::ReadAstcFile(const std::string& path, int& width,
     return false;
   }
 
+  if (header.block_x != faithful::config::kTexCompBlockX ||
+      header.block_y != faithful::config::kTexCompBlockY ||
+      header.block_z != 1) {
+    std::cerr << "Error: file compressed by another astcenc is not supported: "
+              << path << std::endl;
+    return false;
+  }
+
   // we don't care about block sizes, because currently all textures compressed
   // with the same configs (see Faithful/config/AssetFormats.h)
   width = header.dim_x[0] | header.dim_x[1] << 8 | header.dim_x[2] << 16;
@@ -508,24 +569,4 @@ bool TextureProcessor::ReadAstcFile(const std::string& path, int& width,
   comp_data = std::make_unique<uint8_t[]>(comp_len);
   file.read(reinterpret_cast<char*>(comp_data.get()), comp_len);
   return true;
-}
-
-astcenc_context* TextureProcessor::ProvideDecodeContext(
-    AssetCategory category) {
-  switch (category) {
-    case AssetCategory::kTextureLdr:
-      SwitchToLdr();
-      astcenc_decompress_reset(context_ldr_);
-      return context_ldr_;
-    case AssetCategory::kTextureHdr:
-      SwitchToHdr();
-      astcenc_decompress_reset(context_hdr_);
-      return context_hdr_;
-    case AssetCategory::kTextureRG:
-      SwitchToRG();
-      astcenc_decompress_reset(context_rg_);
-      return context_rg_;
-    default:
-      return nullptr;
-  }
 }

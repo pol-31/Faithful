@@ -3,7 +3,6 @@
 
 #include <filesystem>
 #include <fstream>
-#include <memory>
 #include <vector>
 
 #include <vorbis/vorbisenc.h>
@@ -14,15 +13,14 @@
 #include <dr_flac.h>
 #include <dr_wav.h>
 
-#include "AssetCategory.h"
-
-class AssetLoadingThreadPool;
+#include "AssetLoadingThreadPool.h"
+#include "ReplaceRequest.h"
 
 class AudioProcessor {
  public:
   struct ThreadData {
     ThreadData() = default;
-    void Init(int channels, int sampleRate);
+    void Init(int channels, int sampleRate, int id);
     ~ThreadData();
 
     ogg_stream_state os;
@@ -34,19 +32,26 @@ class AudioProcessor {
     vorbis_comment vc;
   };
 
-  AudioProcessor(bool encode, const std::filesystem::path& asset_destination,
-                 const std::filesystem::path& user_asset_root_dir,
-                 AssetLoadingThreadPool* thread_pool);
+  AudioProcessor() = delete;
+  AudioProcessor(AssetLoadingThreadPool& thread_pool,
+                 ReplaceRequest& replace_request);
 
-  void Process(const std::filesystem::path& model_path,
-               AssetCategory category);
+  void Encode(const std::filesystem::path& path);
+  void Decode(const std::filesystem::path& path);
+
+  void SetDestinationDirectory(const std::filesystem::path& path);
 
  private:
-  struct ThreadBufferData {
-    std::unique_ptr<char[]> data;
-    long size;
+  enum class AudioFormat {
+    kFlac,
+    kMp3,
+    kOgg,
+    kWav
   };
-
+  enum class AudioSize {
+    kMusic,
+    kSound
+  };
   void EncodeMusic(const std::filesystem::path& audio_path);
   void EncodeSound(const std::filesystem::path& audio_path);
 
@@ -59,15 +64,9 @@ class AudioProcessor {
                      int channels, int sample_rate);
 
   void WriteCompressedOggChunks(int thread_offset);
-  void PrepareOggCompressionContexts(int channels, int sample_rate,
-                                     int thread_offset);
 
   // should be called before each new file
   void PrepareThreadInfo(int channels, int sample_rate);
-
-  void PrepareCompressedOggDataFile(const std::string& to_where);
-
-  void InitThreadBuffers();
 
   std::filesystem::path asset_destination_;
 
@@ -75,20 +74,18 @@ class AudioProcessor {
   // which are different for each file; thread_buffers_ are the same
   std::vector<AudioProcessor::ThreadData> thread_info_;
 
-
-  std::vector<ThreadBufferData> thread_buffers_;
-  bool thread_buffers_initialized_ = false;
-
   std::filesystem::path user_asset_root_dir_;
 
-  AssetLoadingThreadPool* thread_pool_ = nullptr;
-  long int last_gramulepos_ = 0;
-
+  AssetLoadingThreadPool& thread_pool_;
   int thread_number_;
+  ReplaceRequest& replace_request_;
 
   std::ofstream cur_file_;
 
   bool encode_;
+
+  std::filesystem::path sounds_destination_path_;
+  std::filesystem::path music_destination_path_;
 };
 
 #endif  // ASSETPROCESSOR_AUDIOPROCESSOR_H

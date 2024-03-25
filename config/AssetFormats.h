@@ -3,8 +3,11 @@
 
 #include <thread>
 #include <array>
+#include <string_view>
 
-#include "../external/astc-encoder/Source/astcenc.h"
+#include <astcenc.h>
+
+// TODO: constinit?
 
 namespace faithful {
 namespace config {
@@ -29,16 +32,21 @@ inline constexpr int kDefaultUrlRedirectionsCount = 0;
 
 /// compression:
 
+// TODO: need to deduce std::thread::hardware_concurrency in CMake
+inline const int asset_processor_thread_num = std::thread::hardware_concurrency();
+
 constexpr std::array<std::string_view, 4> kAudioCompFormats = {
-  ".mp3", ".flac", ".wav", ".ogg"
+    ".flac", ".mp3", ".ogg", ".wav"
 };
-constexpr std::array<std::string_view, 12> kTexCompFormats = {
-  ".bmp", ".jpeg", "jpg", ".png", ".tga", ".psd", ".ppm", ".pgm",
-  ".exr", ".hdr",
-  ".dds", ".ktx"
+
+// for more information see faithful/external/stb/stb_image.h
+constexpr std::array<std::string_view, 10> kTexCompFormats = {
+    ".bmp", ".hdr", ".HDR", ".jpeg", "jpg",
+    ".pgm", ".png", ".ppm", ".psd", ".tga"
 };
+
 constexpr std::array<std::string_view, 2> kModelCompFormats = {
-  ".gltf", ".glb"
+    ".glb", ".gltf"
 };
 
 inline const int kThreadMax = std::thread::hardware_concurrency();
@@ -51,23 +59,74 @@ inline constexpr int kTexCompThreadThreshold = 2000; // TODO: is it kb? (if yes,
 
 /// audio compression
 inline constexpr float kAudioCompQuality = 0.1; // [0.1; 1]
-inline constexpr int kAudioCompBufferSize = 4096000;
-inline constexpr int kAudioCompChunkSize = 4096;
+inline constexpr int kAudioTotalChunkBufferSize = 16777216; // 16 mb
+
+// TODO: need to deduce std::thread::hardware_concurrency in CMake
+inline constexpr int kAudioThreadChunkBufferSize = kAudioTotalChunkBufferSize / 8;
+inline constexpr int kAudioDecompChunkSize = 4096; // flac/mp3/wav to pcm
+inline constexpr int kAudioCompChunkSize = 8192; // pcm to ogg, also serves as LappedPcm amount
+
+inline constexpr int kAudioCompThreshold = 0; // TODO: where 1 thread or all threads
+
+/// threshold which determine should it be encoded
+/// as a music(.ogg) or as an sound(.wav)
+inline constexpr int kMusicFlacThreshold = 0;
+inline constexpr int kMusicMp3Threshold = 0;
+inline constexpr int kMusicOggThreshold = 0;
+inline constexpr int kMusicWavThreshold = 0;
 
 /// models compression:
 // TODO: Model parameters: (there should be gltfpack flags - quantization?)
 
 /// textures compression
-inline constexpr int kTexCompBlockX = 6;
-inline constexpr int kTexCompBlockY = 6;
+inline constexpr int kTexCompBlockX = 4;
+inline constexpr int kTexCompBlockY = 4;
 inline constexpr int kTexCompBlockZ = 1;
 
-inline constexpr int kTexLdrDataType = ASTCENC_TYPE_U8;
-inline constexpr int kTexHdrDataType = ASTCENC_TYPE_F32;
-inline constexpr astcenc_profile kTexCompProfileLdr = ASTCENC_PRF_LDR;
-inline constexpr astcenc_profile kTexCompProfileHdr = ASTCENC_PRF_HDR;
-inline constexpr astcenc_swizzle kTexCompSwizzle{
+inline constexpr astcenc_type kTexLdrDataType = ASTCENC_TYPE_U8;
+inline constexpr astcenc_type kTexHdrDataType = ASTCENC_TYPE_F32;
+
+/// wow, the first time I use designated initialization,
+/// otherwise I need to add 15 "0" and "nullptr" values // TODO: grammatically incorrect
+inline constexpr astcenc_config kTextureConfigLdr{
+    .profile = ASTCENC_PRF_LDR, .flags = 0,
+    .block_x = kTexCompBlockX, .block_y = kTexCompBlockY,
+    .block_z = kTexCompBlockZ
+};
+inline constexpr astcenc_config kTextureConfigHdr{
+    .profile = ASTCENC_PRF_HDR, .flags = 0,
+    .block_x = kTexCompBlockX, .block_y = kTexCompBlockY,
+    .block_z = kTexCompBlockZ
+};
+inline constexpr astcenc_config kTextureConfigLdrNormal{
+    .profile = ASTCENC_PRF_LDR, .flags = ASTCENC_FLG_MAP_NORMAL,
+    .block_x = kTexCompBlockX, .block_y = kTexCompBlockY,
+    .block_z = kTexCompBlockZ
+};
+inline constexpr astcenc_config kTextureConfigLdrAlphaPerceptual{
+    .profile = ASTCENC_PRF_LDR,
+    .flags = ASTCENC_FLG_USE_ALPHA_WEIGHT | ASTCENC_FLG_USE_PERCEPTUAL,
+    .block_x = kTexCompBlockX, .block_y = kTexCompBlockY,
+    .block_z = kTexCompBlockZ
+};
+
+inline constexpr astcenc_swizzle kTextureSwizzleRgba{
   ASTCENC_SWZ_R, ASTCENC_SWZ_G, ASTCENC_SWZ_B, ASTCENC_SWZ_A
+};
+inline constexpr astcenc_swizzle kTextureSwizzleRgb1{
+  ASTCENC_SWZ_R, ASTCENC_SWZ_G, ASTCENC_SWZ_B, ASTCENC_SWZ_1
+};
+inline constexpr astcenc_swizzle kTextureSwizzleRrrg{
+  ASTCENC_SWZ_R, ASTCENC_SWZ_R, ASTCENC_SWZ_R, ASTCENC_SWZ_G
+};
+inline constexpr astcenc_swizzle kTextureSwizzleRrr1{
+  ASTCENC_SWZ_R, ASTCENC_SWZ_R, ASTCENC_SWZ_R, ASTCENC_SWZ_1
+};
+inline constexpr astcenc_swizzle kTextureSwizzleRa01{
+  ASTCENC_SWZ_R, ASTCENC_SWZ_A, ASTCENC_SWZ_0, ASTCENC_SWZ_1
+};
+inline constexpr astcenc_swizzle kTextureSwizzleRaz1{
+  ASTCENC_SWZ_R, ASTCENC_SWZ_A, ASTCENC_SWZ_Z, ASTCENC_SWZ_1
 };
 
 // not constexpr because ASTCENC_PRE_MEDIUM defined as a static const
