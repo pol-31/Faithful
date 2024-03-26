@@ -24,7 +24,7 @@ class TextureProcessor {
  public:
   enum class TextureCategory {
     kLdrR,
-    kLdrRg,
+    kLdrGb,
     kLdrRgb,
     kLdrRgba,
     kLdrRgNmap,
@@ -58,7 +58,7 @@ class TextureProcessor {
   struct TextureConfig {
     std::string out_path;
     astcenc_swizzle swizzle;
-    astcenc_context* context;
+    astcenc_context*& context;
     TextureCategory category;
     astcenc_type type;
   };

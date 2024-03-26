@@ -116,14 +116,17 @@ inline constexpr astcenc_swizzle kTextureSwizzleRgba{
 inline constexpr astcenc_swizzle kTextureSwizzleRgb1{
   ASTCENC_SWZ_R, ASTCENC_SWZ_G, ASTCENC_SWZ_B, ASTCENC_SWZ_1
 };
+inline constexpr astcenc_swizzle kTextureSwizzleGggb{
+  ASTCENC_SWZ_G, ASTCENC_SWZ_G, ASTCENC_SWZ_G, ASTCENC_SWZ_B
+};
 inline constexpr astcenc_swizzle kTextureSwizzleRrrg{
   ASTCENC_SWZ_R, ASTCENC_SWZ_R, ASTCENC_SWZ_R, ASTCENC_SWZ_G
 };
 inline constexpr astcenc_swizzle kTextureSwizzleRrr1{
   ASTCENC_SWZ_R, ASTCENC_SWZ_R, ASTCENC_SWZ_R, ASTCENC_SWZ_1
 };
-inline constexpr astcenc_swizzle kTextureSwizzleRa01{
-  ASTCENC_SWZ_R, ASTCENC_SWZ_A, ASTCENC_SWZ_0, ASTCENC_SWZ_1
+inline constexpr astcenc_swizzle kTextureSwizzle0ra1{
+  ASTCENC_SWZ_0, ASTCENC_SWZ_R, ASTCENC_SWZ_A, ASTCENC_SWZ_1
 };
 inline constexpr astcenc_swizzle kTextureSwizzleRaz1{
   ASTCENC_SWZ_R, ASTCENC_SWZ_A, ASTCENC_SWZ_Z, ASTCENC_SWZ_1

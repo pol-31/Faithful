@@ -2,6 +2,7 @@
 #define FAITHFUL_ASSETSINFO_H
 
 #include <filesystem>
+#include <set>
 
 #include "AssetLoadingThreadPool.h"
 
@@ -22,13 +23,13 @@ class AssetsAnalyzer {
   AssetsAnalyzer(AssetsAnalyzer&) = default;
   AssetsAnalyzer& operator=(AssetsAnalyzer&&) = default;
 
-  const std::vector<std::filesystem::path>& GetAudioToProcess() const {
+  const std::set<std::filesystem::path>& GetAudioToProcess() const {
     return audio_to_process_;
   }
-  const std::vector<std::filesystem::path>& GetModelsToProcess() const {
+  const std::set<std::filesystem::path>& GetModelsToProcess() const {
     return models_to_process_;
   }
-  const std::vector<std::filesystem::path>& GetTexturesToProcess() const {
+  const std::set<std::filesystem::path>& GetTexturesToProcess() const {
     return textures_to_process_;
   }
 
@@ -40,20 +41,18 @@ class AssetsAnalyzer {
     kUnknown
   };
 
-  void SortEntries();
-
   void AnalyzePath(const std::filesystem::path& path);
   void AnalyzeDir(const std::filesystem::path& path);
 
   void AddEntry(const std::filesystem::path& path);
   void AddEntryImpl(const std::filesystem::path& new_asset,
-                    std::vector<std::filesystem::path>& assets);
+                    std::set<std::filesystem::path>& assets);
 
   AssetCategory DeduceAssetCategory(const std::filesystem::path& path);
 
-  std::vector<std::filesystem::path> audio_to_process_;
-  std::vector<std::filesystem::path> models_to_process_;
-  std::vector<std::filesystem::path> textures_to_process_;
+  std::set<std::filesystem::path> audio_to_process_;
+  std::set<std::filesystem::path> models_to_process_;
+  std::set<std::filesystem::path> textures_to_process_;
 
   bool encode_;
 };

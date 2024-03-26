@@ -30,7 +30,7 @@ void AssetProcessor::Process(
   }
 
   // important for debugging to reuse ReplaceRequest
-  replace_request_.UnSetForce();
+  replace_request_.ClearFlags();
 
   AssetsAnalyzer assets_analyzer(source, encode);
 
@@ -50,6 +50,7 @@ void AssetProcessor::Process(
 void AssetProcessor::EncodeAssets(AssetsAnalyzer& assets_analyzer) {
   auto audio_to_process = assets_analyzer.GetAudioToProcess();
   for (const auto& path : audio_to_process) {
+    std::cout << "processing: " << path << std::endl;
     audio_processor_.Encode(path);
   }
 
@@ -57,50 +58,56 @@ void AssetProcessor::EncodeAssets(AssetsAnalyzer& assets_analyzer) {
   /// so then we just remove already processed (see below in this function)
   auto& models_to_process = assets_analyzer.GetModelsToProcess();
   for (const auto& path : models_to_process) {
+    std::cout << "processing: " << path << std::endl;
     model_processor_.Encode(path);
   }
-  std::cout << "models " << models_to_process.size() << std::endl;
 
   /// remove already processed by model_processor_
   /// (if user_source_path had models textures located beyond the gltf file,
   /// they will be processed twice - by model_processor_ and texture_processor_,
   /// so we avoiding this)
   auto all_textures_to_process = assets_analyzer.GetTexturesToProcess();
-  auto processed_textures = model_processor_.GetProcessedImages();
+  auto processed_textures = model_processor_.GetProcessedTextures();
   std::vector<std::string> textures_to_process;
-  std::set_intersection(
+  std::set_difference(
       all_textures_to_process.begin(), all_textures_to_process.end(),
       processed_textures.begin(), processed_textures.end(),
       std::back_inserter(textures_to_process));
 
   for (const auto& path : textures_to_process) {
+    std::cout << "processing: " << path << std::endl;
     texture_processor_.Encode(path);
   }
-  std::cout << "textures_to_process " << textures_to_process.size() << std::endl;
+
+  std::cout << "---------------------" << std::endl;
 }
 
 void AssetProcessor::DecodeAssets(AssetsAnalyzer& assets_analyzer) {
   auto audio_to_process = assets_analyzer.GetAudioToProcess();
   for (const auto& path : audio_to_process) {
+    std::cout << "processing: " << path << std::endl;
     audio_processor_.Decode(path);
   }
 
   /// it also handles models textures (textures located inside the "models/")
   auto& models_to_process = assets_analyzer.GetModelsToProcess();
   for (const auto& path : models_to_process) {
+    std::cout << "processing: " << path << std::endl;
     model_processor_.Decode(path);
   }
 
   /// remove already processed by model_processor_
   auto all_textures_to_process = assets_analyzer.GetTexturesToProcess();
-  auto processed_textures = model_processor_.GetProcessedImages();
+  auto processed_textures = model_processor_.GetProcessedTextures();
   std::vector<std::string> textures_to_process;
-  std::set_intersection(
+  std::set_difference(
       all_textures_to_process.begin(), all_textures_to_process.end(),
       processed_textures.begin(), processed_textures.end(),
       std::back_inserter(textures_to_process));
 
   for (const auto& path : textures_to_process) {
+    std::cout << "processing: " << path << std::endl;
     texture_processor_.Decode(path);
   }
+  std::cout << "---------------------" << std::endl;
 }

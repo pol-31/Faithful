@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <set>
 
 #include <tiny_gltf.h>
 
@@ -27,7 +28,7 @@ class ModelProcessor {
   void Encode(const std::filesystem::path& path);
   void Decode(const std::filesystem::path& path);
 
-  const std::vector<std::string>& GetProcessedImages() const {
+  const std::set<std::string>& GetProcessedTextures() {
     return processed_images_;
   }
 
@@ -56,7 +57,7 @@ class ModelProcessor {
 
   ReplaceRequest& replace_request_;
 
-  std::vector<std::string> processed_images_;
+  std::set<std::string> processed_images_;
 
   std::filesystem::path cur_model_path_;
   std::unique_ptr<tinygltf::Model> model_;

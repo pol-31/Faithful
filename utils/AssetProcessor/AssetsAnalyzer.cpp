@@ -9,7 +9,6 @@ AssetsAnalyzer::AssetsAnalyzer(
     const std::filesystem::path& path, bool encode)
     : encode_(encode) {
   AnalyzePath(path);
-  SortEntries();
 }
 
 void AssetsAnalyzer::AnalyzePath(const std::filesystem::path& path) {
@@ -31,16 +30,6 @@ void AssetsAnalyzer::AnalyzeDir(const std::filesystem::path& path) {
       AnalyzeDir(entry);
     }
   }
-}
-
-void AssetsAnalyzer::SortEntries() {
-  /// lexicographical sorting indeed helps (e.g. map_1.png, map_2.png, map_3.png)
-  std::sort(audio_to_process_.begin(), audio_to_process_.end());
-  std::sort(models_to_process_.begin(), models_to_process_.end());
-  std::sort(textures_to_process_.begin(), textures_to_process_.end());
-  std::cout << "audio num " << audio_to_process_.size() << std::endl;
-  std::cout << "models num " << models_to_process_.size() << std::endl;
-  std::cout << "textures num " << textures_to_process_.size() << std::endl;
 }
 
 AssetsAnalyzer::AssetCategory AssetsAnalyzer::DeduceAssetCategory(
@@ -77,34 +66,29 @@ void AssetsAnalyzer::AddEntry(const std::filesystem::path& path) {
   auto category = DeduceAssetCategory(path);
   switch (category) {
     case AssetCategory::kAudio:
-      std::cout << "add kAudio " << path << std::endl;
       AddEntryImpl(path, audio_to_process_);
       break;
     case AssetCategory::kModel:
-      std::cout << "add kModel " << path << std::endl;
       AddEntryImpl(path, models_to_process_);
       break;
     case AssetCategory::kTexture:
-      std::cout << "add kTexture " << path << std::endl;
       AddEntryImpl(path, textures_to_process_);
       break;
     case AssetCategory::kUnknown:
-      std::cout << "add none " << path << std::endl;
       break;
   }
 }
 
 void AssetsAnalyzer::AddEntryImpl(const std::filesystem::path& new_asset,
-                                  std::vector<std::filesystem::path>& assets) {
-  for (const auto& old_asset : assets) {
-    if (old_asset.stem() == new_asset.stem()) {
-      std::cerr << "Source path has at least two files with the same name:\n"
-                << old_asset.string() << "\n" << new_asset.string()
-                << "\nOnly first will be processed"
-                << "\nRename second and run program again to process second"
-                << std::endl;
-      return;
-    }
+                                  std::set<std::filesystem::path>& assets) {
+  auto founded = assets.find(new_asset);
+  if (founded != assets.end()) {
+    std::cerr << "Source path has at least two files with the same name:\n"
+              << founded->string() << "\n" << new_asset.string()
+              << "\nOnly first will be processed"
+              << "\nRename second and run program again to process second"
+              << std::endl;
+    return;
   }
-  assets.push_back(new_asset.string());
+  assets.insert(new_asset.string());
 }

@@ -125,10 +125,10 @@ TextureProcessor::TextureConfig TextureProcessor::ProvideEncodeTextureConfig(
           category,
           faithful::config::kTexLdrDataType
       };
-    case TextureCategory::kLdrRg:
+    case TextureCategory::kLdrGb:
       return {
           "",
-          faithful::config::kTextureSwizzleRrrg,
+          faithful::config::kTextureSwizzleGggb,
           context_ldr_,
           category,
           faithful::config::kTexLdrDataType
@@ -226,10 +226,10 @@ TextureProcessor::TextureConfig TextureProcessor::ProvideDecodeTextureConfig(
           category,
           faithful::config::kTexLdrDataType
       };
-    case TextureCategory::kLdrRg:
+    case TextureCategory::kLdrGb:
       return {
           "",
-          faithful::config::kTextureSwizzleRa01,
+          faithful::config::kTextureSwizzle0ra1,
           context_ldr_,
           category,
           faithful::config::kTexLdrDataType
@@ -451,6 +451,7 @@ void TextureProcessor::Decode(const std::filesystem::path& path) {
   DecodeImpl(path, std::move(texture_config));
 }
 
+// TODO: for hdr need 4 * uint8
 
 void TextureProcessor::Decode(const std::filesystem::path& in_path,
                               const std::filesystem::path& out_path,
@@ -466,7 +467,7 @@ void TextureProcessor::DecodeImpl(
   if (!MakeReplaceRequest(texture_config.out_path)) {
     return;
   }
-  astcenc_compress_reset(texture_config.context);
+  astcenc_decompress_reset(texture_config.context);
 
   int image_x, image_y, comp_len;
   std::unique_ptr<uint8_t[]> comp_data;
@@ -508,13 +509,14 @@ void TextureProcessor::WriteDecodedData(
     std::string filename, unsigned int image_x, unsigned int image_y,
     TextureCategory category, std::unique_ptr<uint8_t[]> image_data) {
   if (category != TextureCategory::kHdrRgb) {
-    if (stbi_write_png(filename.c_str(), image_x, image_y, 4,
-                       image_data.get(), 4 * image_x)) {
+    std::cout << "WRITE " << filename.c_str() << " " << image_x << " " << image_y << std::endl;
+    if (!stbi_write_png(filename.c_str(), image_x, image_y, 4,
+                        image_data.get(), 4 * image_x)) {
       std::cerr << "Error: stb_image_write failed to save texture" << std::endl;
     }
   } else {
-    if (stbi_write_hdr(filename.c_str(), image_x, image_y, 4,
-                       reinterpret_cast<const float*>(image_data.get()))) {
+    if (!stbi_write_hdr(filename.c_str(), image_x, image_y, 4,
+                        reinterpret_cast<const float*>(image_data.get()))) {
       std::cerr << "Error: stb_image_write failed to save texture" << std::endl;
     }
   }

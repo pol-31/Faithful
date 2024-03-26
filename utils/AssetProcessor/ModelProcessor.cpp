@@ -40,12 +40,12 @@ void ModelProcessor::Encode(const std::filesystem::path& path) {
                                   replace_extension(".gltf")).string();
   if (std::filesystem::exists(out_filename)) {
     std::string request{out_filename};
+    // TODO: textures still processed, do we want to do smt with this?
     request += "\nalready exist. Do you want to replace it?";
     if (!replace_request_(std::move(request))) {
       return;
     }
   }
-  processed_images_.clear();
   cur_model_path_ = path;
   loader_.SetImageLoader(&tinygltf::LoadImageData, nullptr);
   Read();
@@ -64,7 +64,6 @@ void ModelProcessor::Decode(const std::filesystem::path& path) {
       return;
     }
   }
-  processed_images_.clear();
   cur_model_path_ = path;
   loader_.SetImageLoader(TinygltfLoadTextureStub, nullptr);
   Read();
@@ -74,8 +73,16 @@ void ModelProcessor::Decode(const std::filesystem::path& path) {
 
 bool ModelProcessor::Read() {
   model_ = std::make_unique<tinygltf::Model>();
-  bool ret = loader_.LoadASCIIFromFile(model_.get(), &error_string_,
-                                       &warning_string_, cur_model_path_);
+  bool ret;
+  if (cur_model_path_.extension() == ".glb") {
+    ret = loader_.LoadBinaryFromFile(model_.get(), &error_string_,
+                                          &warning_string_, cur_model_path_);
+  } else if (cur_model_path_.extension() == ".gltf") {
+    ret = loader_.LoadASCIIFromFile(model_.get(), &error_string_,
+                                         &warning_string_, cur_model_path_);
+  } else {
+    throw;
+  }
   if (!warning_string_.empty()) {
     std::cerr << "Warning: " << warning_string_ << std::endl;
   }
@@ -106,7 +113,8 @@ void ModelProcessor::CompressTextures() {
   for (std::size_t i = 0; i < model_->images.size(); ++i) {
     tinygltf::Image& image = model_->images[i];
     if (!image.uri.empty()) {
-      processed_images_.push_back((cur_model_path_ / image.uri).lexically_normal());
+      processed_images_.insert((cur_model_path_.parent_path() / image.uri)
+                                   .lexically_normal());
     }
     auto model_texture_config = DeduceEncodeTextureCategory(i);
 
@@ -131,7 +139,7 @@ void ModelProcessor::DecompressTextures() {
   for (std::size_t i = 0; i < model_->images.size(); ++i) {
     tinygltf::Image& image = model_->images[i];
     auto texture_path = (cur_model_path_.parent_path() / image.uri);
-    processed_images_.push_back(texture_path.string());
+    processed_images_.insert(texture_path.string());
 
     auto model_texture_config = DeduceDecodeTextureCategory(
         texture_path.stem().string());
@@ -154,7 +162,7 @@ ModelProcessor::ModelTextureConfig ModelProcessor::DeduceEncodeTextureCategory(
   if (model_image_id == model_->materials[0].pbrMetallicRoughness
                             .metallicRoughnessTexture.index) {
     out_path += "_met_rough.astc";
-    category = TextureProcessor::TextureCategory::kLdrRg;
+    category = TextureProcessor::TextureCategory::kLdrGb;
   } else if (model_image_id == model_->materials[0].normalTexture.index) {
     out_path += "_normal.astc";
     category = TextureProcessor::TextureCategory::kLdrRgNmap;
@@ -177,7 +185,7 @@ ModelProcessor::ModelTextureConfig ModelProcessor::DeduceDecodeTextureCategory(
                       .string();
   TextureProcessor::TextureCategory category;
   if (path.ends_with("_met_rough")) {
-    category = TextureProcessor::TextureCategory::kLdrRg;
+    category = TextureProcessor::TextureCategory::kLdrGb;
   } else if (path.ends_with("_normal")) {
     category = TextureProcessor::TextureCategory::kLdrRgNmap;
   } else if (path.ends_with("_occlusion")) {
@@ -200,6 +208,7 @@ bool ModelProcessor::OptimizeModel(const std::string& destination) {
   command += destination;
   command += " -o ";
   command += destination;
+  std::cout << command << std::endl;
   if (std::system(command.c_str()) != 0) {
     std::cerr << "Error: unable to optimize model" << std::endl;
     return false;
