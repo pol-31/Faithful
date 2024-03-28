@@ -15,14 +15,6 @@ tinyexr.h, stb_image.h, stb_image_write.h
 - Include method: git submodule
 - Release version: 4.7.0
 ___
-## dr_libs
-- GitHub: https://github.com/mackron/dr_libs.git
-- Branch: master
-- License: MIT
-- dr_flac: Version 0.12.42
-- dr_mp3: Version 0.6.38
-- dr_wav - v0.13.15 - 2024-01-23
-___
 ## glad
 - GitHub: https://github.com/Dav1dde/glad.git
 - Branch: master
@@ -108,16 +100,21 @@ ___
 - Files: tiny_gltf.h
 - Release version: 2.8.21
 ___
+## folly
+- GitHub: https://github.com/facebook/folly.git
+- License: Apache-2.0 license 
+- Files: Function.h
+- Branch/Release version: don't remember, need to update (TODO)
+- Purpose: move-only lambdas
+___
 ## vorbis:
 - GitHub: https://github.com/xiph/vorbis.git
 - Branch: master
 - License: BSD-3-Clause
 - Release version: 1.3.7
-___
+___for move-only lambdas
 ## Not included, but possible in the future:
-## facebook/folly
-- GitHub: https://github.com/facebook/folly.git
-- Files: Future, Executor
+## facebook/folly - folly::Future
 
 We've separated "_licenses" folder for convenience, but each library's
 folder still contain it own license

@@ -50,12 +50,6 @@ if(FAITHFUL_BUILD_ASSET_PROCESSOR OR NOT FAITHFUL_GL_SUPPORTS_ASTC)
 endif()
 
 #    --------------------------------------------------------------------
-#    dr_libs (AssetProcessor only: decompress mp3, flac, wav into PCM
-#             for further compression into ogg+Vorbis)
-message(STATUS "---> dr_libs building")
-add_subdirectory(dr_libs EXCLUDE_FROM_ALL)
-
-#    --------------------------------------------------------------------
 #    glfw (Faithful: Window/context creation)
 message(STATUS "---> glfw building")
 add_subdirectory(glfw EXCLUDE_FROM_ALL)
@@ -95,6 +89,10 @@ add_subdirectory(openal-soft EXCLUDE_FROM_ALL)
 #               AssetProcessor: safely extract embedded textures for further
 #                               .astc copmression)
 #    only one header, so included directly
+
+#    --------------------------------------------------------------------
+#    folly (Faithful: Function.h for move-only lambdas)
+#    need only headers, so included directly
 
 #    --------------------------------------------------------------------
 #    stb_image, stb_image_write (Faithful: texture loading for further
