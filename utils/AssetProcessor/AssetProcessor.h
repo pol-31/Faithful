@@ -1,10 +1,11 @@
-#ifndef FAITHFUL_ASSETPROCESSOR_H
-#define FAITHFUL_ASSETPROCESSOR_H
+#ifndef FAITHFUL_UTILS_ASSETPROCESSOR_ASSETPROCESSOR_H
+#define FAITHFUL_UTILS_ASSETPROCESSOR_ASSETPROCESSOR_H
 
 #include <filesystem>
+#include <thread>
 
-#include "AssetsAnalyzer.h"
 #include "AssetLoadingThreadPool.h"
+#include "AssetsAnalyzer.h"
 #include "ReplaceRequest.h"
 
 #include "AudioProcessor.h"
@@ -13,10 +14,17 @@
 
 class AssetProcessor {
  public:
-  AssetProcessor(int thread_count);
+  AssetProcessor(int thread_count = std::thread::hardware_concurrency());
 
-  void Process(std::filesystem::path destination,
-               std::filesystem::path source,
+  /// neither movable nor copyable because of AssetLoadingThreadPool
+  AssetProcessor(const AssetProcessor& other) = delete;
+  AssetProcessor& operator=(const AssetProcessor& other) = delete;
+
+  AssetProcessor(AssetProcessor&& other) = delete;
+  AssetProcessor& operator=(AssetProcessor&& other) = delete;
+
+  void Process(const std::filesystem::path& destination,
+               const std::filesystem::path& source,
                bool encode);
 
  private:
@@ -30,4 +38,4 @@ class AssetProcessor {
   ModelProcessor model_processor_;
 };
 
-#endif  // FAITHFUL_ASSETPROCESSOR_H
+#endif  // FAITHFUL_UTILS_ASSETPROCESSOR_ASSETPROCESSOR_H

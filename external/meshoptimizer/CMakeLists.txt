@@ -23,7 +23,7 @@ ExternalProject_Add(
         BUILD_BYPRODUCTS ${MESHOPTIMIZER_BINARY_DIR}/gltfpack
 )
 
-set(FAITHFUL_GLTFPACK_PATH ${MESHOPTIMIZER_BINARY_DIR}/gltfpack PARENT_SCOPE)
+set(FAITHFUL_GLTFPACK_PATH "${MESHOPTIMIZER_BINARY_DIR}/gltfpack" CACHE STRING "" FORCE)
 
 add_library(meshoptimizer INTERFACE)
 add_dependencies(meshoptimizer meshoptimizer_external)

@@ -1,6 +1,6 @@
 #include "AssetsAnalyzer.h"
 
-#include <algorithm>
+#include <exception>
 #include <iostream>
 
 #include "../../config/AssetFormats.h"
@@ -17,7 +17,7 @@ void AssetsAnalyzer::AnalyzePath(const std::filesystem::path& path) {
   } else if (std::filesystem::is_directory(path)) {
     AnalyzeDir(path);
   } else {
-    std::cerr << "Error: incorrect path, try file or directory instead" << std::endl;
+    throw std::invalid_argument("incorrect path");
   }
 }
 
@@ -32,41 +32,14 @@ void AssetsAnalyzer::AnalyzeDir(const std::filesystem::path& path) {
   }
 }
 
-AssetsAnalyzer::AssetCategory AssetsAnalyzer::DeduceAssetCategory(
-    const std::filesystem::path& path) {
-  if (encode_) { // order from more_supported_num to less
-    for (const auto& extension : faithful::config::kModelCompFormats) {
-      if (extension == path.extension()) {
-        return AssetCategory::kModel;
-      }
-    }
-    for (const auto& extension : faithful::config::kAudioCompFormats) {
-      if (extension == path.extension()) {
-        return AssetCategory::kAudio;
-      }
-    }
-    for (const auto& extension : faithful::config::kTexCompFormats) {
-      if (extension == path.extension()) {
-        return AssetCategory::kTexture;
-      }
-    }
-  } else { // order from more_checks to less
-    if (path.extension() == ".gltf") {
-      return AssetCategory::kModel;
-    } else if (path.extension() == ".astc") {
-      return AssetCategory::kTexture;
-    } else if (path.extension() == ".ogg" || path.extension() == ".wav") {
-      return AssetCategory::kAudio;
-    }
-  }
-  return AssetCategory::kUnknown;
-}
-
 void AssetsAnalyzer::AddEntry(const std::filesystem::path& path) {
   auto category = DeduceAssetCategory(path);
   switch (category) {
-    case AssetCategory::kAudio:
-      AddEntryImpl(path, audio_to_process_);
+    case AssetCategory::kMusic:
+      AddEntryImpl(path, music_to_process_);
+      break;
+    case AssetCategory::kSound:
+      AddEntryImpl(path, sounds_to_process_);
       break;
     case AssetCategory::kModel:
       AddEntryImpl(path, models_to_process_);
@@ -91,4 +64,37 @@ void AssetsAnalyzer::AddEntryImpl(const std::filesystem::path& new_asset,
     return;
   }
   assets.insert(new_asset.string());
+}
+
+AssetsAnalyzer::AssetCategory AssetsAnalyzer::DeduceAssetCategory(
+    const std::filesystem::path& path) {
+  if (encode_) { // order from more_supported_num to less
+    for (const auto& extension : faithful::config::kModelCompFormats) {
+      if (extension == path.extension()) {
+        return AssetCategory::kModel;
+      }
+    }
+    if (path.extension() == ".ogg") {
+      return AssetCategory::kMusic;
+    }
+    if (path.extension() == ".wav") {
+      return AssetCategory::kSound;
+    }
+    for (const auto& extension : faithful::config::kTexCompFormats) {
+      if (extension == path.extension()) {
+        return AssetCategory::kTexture;
+      }
+    }
+  } else { // order from more_checks to less
+    if (path.extension() == ".gltf") {
+      return AssetCategory::kModel;
+    } else if (path.extension() == ".astc") {
+      return AssetCategory::kTexture;
+    } else if (path.extension() == ".ogg") {
+      return AssetCategory::kMusic;
+    } else if (path.extension() == ".wav") {
+      return AssetCategory::kSound;
+    }
+  }
+  return AssetCategory::kUnknown;
 }

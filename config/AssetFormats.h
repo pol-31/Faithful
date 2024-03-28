@@ -31,14 +31,6 @@ inline constexpr int kDefaultUrlRedirectionsCount = 0;
 /// _____AssetProcessor_____
 
 /// compression:
-
-// TODO: need to deduce std::thread::hardware_concurrency in CMake
-inline const int asset_processor_thread_num = std::thread::hardware_concurrency();
-
-constexpr std::array<std::string_view, 4> kAudioCompFormats = {
-    ".flac", ".mp3", ".ogg", ".wav"
-};
-
 // for more information see faithful/external/stb/stb_image.h
 constexpr std::array<std::string_view, 10> kTexCompFormats = {
     ".bmp", ".hdr", ".HDR", ".jpeg", "jpg",
@@ -49,34 +41,8 @@ constexpr std::array<std::string_view, 2> kModelCompFormats = {
     ".glb", ".gltf"
 };
 
-inline const int kThreadMax = std::thread::hardware_concurrency();
-
-// if file size is less then threshold, we use only 1 thread,
-// otherwise - all thread_max (for simplicity we're not taking
-// thread_max/2 or thread_max/4, but it's better to do this) // TODO:
-inline constexpr int kAudioCompThreadThreshold = 0; // TODO: is it kb? (if yes, float --> int)
-inline constexpr int kTexCompThreadThreshold = 2000; // TODO: is it kb? (if yes, float --> int)
-
-/// audio compression
-inline constexpr float kAudioCompQuality = 0.1; // [0.1; 1]
-inline constexpr int kAudioTotalChunkBufferSize = 16777216; // 16 mb
-
 // TODO: need to deduce std::thread::hardware_concurrency in CMake
-inline constexpr int kAudioThreadChunkBufferSize = kAudioTotalChunkBufferSize / 8;
-inline constexpr int kAudioDecompChunkSize = 4096; // flac/mp3/wav to pcm
-inline constexpr int kAudioCompChunkSize = 8192; // pcm to ogg, also serves as LappedPcm amount
-
-inline constexpr int kAudioCompThreshold = 0; // TODO: where 1 thread or all threads
-
-/// threshold which determine should it be encoded
-/// as a music(.ogg) or as an sound(.wav)
-inline constexpr int kMusicFlacThreshold = 0;
-inline constexpr int kMusicMp3Threshold = 0;
-inline constexpr int kMusicOggThreshold = 0;
-inline constexpr int kMusicWavThreshold = 0;
-
-/// models compression:
-// TODO: Model parameters: (there should be gltfpack flags - quantization?)
+inline const int kMaxHardwareThread = std::thread::hardware_concurrency();
 
 /// textures compression
 inline constexpr int kTexCompBlockX = 4;
@@ -86,8 +52,8 @@ inline constexpr int kTexCompBlockZ = 1;
 inline constexpr astcenc_type kTexLdrDataType = ASTCENC_TYPE_U8;
 inline constexpr astcenc_type kTexHdrDataType = ASTCENC_TYPE_F32;
 
-/// wow, the first time I use designated initialization,
-/// otherwise I need to add 15 "0" and "nullptr" values // TODO: grammatically incorrect
+/// Wow, this is the first time I've used designated initialization.
+/// Otherwise, I would need to add 15 '0' and 'nullptr' values
 inline constexpr astcenc_config kTextureConfigLdr{
     .profile = ASTCENC_PRF_LDR, .flags = 0,
     .block_x = kTexCompBlockX, .block_y = kTexCompBlockY,

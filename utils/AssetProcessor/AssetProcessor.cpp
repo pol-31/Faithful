@@ -2,36 +2,33 @@
 
 #include <algorithm>
 
-#include "AssetsAnalyzer.h"
-
 AssetProcessor::AssetProcessor(int thread_count)
     : thread_pool_(std::max(1, thread_count)),
       replace_request_(),
-      audio_processor_(thread_pool_, replace_request_),
+      audio_processor_(replace_request_),
       texture_processor_(thread_pool_, replace_request_),
       model_processor_(texture_processor_, replace_request_) {}
 
 void AssetProcessor::Process(
-    std::filesystem::path destination,
-    std::filesystem::path source,
+    const std::filesystem::path& destination,
+    const std::filesystem::path& source,
     bool encode) {
+  // important for debugging to reuse ReplaceRequest
+  replace_request_.ClearFlags();
+
   if (std::filesystem::exists(destination / "models") ||
       std::filesystem::exists(destination / "music") ||
       std::filesystem::exists(destination / "sounds") ||
       std::filesystem::exists(destination / "noises") ||
       std::filesystem::exists(destination / "maps")) {
     if (!replace_request_(
-            "Needed hierarchy {models, music, sounds, noises, maps}"
+            "Needed hierarchy {models, music, sounds, noises, maps} "
             "inside the destination path already exist."
             "\nDo you want to continue?"
             "\n(there may be quite a lot replace requests)")) {
       return;
     }
   }
-
-  // important for debugging to reuse ReplaceRequest
-  replace_request_.ClearFlags();
-
   AssetsAnalyzer assets_analyzer(source, encode);
 
   audio_processor_.SetDestinationDirectory(destination.string());
@@ -48,17 +45,23 @@ void AssetProcessor::Process(
 }
 
 void AssetProcessor::EncodeAssets(AssetsAnalyzer& assets_analyzer) {
-  auto audio_to_process = assets_analyzer.GetAudioToProcess();
-  for (const auto& path : audio_to_process) {
-    std::cout << "processing: " << path << std::endl;
-    audio_processor_.Encode(path);
+  /// for music(.ogg) & sounds(.wav) just copy
+  auto music_to_process = assets_analyzer.GetMusicToProcess();
+  for (const auto& path : music_to_process) {
+    std::cout << "--> encoding: " << path << std::endl;
+    audio_processor_.EncodeMusic(path);
+  }
+  auto sounds_to_process = assets_analyzer.GetSoundsToProcess();
+  for (const auto& path : sounds_to_process) {
+    std::cout << "--> encoding: " << path << std::endl;
+    audio_processor_.EncodeSound(path);
   }
 
   /// models always before textures to not to process models textures twice,
   /// so then we just remove already processed (see below in this function)
   auto& models_to_process = assets_analyzer.GetModelsToProcess();
   for (const auto& path : models_to_process) {
-    std::cout << "processing: " << path << std::endl;
+    std::cout << "--> encoding: " << path << std::endl;
     model_processor_.Encode(path);
   }
 
@@ -75,24 +78,28 @@ void AssetProcessor::EncodeAssets(AssetsAnalyzer& assets_analyzer) {
       std::back_inserter(textures_to_process));
 
   for (const auto& path : textures_to_process) {
-    std::cout << "processing: " << path << std::endl;
+    std::cout << "--> encoding: " << path << std::endl;
     texture_processor_.Encode(path);
   }
-
-  std::cout << "---------------------" << std::endl;
 }
 
 void AssetProcessor::DecodeAssets(AssetsAnalyzer& assets_analyzer) {
-  auto audio_to_process = assets_analyzer.GetAudioToProcess();
-  for (const auto& path : audio_to_process) {
-    std::cout << "processing: " << path << std::endl;
-    audio_processor_.Decode(path);
+  /// for music(.ogg) & sounds(.wav) just copy
+  auto music_to_process = assets_analyzer.GetMusicToProcess();
+  for (const auto& path : music_to_process) {
+    std::cout << "--> decoding: " << path << std::endl;
+    audio_processor_.DecodeMusic(path);
+  }
+  auto sounds_to_process = assets_analyzer.GetSoundsToProcess();
+  for (const auto& path : sounds_to_process) {
+    std::cout << "--> decoding: " << path << std::endl;
+    audio_processor_.DecodeSound(path);
   }
 
   /// it also handles models textures (textures located inside the "models/")
   auto& models_to_process = assets_analyzer.GetModelsToProcess();
   for (const auto& path : models_to_process) {
-    std::cout << "processing: " << path << std::endl;
+    std::cout << "--> decoding: " << path << std::endl;
     model_processor_.Decode(path);
   }
 
@@ -106,8 +113,7 @@ void AssetProcessor::DecodeAssets(AssetsAnalyzer& assets_analyzer) {
       std::back_inserter(textures_to_process));
 
   for (const auto& path : textures_to_process) {
-    std::cout << "processing: " << path << std::endl;
+    std::cout << "--> decoding: " << path << std::endl;
     texture_processor_.Decode(path);
   }
-  std::cout << "---------------------" << std::endl;
 }

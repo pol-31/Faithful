@@ -1,11 +1,10 @@
-#ifndef FAITHFUL_ASSETSINFO_H
-#define FAITHFUL_ASSETSINFO_H
+#ifndef FAITHFUL_UTILS_ASSETPROCESSOR_ASSETSANALYZER_H
+#define FAITHFUL_UTILS_ASSETPROCESSOR_ASSETSANALYZER_H
 
 #include <filesystem>
 #include <set>
 
 #include "AssetLoadingThreadPool.h"
-
 #include "ReplaceRequest.h"
 
 /// Collects full paths of all assets, that should be processed.
@@ -23,8 +22,11 @@ class AssetsAnalyzer {
   AssetsAnalyzer(AssetsAnalyzer&) = default;
   AssetsAnalyzer& operator=(AssetsAnalyzer&&) = default;
 
-  const std::set<std::filesystem::path>& GetAudioToProcess() const {
-    return audio_to_process_;
+  const std::set<std::filesystem::path>& GetMusicToProcess() const {
+    return music_to_process_;
+  }
+  const std::set<std::filesystem::path>& GetSoundsToProcess() const {
+    return sounds_to_process_;
   }
   const std::set<std::filesystem::path>& GetModelsToProcess() const {
     return models_to_process_;
@@ -35,7 +37,8 @@ class AssetsAnalyzer {
 
  private:
   enum class AssetCategory {
-    kAudio,
+    kMusic,
+    kSound,
     kModel,
     kTexture,
     kUnknown
@@ -50,11 +53,12 @@ class AssetsAnalyzer {
 
   AssetCategory DeduceAssetCategory(const std::filesystem::path& path);
 
-  std::set<std::filesystem::path> audio_to_process_;
+  std::set<std::filesystem::path> music_to_process_;
+  std::set<std::filesystem::path> sounds_to_process_;
   std::set<std::filesystem::path> models_to_process_;
   std::set<std::filesystem::path> textures_to_process_;
 
   bool encode_;
 };
 
-#endif  // FAITHFUL_ASSETSINFO_H
+#endif  // FAITHFUL_UTILS_ASSETPROCESSOR_ASSETSANALYZER_H

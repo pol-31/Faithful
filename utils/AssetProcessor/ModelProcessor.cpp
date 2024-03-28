@@ -26,52 +26,37 @@ ModelProcessor::ModelProcessor(
   loader_.SetImageWriter(nullptr, nullptr);
 }
 
-void ModelProcessor::SetDestinationDirectory(
-    const std::filesystem::path& path) {
-  models_destination_path_ = path / "models";
-  std::filesystem::create_directories(models_destination_path_);
-}
-
-// TODO: exceptions
-
 void ModelProcessor::Encode(const std::filesystem::path& path) {
   std::string out_filename =
       (models_destination_path_ / path.filename().
                                   replace_extension(".gltf")).string();
-  if (std::filesystem::exists(out_filename)) {
-    std::string request{out_filename};
-    // TODO: textures still processed, do we want to do smt with this?
-    request += "\nalready exist. Do you want to replace it?";
-    if (!replace_request_(std::move(request))) {
-      return;
-    }
-  }
   cur_model_path_ = path;
   loader_.SetImageLoader(&tinygltf::LoadImageData, nullptr);
-  Read();
-  CompressTextures();
-  Write(out_filename);
-  OptimizeModel(out_filename);
+  try {
+    Read();
+    CompressTextures();
+    Write(out_filename);
+    OptimizeModel(out_filename);
+  } catch (const std::exception& e) {
+    std::cerr << "Error at ModelProcessor::Encode: " << e.what() << std::endl;
+  }
 }
 void ModelProcessor::Decode(const std::filesystem::path& path) {
   /// extension already ".astc"
   std::string out_filename =
       (models_destination_path_ / path.filename()).string();
-  if (std::filesystem::exists(out_filename)) {
-    std::string request{out_filename};
-    request += "\nalready exist. Do you want to replace it?";
-    if (!replace_request_(std::move(request))) {
-      return;
-    }
-  }
   cur_model_path_ = path;
   loader_.SetImageLoader(TinygltfLoadTextureStub, nullptr);
-  Read();
-  DecompressTextures();
-  Write(out_filename);
+  try {
+    Read();
+    DecompressTextures();
+    Write(out_filename);
+  } catch (const std::exception& e) {
+    std::cerr << "Error at ModelProcessor::Decode: " << e.what() << std::endl;
+  }
 }
 
-bool ModelProcessor::Read() {
+void ModelProcessor::Read() {
   model_ = std::make_unique<tinygltf::Model>();
   bool ret;
   if (cur_model_path_.extension() == ".glb") {
@@ -81,32 +66,37 @@ bool ModelProcessor::Read() {
     ret = loader_.LoadASCIIFromFile(model_.get(), &error_string_,
                                          &warning_string_, cur_model_path_);
   } else {
-    throw;
+    throw std::invalid_argument("unsupported model file extension");
   }
   if (!warning_string_.empty()) {
     std::cerr << "Warning: " << warning_string_ << std::endl;
   }
   if (!error_string_.empty()) {
-    std::cerr << "Error: " << error_string_ << std::endl;
-    return false;
+    throw std::runtime_error(error_string_);
   }
   if (!ret) {
-    std::cerr << "Failed to load GLTF file: " << cur_model_path_ << std::endl;
-    return false;
+    throw std::runtime_error("failed to load GLTF file");
   }
-  return true;
 }
 
-bool ModelProcessor::Write(const std::string& destination) {
+void ModelProcessor::Write(const std::string& destination) {
+  /// it may seems logical to request replace before loading,
+  /// but then textures related only to model and located externally
+  /// to the model and also located inside the provided user's assets directory
+  /// still would be processed. So we still need to open model to see
+  /// what textures are used
+  if (std::filesystem::exists(destination)) {
+    std::string request{destination};
+    request += "\nalready exist. Do you want to replace it?";
+    if (!replace_request_(std::move(request))) {
+      return;
+    }
+  }
   bool ret = loader_.WriteGltfSceneToFile(model_.get(), destination,
                                          false, false, true, false);
   if (!ret) {
-    std::cerr << "Failed to write GLTF file: " << destination << std::endl;
-    return false;
+    throw std::runtime_error("failed to write GLTF file");
   }
-
-  std::cout << "GLTF file successfully saved to: " << destination << std::endl;
-  return true;
 }
 
 void ModelProcessor::CompressTextures() {
@@ -116,7 +106,7 @@ void ModelProcessor::CompressTextures() {
       processed_images_.insert((cur_model_path_.parent_path() / image.uri)
                                    .lexically_normal());
     }
-    auto model_texture_config = DeduceEncodeTextureCategory(i);
+    auto model_texture_config = ProvideEncodeTextureConfig(i);
 
     // forced 4 channels (see ctor)
     int total_len = image.width * image.height * 4;
@@ -141,20 +131,18 @@ void ModelProcessor::DecompressTextures() {
     auto texture_path = (cur_model_path_.parent_path() / image.uri);
     processed_images_.insert(texture_path.string());
 
-    auto model_texture_config = DeduceDecodeTextureCategory(
+    auto model_texture_config = ProvideDecodeTextureConfig(
         texture_path.stem().string());
 
     image.uri = std::filesystem::path(image.uri)
                     .replace_extension(".png").string();
-    std::cout << "Load from " << texture_path << " to " << model_texture_config.out_path << std::endl;
     texture_processor_.Decode(
         texture_path, model_texture_config.out_path,
         model_texture_config.category);
   }
 }
 
-// TODO: rename
-ModelProcessor::ModelTextureConfig ModelProcessor::DeduceEncodeTextureCategory(
+ModelProcessor::ModelTextureConfig ModelProcessor::ProvideEncodeTextureConfig(
     int model_image_id) {
   auto out_path = (models_destination_path_ / cur_model_path_.stem()).string();
   TextureProcessor::TextureCategory category;
@@ -179,7 +167,7 @@ ModelProcessor::ModelTextureConfig ModelProcessor::DeduceEncodeTextureCategory(
   return {out_path, category};
 }
 
-ModelProcessor::ModelTextureConfig ModelProcessor::DeduceDecodeTextureCategory(
+ModelProcessor::ModelTextureConfig ModelProcessor::ProvideDecodeTextureConfig(
     std::string_view path) {
   auto out_path = (models_destination_path_ / path).replace_extension(".png")
                       .string();
@@ -198,21 +186,24 @@ ModelProcessor::ModelTextureConfig ModelProcessor::DeduceDecodeTextureCategory(
   return {out_path, category};
 }
 
-// TODO: constexpr std::string?
-bool ModelProcessor::OptimizeModel(const std::string& destination) {
+void ModelProcessor::OptimizeModel(const std::string& destination) {
   std::string command;
   command.reserve(std::strlen(FAITHFUL_GLTFPACK_PATH) +
                   destination.size() * 2 + 17); // 17 for flags, whitespaces
   command = FAITHFUL_GLTFPACK_PATH;
-  command += " -tr -noq -i "; // no changes for textures
+  /// no changes for textures, no quantization
+  /// (requires extension, while tinygltf don't support it)
+  command += " -tr -noq -i ";
   command += destination;
   command += " -o ";
   command += destination;
-  std::cout << command << std::endl;
   if (std::system(command.c_str()) != 0) {
-    std::cerr << "Error: unable to optimize model" << std::endl;
-    return false;
+    throw std::runtime_error("unable to optimize model");
   }
-  std::cout << "Optimized" << std::endl;
-  return true;
+}
+
+void ModelProcessor::SetDestinationDirectory(
+    const std::filesystem::path& path) {
+  models_destination_path_ = path / "models";
+  std::filesystem::create_directories(models_destination_path_);
 }

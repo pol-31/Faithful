@@ -1,5 +1,5 @@
-#ifndef ASSETPROCESSOR_IMAGEPROCESSOR_H
-#define ASSETPROCESSOR_IMAGEPROCESSOR_H
+#ifndef FAITHFUL_UTILS_ASSETPROCESSOR_TEXTUREPROCESSOR_H
+#define FAITHFUL_UTILS_ASSETPROCESSOR_TEXTUREPROCESSOR_H
 
 #include <filesystem>
 #include <memory>
@@ -11,7 +11,7 @@
 #include "ReplaceRequest.h"
 
 struct AstcHeader {
-  uint8_t magic[4];  /// format identifier
+  uint8_t magic[4]; // format identifier
   uint8_t block_x;
   uint8_t block_y;
   uint8_t block_z;
@@ -35,11 +35,18 @@ class TextureProcessor {
   TextureProcessor(AssetLoadingThreadPool& thread_pool,
                    ReplaceRequest& replace_request);
 
+  /// non-assignable because of member reference
+  TextureProcessor(const TextureProcessor&) = delete;
+  TextureProcessor& operator=(const TextureProcessor&) = delete;
+
+  TextureProcessor(TextureProcessor&&) = default;
+  TextureProcessor& operator=(TextureProcessor&&) = delete;
+
   ~TextureProcessor();
 
   void Encode(const std::filesystem::path& path);
 
-  // used by ModelProcessor
+  /// used by ModelProcessor
   void Encode(const std::filesystem::path& out_path,
               std::unique_ptr<uint8_t[]> image_data,
               int width, int height,
@@ -47,7 +54,7 @@ class TextureProcessor {
 
   void Decode(const std::filesystem::path& path);
 
-  // used by ModelProcessor
+  /// used by ModelProcessor
   void Decode(const std::filesystem::path& in_path,
               const std::filesystem::path& out_path,
               TextureCategory category);
@@ -97,7 +104,7 @@ class TextureProcessor {
   bool HasHdrExtension(const std::filesystem::path& path);
 
   AssetLoadingThreadPool& thread_pool_;
-  ReplaceRequest replace_request_;
+  ReplaceRequest& replace_request_;
 
   astcenc_context* context_ldr_ = nullptr;
   astcenc_context* context_hdr_ = nullptr;
@@ -109,4 +116,4 @@ class TextureProcessor {
   std::filesystem::path noises_destination_path_;
 };
 
-#endif  // ASSETPROCESSOR_IMAGEPROCESSOR_H
+#endif  // FAITHFUL_UTILS_ASSETPROCESSOR_TEXTUREPROCESSOR_H

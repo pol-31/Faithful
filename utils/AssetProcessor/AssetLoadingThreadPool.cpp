@@ -1,14 +1,13 @@
 #include "AssetLoadingThreadPool.h"
 
+#include <exception>
 #include <iostream>
 
 AssetLoadingThreadPool::AssetLoadingThreadPool(int thread_number) {
   // subtracted by 1 because it's Main thread (see explanation in header)
   int actual_thread_number = std::max(1, thread_number) - 1;
   if (actual_thread_number == 0) {
-    std::cerr << "Error: AssetLoadingThreadPool has 0 worker threads!"
-              << "\nTry to increase number of threads" << std::endl;
-    return;
+    throw std::invalid_argument("AssetLoadingThreadPool has 0 worker threads");
   }
   threads_ = std::vector<std::thread>(actual_thread_number);
   threads_task_ = {};
@@ -27,9 +26,6 @@ void AssetLoadingThreadPool::Run() {
           });
         }
         WorkAndWaitAll(i);
-        if (stopped_) {
-          break;
-        }
       }
     });
   }
@@ -61,7 +57,6 @@ void AssetLoadingThreadPool::WorkAndWaitAll(int thread_id) {
   {
     std::unique_lock lock(mu_all_completed_);
     if (--threads_left_ != 0) {
-      std::cout << "I am thread " << thread_id << std::endl;
       thread_tasks_completed_.wait(lock, [this]() {
         return threads_left_ == 0;
       });
@@ -69,6 +64,5 @@ void AssetLoadingThreadPool::WorkAndWaitAll(int thread_id) {
     }
   }
   threads_task_ = {}; // don't need mutex here - all other threads 100% wait
-  std::cout << "I am final thread " << thread_id << std::endl;
   thread_tasks_completed_.notify_all();
 }

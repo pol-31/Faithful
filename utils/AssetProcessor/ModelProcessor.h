@@ -1,11 +1,11 @@
-#ifndef ASSETPROCESSOR_MODELPROCESSOR_H
-#define ASSETPROCESSOR_MODELPROCESSOR_H
+#ifndef FAITHFUL_UTILS_ASSETPROCESSOR_MODELPROCESSOR_H
+#define FAITHFUL_UTILS_ASSETPROCESSOR_MODELPROCESSOR_H
 
 #include <filesystem>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
-#include <set>
 
 #include <tiny_gltf.h>
 
@@ -25,32 +25,39 @@ class ModelProcessor {
   ModelProcessor(TextureProcessor& texture_processor,
                  ReplaceRequest& replace_request);
 
+  /// only move-constructable because of std::unique_ptr and member reference
+  ModelProcessor(const ModelProcessor&) = delete;
+  ModelProcessor& operator=(const ModelProcessor&) = delete;
+
+  ModelProcessor(ModelProcessor&&) = default;
+  ModelProcessor& operator=(ModelProcessor&&) = delete;
+
   void Encode(const std::filesystem::path& path);
   void Decode(const std::filesystem::path& path);
 
-  const std::set<std::string>& GetProcessedTextures() {
+  void SetDestinationDirectory(const std::filesystem::path& path);
+
+  const std::set<std::string>& GetProcessedTextures() const {
     return processed_images_;
   }
-
-  void SetDestinationDirectory(const std::filesystem::path& path);
 
   private:
    struct ModelTextureConfig {
      std::filesystem::path out_path;
      TextureProcessor::TextureCategory category;
    };
-  bool Read();
-  bool Write(const std::string& destination);
+  void Read();
+  void Write(const std::string& destination);
 
   void CompressTextures();
   void DecompressTextures();
 
-  ModelTextureConfig DeduceEncodeTextureCategory(int model_image_id);
+  ModelTextureConfig ProvideEncodeTextureConfig(int model_image_id);
 
   /// filename stem as an input parameter
-  ModelTextureConfig DeduceDecodeTextureCategory(std::string_view path);
+  ModelTextureConfig ProvideDecodeTextureConfig(std::string_view path);
 
-  bool OptimizeModel(const std::string& path);
+  void OptimizeModel(const std::string& path);
 
   /// in case if texture embedded, we directly ask texture processor to process
   TextureProcessor& texture_processor_;
@@ -67,4 +74,4 @@ class ModelProcessor {
   std::filesystem::path models_destination_path_;
 };
 
-#endif  // ASSETPROCESSOR_MODELPROCESSOR_H
+#endif  // FAITHFUL_UTILS_ASSETPROCESSOR_MODELPROCESSOR_H

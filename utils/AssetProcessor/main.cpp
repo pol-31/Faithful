@@ -1,5 +1,4 @@
 /** AssetProcessor converts assets into formats used by Faithful game internally:
- * - audio: .ogg + Vorbis
  * - textures: .astc
  * - 3D models: .gltf
  *
@@ -8,49 +7,101 @@
  * Supported:
  * - textures(images): bmp, hdr, HDR, jpeg, jpg, pgm, png, ppm, psd, tga;
  *     (for more information see faithful/external/stb/stb_image.h)
- * - audio: flac, mp3, ogg, wav
  * - 3D models: glb, gltf
+ *
+ * for audio, we just copy .wav to /sounds/ and .ogg to /music/
  * */
 
+#include <algorithm>
+#include <fstream>
 #include <iostream>
+#include <set>
+#include <sstream>
 
 #include "AssetProcessor.h"
-
 #include "../../config/AssetFormats.h"
 
-void UpdateAssetsInfoFile(const std::string& path, bool encoded) {
-  std::ofstream log_file(path);
-  if (!log_file.is_open()) {
-    std::cout << "Error (no logging): Log file opening issues" << std::endl;
+/// by default all assets have such info: id;name;
+/// except models: id;name;type;sound_ids;
+void UpdateAssetsInfo(const std::filesystem::path& path,
+                      bool is_models_dir = false) {
+  if (!std::filesystem::exists(path)) {
     return;
   }
-  if (encoded) {
-    // TODO: write to log.txt section "last encode"
-  } else {
-    // TODO: write to log.txt section "last decode"
+  std::filesystem::path assets_info_path{path / "info.txt"};
+  std::set<std::string> all_assets;
+  for (auto&& entry : std::filesystem::directory_iterator(path)) {
+    if (entry.is_regular_file()) {
+      if (is_models_dir) {
+        if (entry.path().extension() != ".gltf") {
+          continue;
+        }
+      }
+      all_assets.insert(entry.path().filename().string());
+    }
   }
-  std::terminate(); // NOT IMPLEMENTED
+  int last_id{0};
+  std::ofstream new_info_file;
+  std::vector<std::string> new_assets;
+  if (std::filesystem::exists(assets_info_path)) {
+    std::set<std::string> old_assets;
+    std::ifstream old_info_file(assets_info_path.c_str());
+    std::string line;
+    std::string field;
+    while (std::getline(old_info_file, line)) {
+      std::stringstream line_stream{line};
+      std::getline(line_stream, field, ';');
+      last_id = std::max(last_id, std::stoi(field));
+      std::getline(line_stream, field, ';');
+      old_assets.insert(field);
+    }
+    std::set_difference(all_assets.begin(), all_assets.end(),
+                        old_assets.begin(), old_assets.end(),
+                        std::back_inserter(new_assets));
+    if (new_assets.empty()) {
+      return;
+    }
+    new_info_file.open(assets_info_path.c_str(), std::ios::app);
+  } else {
+    new_info_file.open(assets_info_path.c_str());
+    std::move(all_assets.begin(), all_assets.end(), std::back_inserter(new_assets));
+  }
+  for (const auto& asset : new_assets) {
+    std::string new_entry;
+    new_entry += std::to_string(++last_id);
+    new_entry += ';';
+    new_entry += asset;
+    new_entry += ';';
+    if (is_models_dir) {
+      /// type & sounds_id should be added by user manually
+      new_entry += ";;";
+    }
+    new_entry += '\n';
+    new_info_file.write(new_entry.data(), new_entry.size());
+  }
 }
 
 int main(int argc, char** argv) {
-  /*if (argc != 3) {
-    std::cout << "Incorrect program's arguments:\n"
-              << "for encode: <destination> <source> e"
-              << "for decode: <destination> <source> d"
+  static_assert(sizeof(float) == 4); // (need for hdr files) just in case ;)
+
+  if (argc != 4) {
+    std::cout << "Incorrect program's arguments!"
+              << "\nfor encode: <destination> <source> e"
+              << "\nfor decode: <destination> <source> d"
               << std::endl;
     return 1;
   }
-  std::string destination = argv[0];
-  std::string source = argv[1];
+  std::filesystem::path destination{argv[1]};
+  std::filesystem::path source{argv[2]};
   bool encode;
-  if (argv[2][0] == 'e') {
+  if (argv[3][0] == 'e') {
     encode = true;
-  } else if (argv[2][0] == 'd') {
+  } else if (argv[3][0] == 'd') {
     encode = false;
   } else {
-    std::cout << "Incorrect program's arguments:\n"
-              << "for encode: <destination> <source> e"
-              << "for decode: <destination> <source> d"
+    std::cout << "Incorrect program's arguments!"
+              << "\nfor encode: <destination> <source> e"
+              << "\nfor decode: <destination> <source> d"
               << std::endl;
     return 2;
   }
@@ -58,21 +109,24 @@ int main(int argc, char** argv) {
   if (destination == source) {
     std::cerr << "source can't be equal to destination" << std::endl;
     return 3;
-  }*/
+  }
 
-  AssetProcessor processor_encoder(faithful::config::asset_processor_thread_num);
-  processor_encoder.Process("/home/pavlo/Desktop/assets_encoded",
-                            "/home/pavlo/Desktop/assets_", true);
+  AssetProcessor processor_encoder(faithful::config::kMaxHardwareThread);
+  try {
+    processor_encoder.Process(destination, source, encode);
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << std::endl;
+    return 4;
+  }
 
-  AssetProcessor processor_decoder(faithful::config::asset_processor_thread_num);
-  processor_decoder.Process("/home/pavlo/Desktop/assets_decoded",
-                            "/home/pavlo/Desktop/assets_encoded", false);
+  UpdateAssetsInfo(destination / "music");
+  UpdateAssetsInfo(destination / "sounds");
+  UpdateAssetsInfo(destination / "maps");
+  UpdateAssetsInfo(destination / "noises");
+  UpdateAssetsInfo(destination);
 
-  UpdateAssetsInfoFile("", false);
-
-  //TODO:
-  // ASK ONLY after each processed file to replace: if not - just add some
-  //  random symbol or id to the end of the file and ask again... and so on...
+  /// models has slightly different file
+  UpdateAssetsInfo(destination / "models", true);
 
   return 0;
 }

@@ -6,6 +6,7 @@
 
 /// simple functor for replace requesting with "force" flags,
 /// designed to have shared "force" flag for all types of assets
+/// used in main AssetProcessor (AssetProcessor.h)
 class ReplaceRequest {
  public:
   ReplaceRequest() = default;
@@ -16,7 +17,7 @@ class ReplaceRequest {
   ReplaceRequest(ReplaceRequest&&) = default;
   ReplaceRequest& operator=(ReplaceRequest&&) = default;
 
-  void UnSetForce() {
+  void ClearFlags() {
     force_true_ = false;
     force_false_ = false;
   }
